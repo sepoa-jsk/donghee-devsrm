@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>협력사 견적 제출 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── snap-table ── */
+  .snap-table { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; }
+  .snap-table th {
+    background:var(--grid-head); padding:0 12px; height:30px; font-weight:600;
+    color:var(--text); text-align:center; border:1px solid var(--border); white-space:nowrap;
+  }
+  .snap-table td { padding:4px 10px; border:1px solid var(--border); color:var(--text); vertical-align:middle; }
+  .snap-table td.c { text-align:center; }
+  .snap-table td.lbl { font-weight:500; background:#fafbfc; white-space:nowrap; }
+  .snap-table .form-input { height:28px; }
+
+  /* ── 구비서류 체크리스트 ── */
+  .doc-checklist { display:flex; flex-direction:column; gap:0; }
+  .doc-row {
+    display:flex; align-items:center; gap:12px;
+    padding:9px 14px; border-bottom:1px solid var(--border); font-size:12px;
+  }
+  .doc-row:last-child { border-bottom:none; }
+  .doc-row:nth-child(odd) { background:#fafbfc; }
+  .doc-row input[type="checkbox"] {
+    width:14px; height:14px; accent-color:var(--blue); flex-shrink:0; cursor:pointer;
+  }
+  .doc-row-label { flex:1; color:var(--text); }
+  .doc-badge-req {
+    font-size:10px; font-weight:700; color:var(--status-bad);
+    background:#fef2f2; border-radius:2px; padding:1px 5px; margin-left:4px;
+    flex-shrink:0;
+  }
+  .doc-badge-opt {
+    font-size:10px; font-weight:600; color:var(--text-mute);
+    background:var(--grid-head); border-radius:2px; padding:1px 5px; margin-left:4px;
+    flex-shrink:0;
+  }
+  .doc-file-placeholder {
+    font-size:12px; color:var(--text-mute);
+    border:1px dashed var(--border-strong); border-radius:3px;
+    padding:3px 10px; background:#f9fafb; cursor:not-allowed;
+    white-space:nowrap;
+  }
+
+  /* ── toast ── */
+  .toast {
+    position:fixed; bottom:24px; right:24px; color:#fff; padding:10px 16px;
+    border-radius:4px; font-size:13px; z-index:500;
+    display:flex; align-items:center; gap:8px;
+    box-shadow:0 4px 16px rgba(0,0,0,.18);
+  }
+</style>
+</head>
+
+<body data-menu="04-05">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">협력사 견적 제출</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="showToast('임시저장이 완료되었습니다.', 'ok')">
+        <i data-lucide="save"></i>임시저장
+      </button>
+      <button class="btn btn-primary" onclick="showToast('견적이 제출되었습니다.', 'ok')">
+        <i data-lucide="send"></i>견적 제출
+      </button>
+    </div>
+  </div>
+
+  <div class="content-scroll">
+
+    <!-- 1. RFQ 정보 (readonly) -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">RFQ 정보</span>
+        <span style="font-size:11px;color:var(--status-warn);margin-left:8px">목표 구매단가는 제공되지 않습니다</span>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">RFQ 번호</label>
+          <input class="form-input" value="RFQ-2026-0012" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">품번</label>
+          <input class="form-input" value="H1110-T100" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">품명</label>
+          <input class="form-input" value="Frame Sub Ass'y" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">협력사</label>
+          <input class="form-input" value="A사 (동희부품)" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">마감일</label>
+          <input class="form-input" value="2026-02-28" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">연간수량</label>
+          <input class="form-input num" value="100,000개" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">재질</label>
+          <input class="form-input" value="Aluminum 6061" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">도면</label>
+          <input class="form-input" value="Rev.A" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 4년치 연도별 단가 입력 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">연도별 견적 단가</span>
+        <span style="font-size:11px;color:var(--text-mute);margin-left:8px">단위: 원/개</span>
+      </div>
+      <table class="snap-table">
+        <thead>
+          <tr>
+            <th style="width:140px;text-align:left;padding-left:14px">구분</th>
+            <th>1차년 (2026)</th>
+            <th>2차년 (2027)</th>
+            <th>3차년 (2028)</th>
+            <th>4차년 (2029)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="lbl" style="padding-left:14px">단가 (원)</td>
+            <td class="c"><input class="form-input num" value="15,200" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c"><input class="form-input num" value="14,900" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c"><input class="form-input num" value="14,600" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c"><input class="form-input num" value="14,300" style="height:28px;width:100%;box-sizing:border-box"></td>
+          </tr>
+          <tr>
+            <td class="lbl" style="padding-left:14px">인하율 (%)</td>
+            <td class="c"><input class="form-input num" value="0" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c"><input class="form-input num" value="2" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c"><input class="form-input num" value="2" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c"><input class="form-input num" value="2" style="height:28px;width:100%;box-sizing:border-box"></td>
+          </tr>
+          <tr>
+            <td class="lbl" style="padding-left:14px">옵션율 (%)</td>
+            <td class="c"><input class="form-input num" value="0" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c"><input class="form-input num" value="1" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c"><input class="form-input num" value="1" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c"><input class="form-input num" value="2" style="height:28px;width:100%;box-sizing:border-box"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3. Breakdown 입력 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">원가 Breakdown 입력</span>
+        <span style="font-size:11px;color:var(--text-mute);margin-left:8px">항목별 세부 금액을 입력해 주십시오</span>
+      </div>
+      <table class="snap-table" style="max-width:640px">
+        <thead>
+          <tr>
+            <th style="width:180px;text-align:left;padding-left:14px">항목</th>
+            <th style="width:160px">입력값</th>
+            <th style="width:120px">단위</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="lbl" style="padding-left:14px">LME 기준가</td>
+            <td class="c"><input class="form-input num" value="2,650" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c" style="color:var(--text-sub)">USD/MT</td>
+          </tr>
+          <tr>
+            <td class="lbl" style="padding-left:14px">환율</td>
+            <td class="c"><input class="form-input num" value="1,380" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c" style="color:var(--text-sub)">KRW/USD</td>
+          </tr>
+          <tr>
+            <td class="lbl" style="padding-left:14px">프리미엄</td>
+            <td class="c"><input class="form-input num" value="120" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c" style="color:var(--text-sub)">USD/MT</td>
+          </tr>
+          <tr>
+            <td class="lbl" style="padding-left:14px">투입중량</td>
+            <td class="c"><input class="form-input num" value="2.85" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c" style="color:var(--text-sub)">kg</td>
+          </tr>
+          <tr>
+            <td class="lbl" style="padding-left:14px">스크랩 중량</td>
+            <td class="c"><input class="form-input num" value="0.42" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c" style="color:var(--text-sub)">kg</td>
+          </tr>
+          <tr>
+            <td class="lbl" style="padding-left:14px">가공비</td>
+            <td class="c"><input class="form-input num" value="2,400" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c" style="color:var(--text-sub)">원</td>
+          </tr>
+          <tr>
+            <td class="lbl" style="padding-left:14px">물류비</td>
+            <td class="c"><input class="form-input num" value="300" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c" style="color:var(--text-sub)">원</td>
+          </tr>
+          <tr>
+            <td class="lbl" style="padding-left:14px">관리비/이윤</td>
+            <td class="c"><input class="form-input num" value="580" style="height:28px;width:100%;box-sizing:border-box"></td>
+            <td class="c" style="color:var(--text-sub)">원</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-top:10px;font-size:12px;font-weight:600;color:var(--navy)">
+        견적 합계 15,200원 (1차년 기준)
+      </p>
+    </div>
+
+    <!-- 4. 구비서류 업로드 체크리스트 -->
+    <div class="section-box" style="margin-bottom:0">
+      <div class="section-box-header">
+        <span class="section-box-title">구비서류 업로드</span>
+        <span style="font-size:11px;color:var(--text-mute);margin-left:8px">필수 3건 · 선택 1건</span>
+      </div>
+      <div class="doc-checklist">
+        <div class="doc-row">
+          <input type="checkbox" id="doc1" checked>
+          <label for="doc1" class="doc-row-label">
+            견적서<span class="doc-badge-req">필수</span>
+          </label>
+          <span class="doc-file-placeholder">파일 선택</span>
+        </div>
+        <div class="doc-row">
+          <input type="checkbox" id="doc2">
+          <label for="doc2" class="doc-row-label">
+            원가산출서<span class="doc-badge-req">필수</span>
+          </label>
+          <span class="doc-file-placeholder">파일 선택</span>
+        </div>
+        <div class="doc-row">
+          <input type="checkbox" id="doc3">
+          <label for="doc3" class="doc-row-label">
+            LME 기준 확인서<span class="doc-badge-req">필수</span>
+          </label>
+          <span class="doc-file-placeholder">파일 선택</span>
+        </div>
+        <div class="doc-row">
+          <input type="checkbox" id="doc4">
+          <label for="doc4" class="doc-row-label">
+            품질 보증서<span class="doc-badge-opt">선택</span>
+          </label>
+          <span class="doc-file-placeholder">파일 선택</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function showToast(msg, type, ms) {
+  var bg = type === 'ok' ? '#16a34a' : type === 'bad' ? '#dc2626' : '#1f2937';
+  var el = document.createElement('div');
+  el.className = 'toast'; el.style.background = bg;
+  el.innerHTML =
+    '<i data-lucide="' + (type === 'bad' ? 'alert-circle' : 'check-circle') +
+    '" style="width:14px;height:14px;flex-shrink:0"></i><span>' + msg + '</span>';
+  document.body.appendChild(el);
+  if (window.lucide) window.lucide.createIcons({ nodes: [el] });
+  setTimeout(function() {
+    el.style.opacity = '0'; el.style.transition = 'opacity .2s';
+    setTimeout(function() { el.remove(); }, 220);
+  }, ms || 2400);
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key === 's') {
+    e.preventDefault();
+    showToast('임시저장이 완료되었습니다.', 'ok');
+  }
+});
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

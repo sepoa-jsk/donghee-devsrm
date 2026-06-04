@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>LME 기준정보 목록 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 검색 인풋 ── */
+  .search-wrap { flex:1; position:relative; max-width:560px; }
+  .search-wrap input {
+    width:100%; height:32px;
+    border:1px solid var(--border); border-radius:4px;
+    padding:0 34px 0 12px;
+    font-size:13px; font-family:'Pretendard',sans-serif;
+    color:var(--text); background:var(--surface);
+    outline:none; transition:border-color .15s;
+  }
+  .search-wrap input:focus { border-color:var(--blue); box-shadow:0 0 0 2px rgba(26,86,170,.12); }
+  .search-wrap input::placeholder { color:var(--text-mute); }
+  .search-wrap .s-icon {
+    position:absolute; right:9px; top:50%; transform:translateY(-50%);
+    color:#dc2626; pointer-events:none;
+  }
+
+  /* ── 공통 버튼 (필터·상태) ── */
+  .btn-ctrl {
+    height:32px; padding:0 12px; border-radius:4px;
+    font-size:13px; font-family:'Pretendard',sans-serif; font-weight:500;
+    display:inline-flex; align-items:center; gap:5px;
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    cursor:pointer; white-space:nowrap; transition:background .12s;
+  }
+  .btn-ctrl:hover { background:var(--bg); }
+
+  /* ── 날짜 범위 ── */
+  .date-range {
+    height:32px; display:flex; align-items:center; gap:4px;
+    border:1px solid var(--border); border-radius:4px;
+    padding:0 10px; background:var(--surface); font-size:12px;
+  }
+  .date-range input[type="date"] {
+    border:none; outline:none; font-size:12px;
+    font-family:'Pretendard',sans-serif; color:var(--text);
+    background:transparent; width:108px; cursor:pointer;
+  }
+  .date-range input[type="date"]::-webkit-calendar-picker-indicator { display:none; }
+  .date-range .dr-sep { color:var(--text-mute); }
+
+  /* ── 상태 스트립 ── */
+  .status-strip {
+    height:36px; background:var(--surface);
+    display:flex; align-items:center; padding:0 24px; gap:24px; flex-shrink:0;
+  }
+  .ss-btn {
+    background:none; border:none; cursor:pointer;
+    font-size:12px; color:var(--text-sub); font-family:'Pretendard',sans-serif;
+    display:flex; align-items:center; gap:5px; padding:0; transition:color .1s;
+  }
+  .ss-btn:hover { color:var(--text); }
+  .ss-btn.active { color:var(--blue); font-weight:600; }
+  .ss-cnt { font-weight:700; font-variant-numeric:tabular-nums; }
+  .ss-btn.active .ss-cnt { color:var(--blue); }
+
+  /* ── 필터 패널 ── */
+  .filter-panel {
+    background:var(--bg); border-bottom:1px solid var(--border);
+    padding:10px 24px; display:none; flex-shrink:0;
+    gap:16px; align-items:center; flex-wrap:wrap;
+  }
+  .filter-panel.open { display:flex; }
+
+  /* ── 그리드 ── */
+  .grid-area {
+    flex:1; overflow:hidden;
+    display:flex; flex-direction:column;
+    padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--text);       } .st-ok::before   { background:var(--navy); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+</style>
+</head>
+
+<body data-menu="03-03">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">LME 기준정보 목록</span>
+  </div>
+
+  <!-- 검색 바 -->
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-ctrl" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-ctrl" onclick="toggleStatusPanel()">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to"   value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+    <div class="ml-auto">
+      <button class="btn btn-primary" onclick="location.href='03-04_lme_register.html'">
+        <i data-lucide="plus"></i>LME 등록
+      </button>
+    </div>
+  </div>
+
+  <!-- 필터 패널 -->
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">소재</span>
+      <select class="search-select" id="f-mat" onchange="applyFilter()" style="width:140px">
+        <option value="">전체</option>
+        <option value="Al 6061">Al 6061</option>
+        <option value="SPCC">SPCC</option>
+        <option value="SUS304">SUS304</option>
+        <option value="SCM435">SCM435</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">기준월</span>
+      <input type="month" class="search-input" id="f-month" style="width:130px" onchange="applyFilter()">
+    </div>
+  </div>
+
+  <!-- 상태 스트립 -->
+  <div class="status-strip" id="status-strip">
+    <button class="ss-btn active" data-s="" onclick="setStatus(this,'')">
+      전체 <span class="ss-cnt" id="cnt-all">0</span>
+    </button>
+    <button class="ss-btn" data-s="적용중" onclick="setStatus(this,'적용중')">
+      적용중 <span class="ss-cnt" id="cnt-active">0</span>
+    </button>
+    <button class="ss-btn" data-s="예정" onclick="setStatus(this,'예정')">
+      예정 <span class="ss-cnt" id="cnt-plan">0</span>
+    </button>
+    <button class="ss-btn" data-s="만료" onclick="setStatus(this,'만료')">
+      만료 <span class="ss-cnt" id="cnt-expired">0</span>
+    </button>
+    <button class="ss-btn" data-s="임시" onclick="setStatus(this,'임시')">
+      임시 <span class="ss-cnt" id="cnt-temp">0</span>
+    </button>
+  </div>
+
+  <!-- 그리드 -->
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="main-table">
+        <thead>
+          <tr>
+            <th style="width:36px;text-align:center">
+              <input type="checkbox" id="chk-all" onclick="toggleAll(this)"
+                style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer">
+            </th>
+            <th style="width:36px">No</th>
+            <th style="width:120px">소재</th>
+            <th style="width:80px">기준월</th>
+            <th class="r" style="width:110px">LME 기준가(USD/ton)</th>
+            <th class="r" style="width:96px">환율(원/USD)</th>
+            <th class="r" style="width:100px">프리미엄(USD/ton)</th>
+            <th class="r" style="width:88px">부대비(원/kg)</th>
+            <th class="r" style="width:110px">소재단가(원/kg)</th>
+            <th style="width:200px">적용 기간</th>
+            <th style="width:70px">상태</th>
+            <th style="width:56px">상세</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+const ROWS = [
+  { no:1,  mat:'Al 6061', matType:'al',    month:'2026-07', lme:2380, fx:1392, prem:175, misc:200, unit:13900, from:'2026-07-01', to:'2026-07-31', status:'예정'  },
+  { no:2,  mat:'Al 6061', matType:'al',    month:'2026-06', lme:2340, fx:1380, prem:180, misc:200, unit:13600, from:'2026-06-01', to:'2026-06-30', status:'적용중' },
+  { no:3,  mat:'Al 6061', matType:'al',    month:'2026-05', lme:2295, fx:1369, prem:185, misc:200, unit:13300, from:'2026-05-01', to:'2026-05-31', status:'만료'  },
+  { no:4,  mat:'Al 6061', matType:'al',    month:'2026-04', lme:2260, fx:1355, prem:190, misc:200, unit:13050, from:'2026-04-01', to:'2026-04-30', status:'만료'  },
+  { no:5,  mat:'Al 6061', matType:'al',    month:'2026-03', lme:2210, fx:1348, prem:195, misc:200, unit:12740, from:'2026-03-01', to:'2026-03-31', status:'만료'  },
+  { no:6,  mat:'SPCC',    matType:'steel', month:'2026-06', lme:null, fx:1380, prem:null, misc:50, unit:1050,  from:'2026-06-01', to:'2026-06-30', status:'적용중' },
+  { no:7,  mat:'SPCC',    matType:'steel', month:'2026-05', lme:null, fx:1369, prem:null, misc:50, unit:1020,  from:'2026-05-01', to:'2026-05-31', status:'만료'  },
+  { no:8,  mat:'SUS304',  matType:'sus',   month:'2026-06', lme:18500,fx:1380, prem:350, misc:300, unit:29600, from:'2026-06-01', to:'2026-06-30', status:'적용중' },
+  { no:9,  mat:'SCM435',  matType:'steel', month:'2026-06', lme:null, fx:1380, prem:null, misc:80, unit:2150,  from:'2026-06-01', to:'2026-06-30', status:'임시'   },
+];
+
+let activeStatus = '';
+
+function fmt(n) { return n !== null ? n.toLocaleString() : '-'; }
+
+function matBadge(mat) { return mat; }
+
+function statusBadge(s) {
+  const map = { '적용중':'st-ok', '예정':'st-prog', '만료':'st-wait', '임시':'st-wait' };
+  return `<span class="st ${map[s] || 'st-wait'}">${s}</span>`;
+}
+
+function updateStrip(rows) {
+  document.getElementById('cnt-all').textContent     = rows.length;
+  document.getElementById('cnt-active').textContent  = rows.filter(r => r.status === '적용중').length;
+  document.getElementById('cnt-plan').textContent    = rows.filter(r => r.status === '예정').length;
+  document.getElementById('cnt-expired').textContent = rows.filter(r => r.status === '만료').length;
+  document.getElementById('cnt-temp').textContent    = rows.filter(r => r.status === '임시').length;
+}
+
+function renderRows(rows) {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="text-align:center">
+        <input type="checkbox" class="row-chk"
+          style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer"
+          onchange="onRowCheck()">
+      </td>
+      <td class="c" style="color:var(--text-mute)">${r.no}</td>
+      <td style="padding-left:10px">${matBadge(r.mat)}</td>
+      <td class="c" style="color:var(--text-sub);font-variant-numeric:tabular-nums">${r.month}</td>
+      <td class="r">${fmt(r.lme)}</td>
+      <td class="r">${fmt(r.fx)}</td>
+      <td class="r">${fmt(r.prem)}</td>
+      <td class="r">${fmt(r.misc)}</td>
+      <td class="r" style="font-weight:600">${fmt(r.unit)}</td>
+      <td style="padding-left:10px;font-size:11px;color:var(--text-sub);font-variant-numeric:tabular-nums">
+        ${r.from} ~ ${r.to}
+      </td>
+      <td class="c">${statusBadge(r.status)}</td>
+      <td class="c">
+        <button class="btn btn-ghost btn-sm btn-grid"
+          onclick="event.stopPropagation();location.href='03-04_lme_register.html'">
+          <i data-lucide="chevron-right"></i>
+        </button>
+      </td>
+    `;
+    tr.style.cursor = 'pointer';
+    tr.addEventListener('click', e => {
+      if (e.target.tagName === 'INPUT' || e.target.closest('button')) return;
+      const chk = tr.querySelector('.row-chk');
+      chk.checked = !chk.checked;
+      tr.classList.toggle('selected', chk.checked);
+      onRowCheck();
+    });
+    tbody.appendChild(tr);
+  });
+  lucide.createIcons();
+}
+
+function getBaseFiltered() {
+  const q     = document.getElementById('f-search').value.trim().toLowerCase();
+  const mat   = (document.getElementById('f-mat')   || {}).value || '';
+  const month = (document.getElementById('f-month') || {}).value || '';
+  const from  = document.getElementById('f-from').value;
+  const to    = document.getElementById('f-to').value;
+
+  return ROWS.filter(r => {
+    if (q     && !r.mat.toLowerCase().includes(q) && !r.month.includes(q)) return false;
+    if (mat   && r.mat !== mat)         return false;
+    if (month && r.month !== month)     return false;
+    if (from  && r.from < from)         return false;
+    if (to    && r.to   > to)           return false;
+    return true;
+  });
+}
+
+function applyFilter() {
+  const base = getBaseFiltered();
+  const rows = activeStatus ? base.filter(r => r.status === activeStatus) : base;
+  renderRows(rows);
+  updateStrip(base);
+  resetChecks();
+}
+
+function setStatus(btn, s) {
+  activeStatus = s;
+  document.querySelectorAll('.ss-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+
+function toggleFilter() {
+  document.getElementById('filter-panel').classList.toggle('open');
+}
+
+function toggleStatusPanel() {
+  const s = document.getElementById('status-strip');
+  s.style.display = s.style.display === 'none' ? 'flex' : 'none';
+}
+
+function toggleAll(master) {
+  document.querySelectorAll('.row-chk').forEach(c => {
+    c.checked = master.checked;
+    c.closest('tr').classList.toggle('selected', master.checked);
+  });
+  onRowCheck();
+}
+
+function onRowCheck() {
+  const all     = document.querySelectorAll('.row-chk');
+  const checked = document.querySelectorAll('.row-chk:checked');
+  const master  = document.getElementById('chk-all');
+  master.indeterminate = checked.length > 0 && checked.length < all.length;
+  master.checked       = all.length > 0 && checked.length === all.length;
+}
+
+function resetChecks() {
+  document.getElementById('chk-all').checked       = false;
+  document.getElementById('chk-all').indeterminate = false;
+}
+
+/* init */
+updateStrip(ROWS);
+renderRows(ROWS);
+</script>
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

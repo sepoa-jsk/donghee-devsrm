@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>품번·BOM·도면 상세 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 분할 레이아웃 ── */
+  .split-layout {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  /* ── 좌측 BOM 트리 패널 ── */
+  .bom-panel {
+    width: 288px;
+    min-width: 288px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .bom-panel-hdr {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px 0 14px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--grid-head);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-sub);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    gap: 6px;
+  }
+  .bom-tree-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+  }
+  .bom-tree-scroll::-webkit-scrollbar { width: 4px; }
+  .bom-tree-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+  /* BOM 트리 행 */
+  .bom-row {
+    display: flex;
+    align-items: center;
+    height: 30px;
+    cursor: pointer;
+    user-select: none;
+    padding-right: 10px;
+    transition: background 0.1s;
+    position: relative;
+  }
+  .bom-row:hover { background: var(--grid-hover); }
+  .bom-row.selected { background: var(--grid-select); }
+  .bom-row.selected::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--blue);
+  }
+
+  /* 토글 버튼 */
+  .bom-toggle {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-mute);
+    flex-shrink: 0;
+    padding: 0;
+  }
+  .bom-toggle i { width: 11px; height: 11px; transition: transform 0.15s; }
+  .bom-toggle.expanded i { transform: rotate(90deg); }
+  .bom-leaf-gap { width: 18px; flex-shrink: 0; }
+
+  /* 트리 아이콘 */
+  .bom-icon { width: 13px; height: 13px; color: var(--text-mute); flex-shrink: 0; margin: 0 5px 0 2px; }
+
+  /* 텍스트 */
+  .bom-code { font-size: 11px; font-weight: 700; color: var(--text); white-space: nowrap; }
+  .bom-name { font-size: 11px; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; margin-left: 4px; }
+  .bom-row.selected .bom-code { color: var(--blue); }
+  .bom-row.selected .bom-name { color: var(--text); font-weight: 500; }
+
+  /* 자식 그룹 */
+  .bom-children { overflow: hidden; }
+  .bom-children.collapsed { display: none; }
+
+  /* ── 우측 상세 패널 ── */
+  .detail-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  /* 선택 품번 인포 바 */
+  .part-info-bar {
+    height: 40px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .part-info-code { font-size: 14px; font-weight: 700; color: var(--navy); }
+  .part-info-sep { width: 1px; height: 16px; background: var(--border); }
+  .part-info-name { font-size: 13px; color: var(--text-sub); }
+
+  /* 탭 바 */
+  .tab-bar {
+    height: 38px;
+    display: flex;
+    align-items: flex-end;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    gap: 4px;
+  }
+  .tab-btn {
+    height: 36px;
+    padding: 0 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-sub);
+    cursor: pointer;
+    margin-bottom: -1px;
+    transition: color 0.12s, border-color 0.12s;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--blue); font-weight: 600; border-bottom-color: var(--blue); }
+
+  /* 탭 콘텐츠 */
+  .tab-content {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px 36px;
+  }
+  .tab-content.active { display: block; }
+  .tab-content::-webkit-scrollbar { width: 6px; }
+  .tab-content::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+  /* 영향 항목 카드 (리비전 탭 하단) */
+  .impact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .impact-card {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px 14px;
+    background: var(--bg);
+    text-decoration: none;
+    display: block;
+    transition: border-color .12s, background .12s;
+    cursor: pointer;
+  }
+  .impact-card:hover { border-color: var(--blue); background: var(--blue-light); }
+  .impact-label { font-size: 11px; color: var(--text-mute); margin-bottom: 5px; }
+  .impact-title { font-size: 12px; font-weight: 600; color: var(--text); }
+  .impact-ref { font-size: 11px; color: var(--text-mute); margin-top: 3px; }
+
+  /* eBOM/mBOM 토글 버튼 */
+  .ctrl-btn { height:26px; padding:0 10px; border-radius:4px; font-size:12px; font-family:'Pretendard',sans-serif; font-weight:500; display:inline-flex; align-items:center; gap:4px; background:var(--surface); border:1px solid var(--border); color:var(--text-sub); cursor:pointer; transition:background .12s; }
+  .ctrl-btn:hover { background:var(--bg); color:var(--text); }
+  .ctrl-btn.active { background:var(--blue-light); border-color:var(--blue); color:var(--blue); }
+
+  /* 키체인 컨텍스트 바 링크 */
+  .kc-link{font-size:11px;color:var(--blue);border:1px solid var(--border);border-radius:3px;padding:2px 8px;text-decoration:none}
+  .kc-link:hover{background:var(--blue-light)}
+</style>
+</head>
+
+<!-- sidebar.js가 data-menu="02-02"를 읽어 사이드바를 주입·활성 표시 -->
+<body data-menu="02-02">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 (§4.1) -->
+  <div class="page-title-bar">
+    <span class="page-title">품번·BOM·도면 상세</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="window.print()">
+        <i data-lucide="printer"></i>인쇄
+      </button>
+      <button class="btn btn-secondary" onclick="showToast('임시저장이 완료되었습니다.', 'ok')">
+        <i data-lucide="save"></i>임시저장
+      </button>
+      <button class="btn btn-primary" onclick="showModal('modal-save')">
+        <i data-lucide="check"></i>저장
+      </button>
+    </div>
+  </div>
+
+  <!-- 키체인 컨텍스트 바 -->
+  <div style="padding:8px 24px;background:#f9fafb;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-sub);display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <span>프로젝트 <a href="01-04_project_detail.html" style="color:var(--blue);font-weight:600;text-decoration:none">PJT-520PHEV-FT-2026</a></span>
+    <i data-lucide="chevron-right" style="width:13px;height:13px;color:var(--text-mute)"></i>
+    <span>품번 <strong style="color:var(--text)">H1110-T100</strong></span>
+    <i data-lucide="chevron-right" style="width:13px;height:13px;color:var(--text-mute)"></i>
+    <span>리비전 <strong style="color:var(--text)">Rev.B</strong></span>
+    <i data-lucide="chevron-right" style="width:13px;height:13px;color:var(--text-mute)"></i>
+    <span>적용 <strong style="color:var(--text)">2026-03-10</strong></span>
+    <span style="margin-left:auto;display:flex;gap:6px">
+      <a href="../03_cost/03-02_target_detail.html" class="kc-link">목표가</a>
+      <a href="../03_cost/03-07_material_cost.html" class="kc-link">재료비</a>
+      <a href="../04_dev_purchase/04-06_quote_compare.html" class="kc-link">견적비교</a>
+    </span>
+  </div>
+
+  <!-- 분할 레이아웃 -->
+  <div class="split-layout">
+
+    <!-- ── 좌측: BOM 트리 ── -->
+    <div class="bom-panel">
+      <div class="bom-panel-hdr">
+        <i data-lucide="git-branch" style="width:13px;height:13px;color:var(--text-mute)"></i>
+        BOM 트리
+        <span style="flex:1"></span>
+        <button class="btn btn-ghost btn-sm" style="height:22px;font-size:11px;padding:0 7px;color:var(--text-sub)">
+          <i data-lucide="plus"></i>품번 추가
+        </button>
+      </div>
+      <div style="padding:8px 10px 0;flex-shrink:0">
+        <div style="display:flex;gap:4px;margin-bottom:8px">
+          <button class="ctrl-btn active" id="ebom-btn" onclick="setBomView('eBOM')">eBOM</button>
+          <button class="ctrl-btn" id="mbom-btn" onclick="setBomView('mBOM')">mBOM</button>
+        </div>
+      </div>
+      <div class="bom-tree-scroll">
+
+        <!-- ROOT — H1110-T100 Frame Sub Ass'y (선택됨) -->
+        <div class="bom-row selected" id="bom-H1110-T100" style="padding-left:8px"
+             onclick="selectNode('H1110-T100')">
+          <button class="bom-toggle expanded" id="tgl-H1110-T100"
+                  onclick="event.stopPropagation();toggleChildren('ch-H1110-T100','tgl-H1110-T100')">
+            <i data-lucide="chevron-right"></i>
+          </button>
+          <i data-lucide="box" class="bom-icon"></i>
+          <span class="bom-code">H1110-T100</span>
+          <span class="bom-name">Frame Sub Ass'y</span>
+        </div>
+
+        <div id="ch-H1110-T100" class="bom-children">
+
+          <!-- Lv.2 — H1110-T101 Bracket Assy Upper (구매대상) -->
+          <div class="bom-row" id="bom-H1110-T101" style="padding-left:26px"
+               onclick="selectNode('H1110-T101')">
+            <button class="bom-toggle expanded" id="tgl-H1110-T101"
+                    onclick="event.stopPropagation();toggleChildren('ch-H1110-T101','tgl-H1110-T101')">
+              <i data-lucide="chevron-right"></i>
+            </button>
+            <i data-lucide="package" class="bom-icon"></i>
+            <span class="bom-code">H1110-T101</span>
+            <span class="bom-name">Bracket Assy Upper</span>
+          </div>
+
+          <div id="ch-H1110-T101" class="bom-children">
+
+            <!-- Lv.3 — H1110-T101A Upper Bracket Body (내제) -->
+            <div class="bom-row" id="bom-H1110-T101A" style="padding-left:44px"
+                 onclick="selectNode('H1110-T101A')">
+              <span class="bom-leaf-gap"></span>
+              <i data-lucide="component" class="bom-icon"></i>
+              <span class="bom-code">H1110-T101A</span>
+              <span class="bom-name">Upper Bracket Body<span class="mfg-node" style="display:none;font-size:10px;color:var(--status-warn);margin-left:4px">[가공]</span></span>
+            </div>
+
+            <!-- Lv.3 — H1110-T101B Mounting Tab (내제) -->
+            <div class="bom-row" id="bom-H1110-T101B" style="padding-left:44px"
+                 onclick="selectNode('H1110-T101B')">
+              <span class="bom-leaf-gap"></span>
+              <i data-lucide="component" class="bom-icon"></i>
+              <span class="bom-code">H1110-T101B</span>
+              <span class="bom-name">Mounting Tab<span class="mfg-node" style="display:none;font-size:10px;color:var(--status-warn);margin-left:4px">[가공]</span></span>
+            </div>
+
+          </div><!-- /ch-H1110-T101 -->
+
+          <!-- Lv.2 — H1110-T102 Cover Plate (구매대상) -->
+          <div class="bom-row" id="bom-H1110-T102" style="padding-left:26px"
+               onclick="selectNode('H1110-T102')">
+            <button class="bom-toggle expanded" id="tgl-H1110-T102"
+                    onclick="event.stopPropagation();toggleChildren('ch-H1110-T102','tgl-H1110-T102')">
+              <i data-lucide="chevron-right"></i>
+            </button>
+            <i data-lucide="package" class="bom-icon"></i>
+            <span class="bom-code">H1110-T102</span>
+            <span class="bom-name">Cover Plate</span>
+          </div>
+
+          <div id="ch-H1110-T102" class="bom-children">
+
+            <!-- Lv.3 — H1110-T102A Cover Base Plate (내제) -->
+            <div class="bom-row" id="bom-H1110-T102A" style="padding-left:44px"
+                 onclick="selectNode('H1110-T102A')">
+              <span class="bom-leaf-gap"></span>
+              <i data-lucide="component" class="bom-icon"></i>
+              <span class="bom-code">H1110-T102A</span>
+              <span class="bom-name">Cover Base Plate<span class="mfg-node" style="display:none;font-size:10px;color:var(--status-warn);margin-left:4px">[가공]</span></span>
+            </div>
+
+          </div><!-- /ch-H1110-T102 -->
+
+          <!-- Lv.2 — H1110-T103 Rubber Seal (사급, qty2) -->
+          <div class="bom-row" id="bom-H1110-T103" style="padding-left:26px"
+               onclick="selectNode('H1110-T103')">
+            <span class="bom-leaf-gap"></span>
+            <i data-lucide="component" class="bom-icon"></i>
+            <span class="bom-code">H1110-T103</span>
+            <span class="bom-name">Rubber Seal</span>
+          </div>
+
+          <!-- Lv.2 — H1110-T104 Pipe Connector (구매대상) -->
+          <div class="bom-row" id="bom-H1110-T104" style="padding-left:26px"
+               onclick="selectNode('H1110-T104')">
+            <span class="bom-leaf-gap"></span>
+            <i data-lucide="component" class="bom-icon"></i>
+            <span class="bom-code">H1110-T104</span>
+            <span class="bom-name">Pipe Connector</span>
+          </div>
+
+          <!-- Lv.2 — H1110-T105 Hose Assembly (구매대상) -->
+          <div class="bom-row" id="bom-H1110-T105" style="padding-left:26px"
+               onclick="selectNode('H1110-T105')">
+            <span class="bom-leaf-gap"></span>
+            <i data-lucide="component" class="bom-icon"></i>
+            <span class="bom-code">H1110-T105</span>
+            <span class="bom-name">Hose Assembly</span>
+          </div>
+
+        </div><!-- /ch-H1110-T100 -->
+
+      </div><!-- /bom-tree-scroll -->
+    </div><!-- /bom-panel -->
+
+    <!-- ── 우측: 품번 상세 ── -->
+    <div class="detail-panel">
+
+      <!-- 선택 품번 인포 바 -->
+      <div class="part-info-bar">
+        <span class="part-info-code">H1110-T100</span>
+        <span class="part-info-sep"></span>
+        <span class="part-info-name">Frame Sub Ass'y</span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:8px">
+          <span class="badge badge-outline" style="font-size:10px">Rev.B</span>
+          <span class="badge badge-prog" style="font-size:10px">개발 진행중</span>
+          <span class="badge badge-ok" style="font-size:10px">PLM 연동</span>
+        </span>
+      </div>
+
+      <!-- 탭 바 -->
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('info', this)">기본정보</button>
+        <button class="tab-btn" onclick="switchTab('drawing', this)">도면·첨부</button>
+        <button class="tab-btn" onclick="switchTab('revision', this)">리비전 이력</button>
+      </div>
+
+      <!-- ── 탭 1: 기본정보 ── -->
+      <div id="tab-info" class="tab-content active">
+
+        <!-- 식별 정보 -->
+        <div class="section-box">
+          <div class="section-box-header">
+            <span class="section-box-title">식별 정보</span>
+          </div>
+          <div class="form-row form-row-4">
+            <div class="form-field">
+              <label class="form-label">품번</label>
+              <input type="text" class="form-input" value="H1110-T100" readonly>
+            </div>
+            <div class="form-field">
+              <label class="form-label"><span class="req">*</span>품명</label>
+              <input type="text" class="form-input" value="Frame Sub Ass'y">
+            </div>
+            <div class="form-field">
+              <label class="form-label"><span class="req">*</span>도면번호</label>
+              <input type="text" class="form-input" value="DWG-H1110-T100-A">
+            </div>
+            <div class="form-field">
+              <label class="form-label">현재 도면 리비전</label>
+              <input type="text" class="form-input" value="Rev.B" readonly>
+            </div>
+          </div>
+          <div class="form-row form-row-4">
+            <div class="form-field">
+              <label class="form-label"><span class="req">*</span>구매구분</label>
+              <select class="form-select">
+                <option selected>외주</option>
+                <option>자가</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="form-label">상위 품번</label>
+              <input type="text" class="form-input" value="— (최상위)" readonly>
+            </div>
+            <div class="form-field">
+              <label class="form-label">BOM 레벨</label>
+              <input type="text" class="form-input" value="1" readonly>
+            </div>
+            <div class="form-field">
+              <label class="form-label">적용 프로젝트</label>
+              <input type="text" class="form-input" value="PJT-520PHEV-FT-2026" readonly>
+            </div>
+          </div>
+        </div>
+
+        <!-- 소재·재질 -->
+        <div class="section-box">
+          <div class="section-box-header">
+            <span class="section-box-title">소재 · 재질</span>
+          </div>
+          <div class="form-row form-row-4">
+            <div class="form-field">
+              <label class="form-label"><span class="req">*</span>재질</label>
+              <input type="text" class="form-input" value="Aluminum 6061">
+            </div>
+            <div class="form-field">
+              <label class="form-label">LME 연동 소재</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="text" class="form-input" value="Aluminum" style="flex:1" readonly>
+                <span class="badge badge-outline" style="font-size:10px;flex-shrink:0">LME</span>
+              </div>
+              <span class="form-hint">LME 알루미늄 기준가 자동 연동</span>
+            </div>
+            <div class="form-field">
+              <label class="form-label">소재 등급</label>
+              <input type="text" class="form-input" value="6061-T6">
+            </div>
+            <div class="form-field">
+              <label class="form-label">스크랩 회수단가 (원/kg)</label>
+              <input type="text" class="form-input num" value="580">
+            </div>
+          </div>
+        </div>
+
+        <!-- 중량 -->
+        <div class="section-box">
+          <div class="section-box-header">
+            <span class="section-box-title">중량</span>
+            <span style="font-size:11px;color:var(--text-mute);margin-left:8px">도면 Rev.B 기준</span>
+          </div>
+          <div class="form-row form-row-4">
+            <div class="form-field">
+              <label class="form-label"><span class="req">*</span>순중량 (kg)</label>
+              <input type="text" class="form-input num" value="2.60">
+              <span class="form-hint">Net Weight — 완성품 기준</span>
+            </div>
+            <div class="form-field">
+              <label class="form-label"><span class="req">*</span>투입중량 (kg)</label>
+              <input type="text" class="form-input num" value="2.85">
+              <span class="form-hint">Input Weight — 가공 전 소재 투입량</span>
+            </div>
+            <div class="form-field">
+              <label class="form-label">스크랩중량 (kg)</label>
+              <input type="text" class="form-input num result" value="0.42" readonly>
+              <span class="form-hint">= 투입중량 − 순중량  →  2.85 − 2.60 (보강 리브 추가 반영)</span>
+            </div>
+            <div class="form-field">
+              <label class="form-label">재료 이용률 (%)</label>
+              <input type="text" class="form-input num result" value="91.2" readonly>
+              <span class="form-hint">= 순중량 / 투입중량 × 100  →  2.60 / 2.85</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 공급 조건 -->
+        <div class="section-box">
+          <div class="section-box-header">
+            <span class="section-box-title">공급 조건</span>
+          </div>
+          <div class="form-row form-row-4">
+            <div class="form-field">
+              <label class="form-label">연간수량 (개)</label>
+              <input type="text" class="form-input num" value="100,000" readonly>
+            </div>
+            <div class="form-field">
+              <label class="form-label">MOQ (개)</label>
+              <input type="text" class="form-input num" value="1,000">
+            </div>
+            <div class="form-field">
+              <label class="form-label">납기 (주)</label>
+              <input type="text" class="form-input num" value="8">
+            </div>
+            <div class="form-field">
+              <label class="form-label">SOP</label>
+              <input type="date" class="form-input" value="2026-10-01" readonly>
+            </div>
+          </div>
+          <div class="form-row form-row-4">
+            <div class="form-field">
+              <label class="form-label">담당자</label>
+              <input type="text" class="form-input" value="김개발 (개발구매팀)" readonly>
+            </div>
+            <div class="form-field">
+              <label class="form-label">등록일</label>
+              <input type="text" class="form-input" value="2026-01-15" readonly>
+            </div>
+            <div class="form-field">
+              <label class="form-label">최종 수정일</label>
+              <input type="text" class="form-input" value="2026-01-15" readonly>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tab-info -->
+
+      <!-- ── 탭 2: 도면·첨부 ── -->
+      <div id="tab-drawing" class="tab-content">
+
+        <div class="section-box">
+          <div class="section-box-header">
+            <span class="section-box-title">도면 파일</span>
+            <span style="font-size:11px;color:var(--text-mute)">현재 적용 리비전: Rev.A</span>
+          </div>
+
+          <div class="attach-zone" onclick="document.getElementById('file-upload').click()" style="margin-bottom:0">
+            <i data-lucide="upload-cloud" style="width:18px;height:18px;margin:0 auto 5px;display:block;color:var(--text-mute)"></i>
+            클릭하거나 파일을 여기로 끌어다 놓으세요 (PDF, DWG, DXF — 최대 100MB)
+          </div>
+          <input type="file" id="file-upload" style="display:none" multiple accept=".pdf,.dwg,.dxf">
+
+          <div class="attach-list">
+            <div class="attach-item">
+              <i data-lucide="file-text" style="width:13px;height:13px;color:var(--text-sub)"></i>
+              <span class="attach-name">H1110-T100_Drawing_RevA.pdf</span>
+              <span style="font-size:10px;color:var(--text-sub);background:var(--bg);border:1px solid var(--border);border-radius:2px;padding:1px 6px;margin-left:2px;flex-shrink:0">Rev.A</span>
+              <span class="attach-size">2.4 MB</span>
+              <span class="attach-date">2026-01-15 14:22</span>
+              <button class="attach-del"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>
+            </div>
+            <div class="attach-item">
+              <i data-lucide="file" style="width:13px;height:13px;color:var(--text-sub)"></i>
+              <span class="attach-name">H1110-T100_Drawing_RevA.dxf</span>
+              <span style="font-size:10px;color:var(--text-sub);background:var(--bg);border:1px solid var(--border);border-radius:2px;padding:1px 6px;margin-left:2px;flex-shrink:0">Rev.A</span>
+              <span class="attach-size">1.8 MB</span>
+              <span class="attach-date">2026-01-15 14:23</span>
+              <button class="attach-del"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-box">
+          <div class="section-box-header">
+            <span class="section-box-title">관련 문서</span>
+            <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="document.getElementById('file-upload').click()">
+              <i data-lucide="upload"></i>파일 추가
+            </button>
+          </div>
+          <div class="attach-list">
+            <div class="attach-item">
+              <i data-lucide="file-text" style="width:13px;height:13px;color:var(--text-sub)"></i>
+              <span class="attach-name">H1110-T100_Material_Spec_Al6061.pdf</span>
+              <span class="attach-size">1.1 MB</span>
+              <span class="attach-date">2026-01-14 09:16</span>
+              <button class="attach-del"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>
+            </div>
+            <div class="attach-item">
+              <i data-lucide="file-spreadsheet" style="width:13px;height:13px;color:var(--text-sub)"></i>
+              <span class="attach-name">H1110-T100_BOM_v1.0.xlsx</span>
+              <span class="attach-size">256 KB</span>
+              <span class="attach-date">2026-01-15 10:30</span>
+              <button class="attach-del"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tab-drawing -->
+
+      <!-- ── 탭 3: 리비전 이력 ── -->
+      <div id="tab-revision" class="tab-content">
+
+        <div class="section-box">
+          <div class="section-box-header">
+            <span class="section-box-title">도면 리비전 이력</span>
+            <button class="btn btn-secondary btn-sm" onclick="showModal('modal-rev')">
+              <i data-lucide="plus"></i>리비전 추가
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:60px">리비전</th>
+                  <th style="width:168px">도면번호</th>
+                  <th style="width:96px">적용일</th>
+                  <th>변경 내용</th>
+                  <th style="width:128px">변경자</th>
+                  <th style="width:96px">재료비 영향</th>
+                  <th style="width:76px">상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="c"><strong>Rev.B</strong></td>
+                  <td>DWG-H1110-T100-B</td>
+                  <td class="c">2026-03-10</td>
+                  <td>설계 변경 — 투입중량 2.70→2.85 kg, 보강 리브 추가</td>
+                  <td>홍설계 (설계팀)</td>
+                  <td class="c" style="color:var(--status-bad)">+재계산</td>
+                  <td class="c"><span class="badge badge-ok">적용중</span></td>
+                </tr>
+                <tr>
+                  <td class="c"><strong>Rev.A</strong></td>
+                  <td>DWG-H1110-T100-A</td>
+                  <td class="c">2026-01-15</td>
+                  <td>초도 도면 등록</td>
+                  <td>홍설계 (설계팀)</td>
+                  <td class="c" style="color:var(--text-mute)">—</td>
+                  <td class="c"><span class="badge badge-wait">이력</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section-box">
+          <div class="section-box-header">
+            <span class="section-box-title">리비전 변경 시 영향 항목</span>
+          </div>
+          <p style="font-size:12px;color:var(--text-sub);line-height:1.7;margin-bottom:0">
+            도면 리비전 변경으로 투입중량이 달라지면 아래 항목이 자동 재계산됩니다.
+          </p>
+          <div class="impact-grid">
+            <a href="../03_cost/03-07_material_cost.html" class="impact-card">
+              <div class="impact-label">재료비 산출</div>
+              <div class="impact-title">투입중량 변동 시 자동 재계산</div>
+              <div class="impact-ref">03-07 재료비 산출 상세</div>
+            </a>
+            <a href="../04_dev_purchase/04-04_rfq_detail.html" class="impact-card">
+              <div class="impact-label">RFQ 상세</div>
+              <div class="impact-title">진행 중인 RFQ에 변경 반영 요청</div>
+              <div class="impact-ref">04-04 RFQ 상세</div>
+            </a>
+            <a href="#" onclick="return false" class="impact-card">
+              <div class="impact-label">설계 변경 영향 분석</div>
+              <div class="impact-title">확정단가 재검토 여부 판단</div>
+              <div class="impact-ref">08-01 설계 변경 영향 분석 (준비중)</div>
+            </a>
+          </div>
+        </div>
+
+      </div><!-- /tab-revision -->
+
+    </div><!-- /detail-panel -->
+  </div><!-- /split-layout -->
+</div><!-- /page-wrap -->
+
+<!-- 저장 확인 모달 -->
+<div id="modal-save" class="modal-backdrop">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">품번 정보 저장</span>
+      <button class="modal-close" onclick="toggleModal('modal-save', false)">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-sub);line-height:1.6">
+        H1110-T100 (Frame Sub Ass'y) 의 변경 내용을 저장합니다.<br>
+        중량 변경 시 재료비 산출 결과가 영향을 받을 수 있습니다.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="toggleModal('modal-save', false)">취소</button>
+      <button class="btn btn-primary" onclick="confirmSave()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 리비전 추가 모달 -->
+<div id="modal-rev" class="modal-backdrop">
+  <div class="modal-box" style="min-width:480px">
+    <div class="modal-header">
+      <span class="modal-title">도면 리비전 추가</span>
+      <button class="modal-close" onclick="toggleModal('modal-rev', false)">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+      <div class="form-row form-row-2">
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>새 리비전</label>
+          <select class="form-select">
+            <option selected>Rev.B</option>
+            <option>Rev.C</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>도면번호</label>
+          <input type="text" class="form-input" placeholder="DWG-H1110-T100-B">
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>투입중량 (kg)</label>
+          <input type="text" class="form-input num" placeholder="3.2">
+        </div>
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>순중량 (kg)</label>
+          <input type="text" class="form-input num" placeholder="2.8">
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="form-label"><span class="req">*</span>변경 내용</label>
+        <textarea class="form-textarea" rows="2" placeholder="리비전 변경 사유 및 주요 변경 내용을 입력하세요."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="toggleModal('modal-rev', false)">취소</button>
+      <button class="btn btn-primary" onclick="toggleModal('modal-rev',false);showToast('리비전이 등록되었습니다.', 'ok')">등록</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── 탭 전환 ── */
+  function switchTab(tabId, btn) {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  /* ── BOM 트리 토글 ── */
+  function toggleChildren(childrenId, toggleId) {
+    const ch  = document.getElementById(childrenId);
+    const tgl = document.getElementById(toggleId);
+    if (!ch) return;
+    ch.classList.toggle('collapsed');
+    if (tgl) tgl.classList.toggle('expanded');
+  }
+
+  /* ── BOM 노드 선택 ── */
+  function selectNode(code) {
+    document.querySelectorAll('.bom-row').forEach(r => r.classList.remove('selected'));
+    const el = document.getElementById('bom-' + code);
+    if (el) el.classList.add('selected');
+  }
+
+  /* ── 모달 ── */
+  function showModal(id) { toggleModal(id, true); }
+  function toggleModal(id, open) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('open', open === undefined ? !el.classList.contains('open') : open);
+  }
+
+  function confirmSave() {
+    toggleModal('modal-save', false);
+    showToast('저장이 완료되었습니다.', 'ok');
+  }
+
+  /* ── 토스트 ── */
+  function showToast(msg, type) {
+    const bg = type === 'ok' ? '#16a34a' : type === 'bad' ? '#dc2626' : '#1f2937';
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.style.background = bg;
+    el.innerHTML = '<i data-lucide="check-circle" style="width:14px;height:14px;flex-shrink:0"></i><span>' + msg + '</span>';
+    document.body.appendChild(el);
+    if (window.lucide) lucide.createIcons({ nodes: [el] });
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.2s'; setTimeout(() => el.remove(), 220); }, 2400);
+  }
+
+  /* ── 키보드 단축키 ── */
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 's') { e.preventDefault(); showToast('임시저장이 완료되었습니다.', 'ok'); }
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
+    }
+  });
+
+  /* ── eBOM / mBOM 토글 ── */
+  function setBomView(v) {
+    document.getElementById('ebom-btn').classList.toggle('active', v === 'eBOM');
+    document.getElementById('mbom-btn').classList.toggle('active', v === 'mBOM');
+    document.querySelectorAll('.mfg-node').forEach(n => n.style.display = v === 'mBOM' ? 'inline-block' : 'none');
+  }
+</script>
+
+<!-- sidebar.js: 헤더 + 오버레이 사이드바 자동 주입 -->
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

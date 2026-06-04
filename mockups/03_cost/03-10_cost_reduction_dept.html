@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>원가절감 목표 부서별 배부 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .search-wrap { flex:1; position:relative; max-width:560px; }
+  .search-wrap input {
+    width:100%; height:32px; border:1px solid var(--border); border-radius:4px;
+    padding:0 34px 0 12px; font-size:13px; font-family:'Pretendard',sans-serif;
+    color:var(--text); background:var(--surface); outline:none; transition:border-color .15s;
+  }
+  .search-wrap input:focus { border-color:var(--blue); box-shadow:0 0 0 2px rgba(26,86,170,.12); }
+  .search-wrap input::placeholder { color:var(--text-mute); }
+  .search-wrap .s-icon { position:absolute; right:9px; top:50%; transform:translateY(-50%); color:#dc2626; pointer-events:none; }
+  .btn-ctrl {
+    height:32px; padding:0 12px; border-radius:4px;
+    font-size:13px; font-family:'Pretendard',sans-serif; font-weight:500;
+    display:inline-flex; align-items:center; gap:5px;
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    cursor:pointer; white-space:nowrap; transition:background .12s;
+  }
+  .btn-ctrl:hover { background:var(--bg); }
+  .date-range {
+    height:32px; display:flex; align-items:center; gap:4px;
+    border:1px solid var(--border); border-radius:4px;
+    padding:0 10px; background:var(--surface); font-size:12px;
+  }
+  .date-range input[type="date"] {
+    border:none; outline:none; font-size:12px;
+    font-family:'Pretendard',sans-serif; color:var(--text);
+    background:transparent; width:108px; cursor:pointer;
+  }
+  .date-range input[type="date"]::-webkit-calendar-picker-indicator { display:none; }
+  .date-range .dr-sep { color:var(--text-mute); }
+  .status-strip {
+    height:36px; background:var(--surface);
+    display:flex; align-items:center; padding:0 24px; gap:24px; flex-shrink:0;
+  }
+  .ss-btn {
+    background:none; border:none; cursor:pointer;
+    font-size:12px; color:var(--text-sub); font-family:'Pretendard',sans-serif;
+    display:flex; align-items:center; gap:5px; padding:0; transition:color .1s;
+  }
+  .ss-btn:hover { color:var(--text); }
+  .ss-btn.active { color:var(--blue); font-weight:600; }
+  .ss-cnt { font-weight:700; font-variant-numeric:tabular-nums; }
+  .ss-btn.active .ss-cnt { color:var(--blue); }
+  .filter-panel {
+    background:var(--bg); border-bottom:1px solid var(--border);
+    padding:10px 24px; display:none; flex-shrink:0;
+    gap:16px; align-items:center; flex-wrap:wrap;
+  }
+  .filter-panel.open { display:flex; }
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column;
+    padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--text);       } .st-ok::before   { background:var(--navy); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+
+  /* ── 달성률 바 ── */
+  .ach-bar { display:flex; align-items:center; gap:6px; }
+  .ach-track {
+    flex:1; height:6px; background:var(--grid-head);
+    border:1px solid var(--border); border-radius:3px; overflow:hidden; min-width:60px;
+  }
+  .ach-fill { height:100%; border-radius:3px; }
+  .ach-over { background:var(--navy); }
+  .ach-mid  { background:var(--text-sub); }
+  .ach-low  { background:var(--border-strong); }
+  .ach-pct  { font-size:11px; font-variant-numeric:tabular-nums; font-weight:600; white-space:nowrap; }
+
+  /* ── 배부 비율 합계 표시 ── */
+  .sum-ok   { color:var(--text);       font-weight:700; font-size:11px; }
+  .sum-warn { color:var(--status-bad); font-weight:700; font-size:11px; }
+
+  /* ── 상세 모달 ── */
+  .dept-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:12px; }
+  .dept-row:last-child { border-bottom:none; padding-bottom:0; }
+  .dept-label { width:60px; font-weight:600; color:var(--text); flex-shrink:0; }
+  .dept-pct-wrap { display:flex; align-items:center; gap:8px; flex:1; }
+  .dept-slider { flex:1; accent-color:var(--navy); height:4px; cursor:pointer; }
+  .dept-pct-val { width:36px; text-align:right; font-variant-numeric:tabular-nums; font-weight:600; color:var(--navy); }
+  .dept-money { width:90px; text-align:right; font-variant-numeric:tabular-nums; color:var(--text-sub); font-size:11px; }
+  .dept-result { display:flex; align-items:center; gap:4px; }
+  .dept-actual { width:90px; text-align:right; font-variant-numeric:tabular-nums; font-size:11px; }
+  .dept-ach { width:50px; text-align:right; font-size:11px; font-weight:600; }
+  .sum-bar { height:8px; background:var(--grid-head); border:1px solid var(--border); border-radius:4px; overflow:hidden; margin-top:4px; }
+  .sum-fill { height:100%; background:var(--navy); border-radius:4px; transition:width .2s; }
+</style>
+</head>
+
+<body data-menu="03-10">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">원가절감 목표 부서별 배부</span>
+  </div>
+
+  <!-- 검색 바 -->
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-ctrl" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-ctrl" onclick="toggleStatusPanel()">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to"   value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+    <div class="ml-auto">
+      <button class="btn btn-primary" onclick="openModal(null)">
+        <i data-lucide="plus"></i>배부 등록
+      </button>
+    </div>
+  </div>
+
+  <!-- 필터 패널 -->
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">프로젝트</span>
+      <input type="text" class="search-input" id="f-proj" placeholder="코드/명" style="width:150px" oninput="applyFilter()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">품번</span>
+      <input type="text" class="search-input" id="f-code" placeholder="품번" style="width:110px" oninput="applyFilter()">
+    </div>
+  </div>
+
+  <!-- 상태 스트립 -->
+  <div class="status-strip" id="status-strip">
+    <button class="ss-btn active" data-s="" onclick="setStatus(this,'')">
+      전체 <span class="ss-cnt" id="cnt-all">0</span>
+    </button>
+    <button class="ss-btn" data-s="배부완료" onclick="setStatus(this,'배부완료')">
+      배부완료 <span class="ss-cnt" id="cnt-done">0</span>
+    </button>
+    <button class="ss-btn" data-s="진행중" onclick="setStatus(this,'진행중')">
+      진행중 <span class="ss-cnt" id="cnt-prog">0</span>
+    </button>
+    <button class="ss-btn" data-s="미달" onclick="setStatus(this,'미달')">
+      미달 <span class="ss-cnt" id="cnt-low">0</span>
+    </button>
+    <button class="ss-btn" data-s="미설정" onclick="setStatus(this,'미설정')">
+      미설정 <span class="ss-cnt" id="cnt-none">0</span>
+    </button>
+  </div>
+
+  <!-- 그리드 -->
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="main-table">
+        <thead>
+          <tr>
+            <th style="width:36px">
+              <input type="checkbox" id="chk-all" onclick="toggleAll(this)"
+                style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer">
+            </th>
+            <th style="width:36px">No</th>
+            <th style="width:160px">프로젝트</th>
+            <th style="width:110px">품번</th>
+            <th>품명</th>
+            <th class="r" style="width:116px">총 절감 목표(원)</th>
+            <th class="r" style="width:64px">설계(%)</th>
+            <th class="r" style="width:64px">구매(%)</th>
+            <th class="r" style="width:64px">품질(%)</th>
+            <th class="r" style="width:64px">영업(%)</th>
+            <th style="width:64px">합계(%)</th>
+            <th class="r" style="width:110px">총 실적(원)</th>
+            <th style="width:120px">달성률</th>
+            <th style="width:76px">상태</th>
+            <th style="width:56px">상세</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- 배부 상세 / 등록 모달 -->
+<div class="modal-backdrop" id="modal-dept">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">부서별 배부 설정</span>
+      <button class="modal-close" onclick="closeModal()">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:16px">
+
+      <!-- 기본 정보 -->
+      <div class="form-row form-row-2">
+        <div class="form-field">
+          <label class="form-label">품번</label>
+          <input type="text" class="form-input" id="m-code" readonly style="background:#f0f2f5">
+        </div>
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>총 절감 목표(원/연간)</label>
+          <input type="text" class="form-input num" id="m-total" oninput="recalcModal()">
+        </div>
+      </div>
+
+      <!-- 배부 비율 슬라이더 -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:12px;font-weight:600;color:var(--text)">부서별 배부 비율</span>
+          <span style="font-size:12px" id="m-sum-label">합계: <span id="m-sum" class="sum-ok">0%</span></span>
+        </div>
+        <div class="sum-bar"><div class="sum-fill" id="m-sum-bar" style="width:0%"></div></div>
+        <div style="margin-top:12px">
+          <div class="dept-row" id="dr-design">
+            <span class="dept-label">설계팀</span>
+            <div class="dept-pct-wrap">
+              <input type="range" class="dept-slider" id="sl-design" min="0" max="100" value="0" oninput="updateSlider('design')">
+              <span class="dept-pct-val" id="pv-design">0%</span>
+            </div>
+            <span class="dept-money" id="dm-design">0원</span>
+            <div class="dept-result">
+              <span style="font-size:11px;color:var(--text-mute);width:28px">실적</span>
+              <span class="dept-actual" id="da-design">-</span>
+              <span class="dept-ach" id="dh-design" style="color:var(--text-mute)">-</span>
+            </div>
+          </div>
+          <div class="dept-row">
+            <span class="dept-label">구매팀</span>
+            <div class="dept-pct-wrap">
+              <input type="range" class="dept-slider" id="sl-purchase" min="0" max="100" value="0" oninput="updateSlider('purchase')">
+              <span class="dept-pct-val" id="pv-purchase">0%</span>
+            </div>
+            <span class="dept-money" id="dm-purchase">0원</span>
+            <div class="dept-result">
+              <span style="font-size:11px;color:var(--text-mute);width:28px">실적</span>
+              <span class="dept-actual" id="da-purchase">-</span>
+              <span class="dept-ach" id="dh-purchase" style="color:var(--text-mute)">-</span>
+            </div>
+          </div>
+          <div class="dept-row">
+            <span class="dept-label">품질팀</span>
+            <div class="dept-pct-wrap">
+              <input type="range" class="dept-slider" id="sl-quality" min="0" max="100" value="0" oninput="updateSlider('quality')">
+              <span class="dept-pct-val" id="pv-quality">0%</span>
+            </div>
+            <span class="dept-money" id="dm-quality">0원</span>
+            <div class="dept-result">
+              <span style="font-size:11px;color:var(--text-mute);width:28px">실적</span>
+              <span class="dept-actual" id="da-quality">-</span>
+              <span class="dept-ach" id="dh-quality" style="color:var(--text-mute)">-</span>
+            </div>
+          </div>
+          <div class="dept-row">
+            <span class="dept-label">영업팀</span>
+            <div class="dept-pct-wrap">
+              <input type="range" class="dept-slider" id="sl-sales" min="0" max="100" value="0" oninput="updateSlider('sales')">
+              <span class="dept-pct-val" id="pv-sales">0%</span>
+            </div>
+            <span class="dept-money" id="dm-sales">0원</span>
+            <div class="dept-result">
+              <span style="font-size:11px;color:var(--text-mute);width:28px">실적</span>
+              <span class="dept-actual" id="da-sales">-</span>
+              <span class="dept-ach" id="dh-sales" style="color:var(--text-mute)">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 절감 항목 메모 -->
+      <div class="form-field">
+        <label class="form-label">주요 절감 항목 / 비고</label>
+        <textarea class="form-textarea" id="m-note" rows="2" placeholder="부서별 절감 추진 방향을 입력하세요"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" id="m-save-btn" onclick="saveModal()" disabled>
+        <i data-lucide="save"></i>저장
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+const DEPTS = ['design','purchase','quality','sales'];
+const DEPT_LABELS = { design:'설계팀', purchase:'구매팀', quality:'품질팀', sales:'영업팀' };
+
+const ROWS = [
+  {
+    no:1, proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',
+    code:'H1110-T100', name:"Frame Sub Ass'y",
+    total:1200000,
+    depts:{ design:{pct:30,actual:280000}, purchase:{pct:40,actual:510000}, quality:{pct:15,actual:90000}, sales:{pct:15,actual:150000} },
+    date:'2026-01-20', note:'설계 경량화 / LME 협상 / 검사비 절감 / 물류비 절감',
+    status:'진행중'
+  },
+  {
+    no:2, proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',
+    code:'H1110-T101', name:'Bracket Assy Upper',
+    total:240000,
+    depts:{ design:{pct:20,actual:48000}, purchase:{pct:60,actual:144000}, quality:{pct:10,actual:0}, sales:{pct:10,actual:0} },
+    date:'2026-01-20', note:'구매 협상 중심 절감 추진',
+    status:'진행중'
+  },
+  {
+    no:3, proj:'PJT-SANTA-RB-2026', projName:'싼타페 2027 후면범퍼',
+    code:'H2210-R200', name:'Rear Bumper Assy',
+    total:960000,
+    depts:{ design:{pct:25,actual:0}, purchase:{pct:50,actual:0}, quality:{pct:15,actual:0}, sales:{pct:10,actual:0} },
+    date:'2026-02-15', note:'재질 변경 / 협력사 단가 협상 검토',
+    status:'미달'
+  },
+  {
+    no:4, proj:'PJT-ION9-BM-2026', projName:'아이오닉9 배터리마운트',
+    code:'H3310-B150', name:'Battery Mount Assy',
+    total:1560000,
+    depts:{ design:{pct:35,actual:546000}, purchase:{pct:40,actual:624000}, quality:{pct:15,actual:234000}, sales:{pct:10,actual:156000} },
+    date:'2026-03-05', note:'냉간단조 최적화 / 소재 단가 협상 / 공정 개선',
+    status:'배부완료'
+  },
+  {
+    no:5, proj:'PJT-ION9-BM-2026', projName:'아이오닉9 배터리마운트',
+    code:'H3310-B151', name:'Mount Bracket Upper',
+    total:0,
+    depts:{ design:{pct:0,actual:0}, purchase:{pct:0,actual:0}, quality:{pct:0,actual:0}, sales:{pct:0,actual:0} },
+    date:'2026-03-05', note:'',
+    status:'미설정'
+  },
+];
+
+let activeStatus = '';
+
+function fmt(n) { return n !== null && n !== undefined ? n.toLocaleString() : '-'; }
+
+function getActualTotal(r) {
+  return DEPTS.reduce((s, d) => s + (r.depts[d]?.actual || 0), 0);
+}
+
+function getPctSum(r) {
+  return DEPTS.reduce((s, d) => s + (r.depts[d]?.pct || 0), 0);
+}
+
+function achBar(pct) {
+  const w = Math.min(pct, 100);
+  const cls = pct >= 100 ? 'ach-over' : pct >= 60 ? 'ach-mid' : 'ach-low';
+  const color = pct >= 100 ? 'color:var(--navy)' : pct >= 60 ? 'color:var(--text-sub)' : 'color:var(--text-mute)';
+  return `<div class="ach-bar">
+    <div class="ach-track"><div class="ach-fill ${cls}" style="width:${w}%"></div></div>
+    <span class="ach-pct" style="${color}">${pct.toFixed(1)}%</span>
+  </div>`;
+}
+
+function stText(s) {
+  const map = { '배부완료':'st-ok', '진행중':'st-prog', '미달':'st-bad', '미설정':'st-wait' };
+  return `<span class="st ${map[s] || 'st-wait'}">${s}</span>`;
+}
+
+function updateStrip(rows) {
+  document.getElementById('cnt-all').textContent  = rows.length;
+  document.getElementById('cnt-done').textContent = rows.filter(r => r.status === '배부완료').length;
+  document.getElementById('cnt-prog').textContent = rows.filter(r => r.status === '진행중').length;
+  document.getElementById('cnt-low').textContent  = rows.filter(r => r.status === '미달').length;
+  document.getElementById('cnt-none').textContent = rows.filter(r => r.status === '미설정').length;
+}
+
+function renderRows(rows) {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    const actTotal = getActualTotal(r);
+    const achPct   = r.total > 0 ? (actTotal / r.total * 100) : 0;
+    const pctSum   = getPctSum(r);
+    const sumCls   = pctSum === 100 ? 'sum-ok' : 'sum-warn';
+
+    tr.innerHTML = `
+      <td style="text-align:center">
+        <input type="checkbox" class="row-chk"
+          style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer"
+          onchange="onRowCheck()">
+      </td>
+      <td style="text-align:center;color:var(--text-mute)">${r.no}</td>
+      <td style="padding-left:10px">
+        <div style="font-weight:500;color:var(--text)">${r.projName}</div>
+        <div style="font-size:11px;color:var(--text-mute)">${r.proj}</div>
+      </td>
+      <td style="text-align:center">
+        <a href="03-02_target_detail.html" class="td-link" onclick="event.stopPropagation()">${r.code}</a>
+      </td>
+      <td style="padding-left:10px;color:var(--text-sub)">${r.name}</td>
+      <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${r.total > 0 ? fmt(r.total) : '-'}</td>
+      <td style="text-align:right;color:var(--text-sub)">${r.depts.design.pct || '-'}</td>
+      <td style="text-align:right;color:var(--text-sub)">${r.depts.purchase.pct || '-'}</td>
+      <td style="text-align:right;color:var(--text-sub)">${r.depts.quality.pct || '-'}</td>
+      <td style="text-align:right;color:var(--text-sub)">${r.depts.sales.pct || '-'}</td>
+      <td style="text-align:center"><span class="${sumCls}">${pctSum || '-'}${pctSum > 0 ? '%' : ''}</span></td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--text-sub)">${actTotal > 0 ? fmt(actTotal) : '-'}</td>
+      <td>${r.total > 0 ? achBar(achPct) : '<span style="color:var(--text-mute);font-size:11px">-</span>'}</td>
+      <td style="text-align:center">${stText(r.status)}</td>
+      <td style="text-align:center">
+        <button class="btn btn-ghost btn-sm btn-grid" onclick="event.stopPropagation();openModal(${ROWS.indexOf(r)})">
+          <i data-lucide="settings-2"></i>
+        </button>
+      </td>
+    `;
+    tr.addEventListener('click', e => {
+      if (e.target.tagName === 'INPUT' || e.target.closest('button') || e.target.tagName === 'A') return;
+      const chk = tr.querySelector('.row-chk');
+      chk.checked = !chk.checked;
+      tr.classList.toggle('selected', chk.checked);
+      onRowCheck();
+    });
+    tbody.appendChild(tr);
+  });
+  lucide.createIcons();
+}
+
+function getBaseFiltered() {
+  const q    = document.getElementById('f-search').value.trim().toLowerCase();
+  const proj = (document.getElementById('f-proj') || {}).value?.trim().toLowerCase() || '';
+  const code = (document.getElementById('f-code') || {}).value?.trim().toLowerCase() || '';
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+
+  return ROWS.filter(r => {
+    if (q    && !r.proj.toLowerCase().includes(q) && !r.projName.toLowerCase().includes(q)
+              && !r.code.toLowerCase().includes(q) && !r.name.toLowerCase().includes(q)) return false;
+    if (proj && !r.proj.toLowerCase().includes(proj) && !r.projName.toLowerCase().includes(proj)) return false;
+    if (code && !r.code.toLowerCase().includes(code)) return false;
+    if (from && r.date < from) return false;
+    if (to   && r.date > to)   return false;
+    return true;
+  });
+}
+
+function applyFilter() {
+  const base = getBaseFiltered();
+  const rows = activeStatus ? base.filter(r => r.status === activeStatus) : base;
+  renderRows(rows);
+  updateStrip(base);
+  resetChecks();
+}
+
+function setStatus(btn, s) {
+  activeStatus = s;
+  document.querySelectorAll('.ss-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+
+function toggleFilter() { document.getElementById('filter-panel').classList.toggle('open'); }
+function toggleStatusPanel() {
+  const s = document.getElementById('status-strip');
+  s.style.display = s.style.display === 'none' ? 'flex' : 'none';
+}
+function toggleAll(m) {
+  document.querySelectorAll('.row-chk').forEach(c => {
+    c.checked = m.checked;
+    c.closest('tr').classList.toggle('selected', m.checked);
+  });
+}
+function onRowCheck() {
+  const all = document.querySelectorAll('.row-chk');
+  const chk = document.querySelectorAll('.row-chk:checked');
+  const m = document.getElementById('chk-all');
+  m.indeterminate = chk.length > 0 && chk.length < all.length;
+  m.checked = all.length > 0 && chk.length === all.length;
+}
+function resetChecks() {
+  document.getElementById('chk-all').checked = false;
+  document.getElementById('chk-all').indeterminate = false;
+}
+
+/* ── 모달 ── */
+let _editIdx = null;
+
+function openModal(idx) {
+  _editIdx = idx;
+  const r = idx !== null ? ROWS[idx] : null;
+
+  document.getElementById('modal-title').textContent = r ? `부서별 배부 설정 — ${r.code}` : '배부 등록';
+  document.getElementById('m-code').value  = r ? r.code : '';
+  document.getElementById('m-total').value = r && r.total > 0 ? r.total.toLocaleString() : '';
+  document.getElementById('m-note').value  = r ? r.note : '';
+
+  DEPTS.forEach(d => {
+    const pct = r ? r.depts[d].pct : 0;
+    const act = r ? r.depts[d].actual : 0;
+    document.getElementById(`sl-${d}`).value = pct;
+    document.getElementById(`pv-${d}`).textContent = pct + '%';
+    if (act > 0) {
+      document.getElementById(`da-${d}`).textContent = act.toLocaleString() + '원';
+    } else {
+      document.getElementById(`da-${d}`).textContent = '-';
+    }
+  });
+
+  recalcModal();
+  document.getElementById('modal-dept').classList.add('open');
+  lucide.createIcons();
+}
+
+function closeModal() { document.getElementById('modal-dept').classList.remove('open'); }
+
+function updateSlider(dept) {
+  const val = parseInt(document.getElementById(`sl-${dept}`).value);
+  document.getElementById(`pv-${dept}`).textContent = val + '%';
+  recalcModal();
+}
+
+function recalcModal() {
+  const totalStr = document.getElementById('m-total').value.replace(/,/g, '');
+  const total = parseInt(totalStr) || 0;
+
+  let sum = 0;
+  DEPTS.forEach(d => {
+    const pct = parseInt(document.getElementById(`sl-${d}`).value) || 0;
+    sum += pct;
+    const money = Math.round(total * pct / 100);
+    document.getElementById(`dm-${d}`).textContent = money > 0 ? money.toLocaleString() + '원' : '-';
+  });
+
+  const sumEl  = document.getElementById('m-sum');
+  const barEl  = document.getElementById('m-sum-bar');
+  sumEl.textContent = sum + '%';
+  sumEl.className   = sum === 100 ? 'sum-ok' : 'sum-warn';
+  barEl.style.width = Math.min(sum, 100) + '%';
+  barEl.style.background = sum === 100 ? 'var(--navy)' : sum > 100 ? 'var(--status-bad)' : 'var(--text-sub)';
+
+  document.getElementById('m-save-btn').disabled = (sum !== 100 || total === 0);
+}
+
+function saveModal() {
+  closeModal();
+  showToast('배부 설정이 저장되었습니다.', 'ok');
+  applyFilter();
+}
+
+let _tt;
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  const color = type === 'ok' ? '#16a34a' : '#dc2626';
+  const icon  = type === 'ok' ? 'check-circle' : 'alert-circle';
+  t.innerHTML = `<i data-lucide="${icon}" style="width:16px;height:16px;color:${color}"></i>${msg}`;
+  t.style.display = 'flex';
+  lucide.createIcons();
+  clearTimeout(_tt);
+  _tt = setTimeout(() => { t.style.display = 'none'; }, 2400);
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+updateStrip(ROWS);
+renderRows(ROWS);
+</script>
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

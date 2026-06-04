@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>확정단가 등록/상세 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 단가종류 탭 ── */
+  .type-tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:16px; }
+  .type-tab {
+    padding:0 20px; height:36px; font-size:13px; font-weight:500; cursor:pointer;
+    border:none; background:transparent; color:var(--text-sub);
+    border-bottom:2px solid transparent; margin-bottom:-2px;
+    transition:color .15s, border-color .15s;
+  }
+  .type-tab.active { color:var(--blue); border-bottom-color:var(--blue); font-weight:600; }
+  .type-pane { display:none; }
+  .type-pane.active { display:block; }
+
+  /* ── 스냅샷 인라인 표 ── */
+  .snap-table { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; }
+  .snap-table th {
+    background:var(--grid-head); padding:0 12px; height:30px; font-weight:600;
+    color:var(--text); text-align:center; border:1px solid var(--border); white-space:nowrap;
+  }
+  .snap-table td {
+    padding:0 12px; height:30px; border:1px solid var(--border);
+    color:var(--text); vertical-align:middle;
+  }
+  .snap-table td.r { text-align:right; font-variant-numeric:tabular-nums; }
+  .snap-table td.c { text-align:center; }
+
+  /* ── 사급 소재 표 ── */
+  .supply-table { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; }
+  .supply-table th {
+    background:var(--grid-head); padding:0 10px; height:30px; font-weight:600;
+    color:var(--text); text-align:center; border:1px solid var(--border); white-space:nowrap;
+  }
+  .supply-table td {
+    padding:0 10px; height:30px; border:1px solid var(--border);
+    color:var(--text); vertical-align:middle;
+  }
+  .supply-table td.r  { text-align:right; font-variant-numeric:tabular-nums; }
+  .supply-table td.c  { text-align:center; }
+  .supply-table tr.total td { background:var(--navy); color:#fff; font-weight:700; }
+
+  /* ── 결재선 (step-bar) ── */
+  .step-bar { display:flex; align-items:center; gap:0; padding:8px 0; }
+  .step-node { display:flex; align-items:center; }
+  .step-box {
+    width:110px; border:1px solid var(--border); border-radius:4px;
+    padding:8px 10px; display:flex; flex-direction:column; gap:3px;
+    background:var(--surface);
+  }
+  .step-box.done { border-color:var(--status-ok); background:#f0fdf4; }
+  .step-box.prog { border-color:var(--blue); background:var(--blue-light); }
+  .step-box.wait { border-color:var(--border); background:#f9fafb; }
+  .step-role { font-size:10px; color:var(--text-mute); }
+  .step-name { font-size:12px; font-weight:600; color:var(--text); }
+  .step-date { font-size:10px; color:var(--text-sub); }
+  .step-sep {
+    width:28px; height:1px; background:var(--border-strong); flex-shrink:0;
+    position:relative;
+  }
+  .step-sep::after {
+    content:''; position:absolute; right:-4px; top:-3px;
+    border:4px solid transparent; border-left-color:var(--border-strong);
+  }
+
+  .toast {
+    position:fixed; bottom:24px; right:24px; background:#1f2937; color:#fff;
+    padding:10px 16px; border-radius:4px; font-size:13px;
+    z-index:500; display:none; align-items:center; gap:8px;
+    box-shadow:0 4px 16px rgba(0,0,0,.18);
+  }
+  .toast.show { display:flex; }
+</style>
+</head>
+
+<body data-menu="06-02">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">확정단가 등록/상세</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="location.href='06-01_price_list.html'">
+        <i data-lucide="arrow-left"></i>목록
+      </button>
+      <button class="btn btn-secondary" onclick="location.href='06-03_price_history.html'">
+        <i data-lucide="clock"></i>단가 이력
+      </button>
+      <button class="btn btn-secondary" onclick="showToast('임시저장이 완료되었습니다.')">
+        <i data-lucide="save"></i>임시저장
+      </button>
+      <button class="btn btn-primary" onclick="showToast('승인 요청이 완료되었습니다.')">
+        <i data-lucide="send"></i>승인 요청
+      </button>
+    </div>
+  </div>
+
+  <div class="content-scroll">
+
+    <!-- 1. 품번 기본 정보 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">품번 기본 정보</span>
+        <span class="badge badge-prog" style="font-size:10px;margin-left:8px">구매팀장 검토 중</span>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">품번</label>
+          <input class="form-input" value="H1110-T100" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">품명</label>
+          <input class="form-input" value="Frame Sub Ass'y" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">협력사</label>
+          <input class="form-input" value="A사 (협성알루미늄)" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">프로젝트</label>
+          <input class="form-input" value="PJT-520PHEV-FT-2026" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">도면 리비전</label>
+          <input class="form-input" value="Rev.C" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">재질</label>
+          <input class="form-input" value="Aluminum 6061 (LME 연동)" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">LME 기준월</label>
+          <input class="form-input" value="2026-03" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">연간수량</label>
+          <input class="form-input num" value="100,000 개" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 단가 종류 탭 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">단가 설정</span>
+      </div>
+
+      <div class="type-tabs">
+        <button class="type-tab" onclick="switchTab('prov')">가단가 (임시)</button>
+        <button class="type-tab active" onclick="switchTab('final')">정단가 (확정)</button>
+        <button class="type-tab" onclick="switchTab('supply')">사급단가</button>
+      </div>
+
+      <!-- 공통 -->
+      <div class="form-row form-row-4" style="margin-bottom:16px">
+        <div class="form-field">
+          <label class="form-label">확정단가 (원) <span class="req">*</span></label>
+          <input class="form-input num result" id="price-input" value="14,500">
+        </div>
+        <div class="form-field">
+          <label class="form-label">적용 시작일 <span class="req">*</span></label>
+          <input type="date" class="form-input" value="2026-04-01">
+        </div>
+        <div class="form-field">
+          <label class="form-label">적용 종료일 <span class="req">*</span></label>
+          <input type="date" class="form-input" value="2030-09-30">
+        </div>
+        <div class="form-field">
+          <label class="form-label">목표 구매단가 (원)</label>
+          <input class="form-input num" value="12,100" readonly style="background:#f0f2f5;color:var(--status-bad);font-weight:600">
+          <span class="form-hint" style="color:var(--status-bad)">+2,400 (+19.8%) 초과</span>
+        </div>
+      </div>
+
+      <!-- 가단가 패널 -->
+      <div class="type-pane" id="pane-prov">
+        <div class="form-row form-row-3">
+          <div class="form-field">
+            <label class="form-label">임시 적용 사유 <span class="req">*</span></label>
+            <select class="form-select">
+              <option>개발 초기 — 도면 미확정</option>
+              <option>협의 진행 중</option>
+              <option>PPAP 진행 중</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">정단가 전환 예정일 <span class="req">*</span></label>
+            <input type="date" class="form-input" value="2026-09-30">
+          </div>
+          <div class="form-field">
+            <label class="form-label">LME 기준월 (산출 시점)</label>
+            <input class="form-input" value="2026-05" readonly style="background:#f0f2f5;color:var(--text-sub)">
+          </div>
+        </div>
+        <div class="form-row form-row-full">
+          <div class="form-field">
+            <label class="form-label">정단가 전환 조건</label>
+            <textarea class="form-textarea" rows="2">PPAP 최종 승인 완료 및 초도량 시험(PSO) 적합 판정 후 정단가 재협의. 가단가 적용 기간 내 LME 변동 ±5% 초과 시 재산출 가능.</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- 정단가 패널 -->
+      <div class="type-pane active" id="pane-final">
+        <div class="section-box-header" style="margin-bottom:8px">
+          <span class="section-box-title" style="font-size:12px;color:var(--text-sub)">LME · 환율 스냅샷</span>
+          <span style="font-size:11px;color:var(--text-mute);margin-left:8px">단가 확정 시점 기준</span>
+        </div>
+        <table class="snap-table" style="margin-bottom:14px">
+          <thead>
+            <tr>
+              <th>소재</th>
+              <th>LME 기준가 (USD/MT)</th>
+              <th>환율 (KRW/USD)</th>
+              <th>프리미엄 (USD/MT)</th>
+              <th>부대비 (원/kg)</th>
+              <th>소재단가 (원/kg)</th>
+              <th>도면 Rev</th>
+              <th>기준월</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="c">Al 6061</td>
+              <td class="r">2,650</td>
+              <td class="r">1,380</td>
+              <td class="r">120</td>
+              <td class="r">150</td>
+              <td class="r" style="font-weight:600;color:var(--navy)">3,810</td>
+              <td class="c">Rev.C</td>
+              <td class="c">2026-03</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="form-row form-row-3">
+          <div class="form-field">
+            <label class="form-label">조정 조건</label>
+            <input class="form-input" value="LME ±10% 초과 시 재협의">
+          </div>
+          <div class="form-field">
+            <label class="form-label">협상 단계</label>
+            <select class="form-select">
+              <option selected>1차 협상 완료</option>
+              <option>2차 협상 완료</option>
+              <option>최종 확정</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">연계 문서</label>
+            <input class="form-input" value="RFQ-2026-0012 · 협상이력-003">
+          </div>
+        </div>
+        <div class="form-row form-row-full">
+          <div class="form-field">
+            <label class="form-label">단가 결정 사유 / 비고</label>
+            <textarea class="form-textarea" rows="2">04-08 협상 이력 3라운드 최종 합의. 목표가(12,100원) 대비 +2,400원 초과 — 고객사 판매가 재협의 병행 진행. LME 조정 조건 부가.</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- 사급단가 패널 -->
+      <div class="type-pane" id="pane-supply">
+        <div class="section-box-header" style="margin-bottom:8px">
+          <span class="section-box-title" style="font-size:12px;color:var(--text-sub)">지급소재 명세</span>
+        </div>
+        <table class="supply-table" style="margin-bottom:14px">
+          <thead>
+            <tr>
+              <th style="width:160px">소재명</th>
+              <th style="width:80px">단위</th>
+              <th style="width:100px">수량</th>
+              <th style="width:120px">단가 (원)</th>
+              <th style="width:130px">금액 (원)</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Al 6061 압출재</td>
+              <td class="c">kg</td>
+              <td class="r">2.85</td>
+              <td class="r">3,810</td>
+              <td class="r">10,859</td>
+              <td style="color:var(--text-sub)">LME 기준 소재단가 적용</td>
+            </tr>
+            <tr>
+              <td>스크랩 회수 차감</td>
+              <td class="c">kg</td>
+              <td class="r">0.42</td>
+              <td class="r">1,500</td>
+              <td class="r" style="color:var(--blue)">-630</td>
+              <td style="color:var(--text-sub)">회수단가 적용</td>
+            </tr>
+            <tr class="total">
+              <td colspan="4" style="text-align:right;padding-right:12px">소재 합계</td>
+              <td class="r">10,229</td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="form-row form-row-3">
+          <div class="form-field">
+            <label class="form-label">가공비 단가 (원) <span class="req">*</span></label>
+            <input class="form-input num" value="4,271">
+            <span class="form-hint">사급단가 = 소재합계 + 가공비</span>
+          </div>
+          <div class="form-field">
+            <label class="form-label">사급단가 합계 (원)</label>
+            <input class="form-input num result" value="14,500" readonly style="background:#f0f2f5;font-weight:700;color:var(--navy)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">지급 소재 공급 방식</label>
+            <select class="form-select">
+              <option>동희산업 직납</option>
+              <option>지정 업체 공급</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 3. 결재선 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">결재선</span>
+      </div>
+      <div class="step-bar">
+        <div class="step-node">
+          <div class="step-box done">
+            <span class="step-role">구매담당</span>
+            <span class="step-name">김구매</span>
+            <span class="step-date">2026-03-28</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <div class="step-node">
+          <div class="step-box done">
+            <span class="step-role">구매팀장</span>
+            <span class="step-name">이팀장</span>
+            <span class="step-date">2026-03-29</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <div class="step-node">
+          <div class="step-box prog">
+            <span class="step-role">구매부장</span>
+            <span class="step-name">박부장</span>
+            <span class="step-date">검토중</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">재경팀장</span>
+            <span class="step-name">최팀장</span>
+            <span class="step-date">대기</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">대표이사</span>
+            <span class="step-name">정대표</span>
+            <span class="step-date">대기</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <i data-lucide="check-circle" style="width:15px;height:15px;color:#4ade80;flex-shrink:0"></i>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+function switchTab(type) {
+  document.querySelectorAll('.type-tab').forEach((t, i) => {
+    const types = ['prov', 'final', 'supply'];
+    t.classList.toggle('active', types[i] === type);
+  });
+  document.querySelectorAll('.type-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('pane-' + type).classList.add('active');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

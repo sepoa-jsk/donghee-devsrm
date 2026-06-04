@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>프로젝트 일정/마일스톤 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── KPI 카드 (06-03 스타일) ── */
+  .kpi-row  { display:flex; gap:16px; padding:16px 24px 0; flex-shrink:0; }
+  .kpi-card { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:14px 18px; }
+  .kpi-label { font-size:12px; color:var(--text-sub); margin-bottom:6px; }
+  .kpi-value { font-size:22px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; line-height:1.2; }
+  .kpi-sub   { font-size:11px; color:var(--text-sub); margin-top:4px; }
+  .kpi-card.over { border-left:3px solid var(--status-bad); }
+  .kpi-card.over .kpi-value { color:var(--status-bad); }
+
+  /* ── 마일스톤 카드 스트립 ── */
+  .ms-strip { display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; }
+  .ms-strip::-webkit-scrollbar { height:4px; }
+  .ms-strip::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:2px; }
+  .ms-card  { flex:0 0 auto; min-width:134px; border:1px solid var(--border); border-radius:4px; padding:10px 12px; }
+  .ms-card.done { border-color:var(--status-ok); background:#f0fdf4; }
+  .ms-card.prog { border-color:var(--blue); background:var(--blue-light); }
+  .ms-card.wait { background:#f9fafb; }
+  .ms-card .ms-step { font-size:12px; font-weight:600; color:var(--text); margin-bottom:4px; }
+  .ms-card .ms-date { font-size:11px; color:var(--text-sub); }
+  .ms-card .ms-stat { margin-top:6px; }
+
+  /* ── 상태 점 ── */
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok::before   { background:var(--status-ok); }
+  .st-ok           { color:var(--status-ok); }
+  .st-prog::before { background:var(--status-prog); }
+  .st-prog         { color:var(--status-prog); }
+  .st-wait::before { background:var(--border-strong); }
+  .st-wait         { color:var(--text-mute); }
+  .st-bad::before  { background:var(--status-bad); }
+  .st-bad          { color:var(--status-bad); }
+
+  /* ── 간트 차트 ── */
+  .gantt-wrap { overflow-x:auto; }
+  table.gantt { width:100%; border-collapse:collapse; font-size:11px; table-layout:fixed; }
+  table.gantt thead th {
+    background:var(--grid-head); height:28px; padding:0 4px; font-size:11px;
+    font-weight:600; color:var(--text-sub); text-align:center;
+    border:1px solid var(--border); white-space:nowrap;
+  }
+  table.gantt thead th.info-col { text-align:left; padding:0 10px; }
+  table.gantt thead th.cur { background:#eef2f8; color:var(--blue); }
+  table.gantt tbody td {
+    height:30px; border:1px solid var(--border); padding:4px 3px;
+    vertical-align:middle; text-align:center;
+  }
+  table.gantt tbody td.info {
+    text-align:left; padding:0 10px; font-size:12px;
+    white-space:nowrap; background:var(--surface);
+  }
+  table.gantt tbody td.cur { background:#f7f9fc; }
+  .g-bar { height:14px; border-radius:2px; width:100%; }
+  .g-bar.done  { background:var(--navy); }
+  .g-bar.active{ background:var(--blue); opacity:0.65; }
+  .g-bar.plan  { background:var(--navy); opacity:0.2; }
+  .g-bar.delay { background:var(--status-bad); }
+
+  /* ── 진척 셀 ── */
+  .prog-cell { display:flex; align-items:center; gap:6px; }
+  .prog-bar  { flex:1; height:6px; background:var(--grid-head); border-radius:3px; overflow:hidden; min-width:40px; }
+  .prog-fill { height:100%; background:var(--blue); border-radius:3px; }
+  .prog-pct  { font-size:11px; color:var(--text-sub); width:30px; text-align:right; }
+
+  /* ── 간트 범례 ── */
+  .gantt-legend { display:flex; align-items:center; gap:20px; margin-top:10px; font-size:11px; color:var(--text-mute); }
+  .gantt-legend-item { display:flex; align-items:center; gap:6px; }
+  .legend-box { width:20px; height:10px; border-radius:2px; flex-shrink:0; }
+
+  /* ── 토스트 ── */
+  .toast {
+    position:fixed; bottom:24px; right:24px; color:#fff;
+    padding:10px 16px; border-radius:4px; font-size:13px; z-index:500;
+    display:flex; align-items:center; gap:8px;
+    box-shadow:0 4px 16px rgba(0,0,0,.18);
+  }
+</style>
+</head>
+
+<body data-menu="01-05">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">프로젝트 일정/마일스톤</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="location.href='01-04_project_detail.html'">
+        <i data-lucide="file-text"></i>프로젝트 상세
+      </button>
+      <button class="btn btn-primary" onclick="showToast('일정이 저장되었습니다.','ok')">
+        <i data-lucide="save"></i>일정 저장
+      </button>
+    </div>
+  </div>
+
+  <!-- 프로젝트 컨텍스트 바 -->
+  <div style="padding:8px 24px;background:#f9fafb;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-sub);display:flex;gap:20px;flex-shrink:0">
+    <span>프로젝트: <strong style="color:var(--text)">PJT-520PHEV-FT-2026</strong></span>
+    <span>품번: <strong style="color:var(--text)">H1110-T100</strong></span>
+    <span>고객: <strong style="color:var(--text)">현대 520 PHEV</strong></span>
+    <span>PM: <strong style="color:var(--text)">김개발</strong></span>
+  </div>
+
+  <!-- KPI 카드 -->
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">전체 진척률</div>
+      <div class="kpi-value">45<span style="font-size:14px;font-weight:400">%</span></div>
+      <div class="kpi-sub">마일스톤 3 / 9 완료</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">완료 마일스톤</div>
+      <div class="kpi-value">3 <span style="font-size:14px;font-weight:400">/ 9</span></div>
+      <div class="kpi-sub">도면·목표가·RFQ 완료</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">D-Day</div>
+      <div class="kpi-value">D-119</div>
+      <div class="kpi-sub">SOP 2026-10-01</div>
+    </div>
+    <div class="kpi-card over">
+      <div class="kpi-label">지연 작업</div>
+      <div class="kpi-value">1<span style="font-size:14px;font-weight:400"> 건</span></div>
+      <div class="kpi-sub">견적/업체선정 지연</div>
+    </div>
+  </div>
+
+  <!-- 본문 스크롤 -->
+  <div class="content-scroll">
+
+    <!-- ── 섹션 1: 마일스톤 진행 현황 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">마일스톤 진행 현황</span>
+      </div>
+      <div class="ms-strip">
+
+        <div class="ms-card done">
+          <div class="ms-step">도면/BOM 등록</div>
+          <div class="ms-date">2026-02-20</div>
+          <div class="ms-stat"><span class="st st-ok">완료</span></div>
+        </div>
+
+        <div class="ms-card done">
+          <div class="ms-step">목표가/재료비</div>
+          <div class="ms-date">2026-03-10</div>
+          <div class="ms-stat"><span class="st st-ok">완료</span></div>
+        </div>
+
+        <div class="ms-card done">
+          <div class="ms-step">RFQ 발송</div>
+          <div class="ms-date">2026-04-15</div>
+          <div class="ms-stat"><span class="st st-ok">완료</span></div>
+        </div>
+
+        <div class="ms-card prog">
+          <div class="ms-step">견적/업체선정</div>
+          <div class="ms-date">2026-05-20</div>
+          <div class="ms-stat"><span class="st st-prog">진행</span></div>
+        </div>
+
+        <div class="ms-card wait">
+          <div class="ms-step">금형/샘플</div>
+          <div class="ms-date">2026-07-31</div>
+          <div class="ms-stat"><span class="st st-wait">예정</span></div>
+        </div>
+
+        <div class="ms-card wait">
+          <div class="ms-step">APQP</div>
+          <div class="ms-date">2026-08-31</div>
+          <div class="ms-stat"><span class="st st-wait">예정</span></div>
+        </div>
+
+        <div class="ms-card wait">
+          <div class="ms-step">PPAP</div>
+          <div class="ms-date">2026-09-15</div>
+          <div class="ms-stat"><span class="st st-wait">예정</span></div>
+        </div>
+
+        <div class="ms-card wait">
+          <div class="ms-step">양산성 검증</div>
+          <div class="ms-date">2026-09-25</div>
+          <div class="ms-stat"><span class="st st-wait">예정</span></div>
+        </div>
+
+        <div class="ms-card wait">
+          <div class="ms-step">SOP</div>
+          <div class="ms-date">2026-10-01</div>
+          <div class="ms-stat"><span class="st st-wait">예정</span></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── 섹션 2: 작업 일정 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">작업 일정</span>
+      </div>
+
+      <div class="gantt-wrap">
+        <table class="gantt">
+          <colgroup>
+            <col style="width:168px"><!-- 작업명 -->
+            <col style="width:70px"> <!-- 담당 -->
+            <col style="width:90px"> <!-- 시작 -->
+            <col style="width:90px"> <!-- 종료 -->
+            <col style="width:120px"><!-- 진척 -->
+            <col style="width:80px"> <!-- 상태 -->
+            <!-- 10개월 열 (균등 배분) -->
+            <col><col><col><col><col><col><col><col><col><col>
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="info-col">작업명</th>
+              <th class="info-col">담당</th>
+              <th class="info-col">시작</th>
+              <th class="info-col">종료</th>
+              <th class="info-col">진척</th>
+              <th class="info-col">상태</th>
+              <th>1월</th>
+              <th>2월</th>
+              <th>3월</th>
+              <th>4월</th>
+              <th>5월</th>
+              <th class="cur">6월</th>
+              <th>7월</th>
+              <th>8월</th>
+              <th>9월</th>
+              <th>10월</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 행 1: 도면/BOM 등록 — 1~2월 done -->
+            <tr>
+              <td class="info">도면/BOM 등록</td>
+              <td class="info">정설계</td>
+              <td class="info">2026-01-05</td>
+              <td class="info">2026-02-20</td>
+              <td class="info">
+                <div class="prog-cell">
+                  <div class="prog-bar"><div class="prog-fill" style="width:100%"></div></div>
+                  <span class="prog-pct">100%</span>
+                </div>
+              </td>
+              <td class="info"><span class="st st-ok">완료</span></td>
+              <td><div class="g-bar done"></div></td>
+              <td><div class="g-bar done"></div></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td class="cur"></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <!-- 행 2: 목표가/재료비 산출 — 2~3월 done -->
+            <tr>
+              <td class="info">목표가/재료비 산출</td>
+              <td class="info">한원가</td>
+              <td class="info">2026-02-01</td>
+              <td class="info">2026-03-10</td>
+              <td class="info">
+                <div class="prog-cell">
+                  <div class="prog-bar"><div class="prog-fill" style="width:100%"></div></div>
+                  <span class="prog-pct">100%</span>
+                </div>
+              </td>
+              <td class="info"><span class="st st-ok">완료</span></td>
+              <td></td>
+              <td><div class="g-bar done"></div></td>
+              <td><div class="g-bar done"></div></td>
+              <td></td>
+              <td></td>
+              <td class="cur"></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <!-- 행 3: 개발구매 RFQ 발송 — 3~4월 done -->
+            <tr>
+              <td class="info">개발구매 RFQ 발송</td>
+              <td class="info">김개발</td>
+              <td class="info">2026-03-01</td>
+              <td class="info">2026-04-15</td>
+              <td class="info">
+                <div class="prog-cell">
+                  <div class="prog-bar"><div class="prog-fill" style="width:100%"></div></div>
+                  <span class="prog-pct">100%</span>
+                </div>
+              </td>
+              <td class="info"><span class="st st-ok">완료</span></td>
+              <td></td>
+              <td></td>
+              <td><div class="g-bar done"></div></td>
+              <td><div class="g-bar done"></div></td>
+              <td></td>
+              <td class="cur"></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <!-- 행 4: 견적 비교/업체 선정 — 4~5월 delay -->
+            <tr>
+              <td class="info">견적 비교/업체 선정</td>
+              <td class="info">김개발</td>
+              <td class="info">2026-04-01</td>
+              <td class="info">2026-05-20</td>
+              <td class="info">
+                <div class="prog-cell">
+                  <div class="prog-bar"><div class="prog-fill" style="width:70%;background:var(--status-bad)"></div></div>
+                  <span class="prog-pct" style="color:var(--status-bad)">70%</span>
+                </div>
+              </td>
+              <td class="info"><span class="st st-bad">지연</span></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td><div class="g-bar delay"></div></td>
+              <td><div class="g-bar delay"></div></td>
+              <td class="cur"></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <!-- 행 5: 금형/샘플 제작 — 5~7월 active -->
+            <tr>
+              <td class="info">금형/샘플 제작</td>
+              <td class="info">최금형</td>
+              <td class="info">2026-05-15</td>
+              <td class="info">2026-07-31</td>
+              <td class="info">
+                <div class="prog-cell">
+                  <div class="prog-bar"><div class="prog-fill" style="width:10%"></div></div>
+                  <span class="prog-pct">10%</span>
+                </div>
+              </td>
+              <td class="info"><span class="st st-prog">진행</span></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td><div class="g-bar active"></div></td>
+              <td class="cur"><div class="g-bar active"></div></td>
+              <td><div class="g-bar active"></div></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <!-- 행 6: APQP/품질 준비 — 6~8월 plan -->
+            <tr>
+              <td class="info">APQP/품질 준비</td>
+              <td class="info">이품질</td>
+              <td class="info">2026-06-01</td>
+              <td class="info">2026-08-31</td>
+              <td class="info">
+                <div class="prog-cell">
+                  <div class="prog-bar"><div class="prog-fill" style="width:0%"></div></div>
+                  <span class="prog-pct">0%</span>
+                </div>
+              </td>
+              <td class="info"><span class="st st-wait">예정</span></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td class="cur"><div class="g-bar plan"></div></td>
+              <td><div class="g-bar plan"></div></td>
+              <td><div class="g-bar plan"></div></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <!-- 행 7: PPAP 승인 — 8~9월 plan -->
+            <tr>
+              <td class="info">PPAP 승인</td>
+              <td class="info">이품질</td>
+              <td class="info">2026-08-01</td>
+              <td class="info">2026-09-15</td>
+              <td class="info">
+                <div class="prog-cell">
+                  <div class="prog-bar"><div class="prog-fill" style="width:0%"></div></div>
+                  <span class="prog-pct">0%</span>
+                </div>
+              </td>
+              <td class="info"><span class="st st-wait">예정</span></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td class="cur"></td>
+              <td></td>
+              <td><div class="g-bar plan"></div></td>
+              <td><div class="g-bar plan"></div></td>
+              <td></td>
+            </tr>
+            <!-- 행 8: SOP 준비 — 9~10월 plan -->
+            <tr>
+              <td class="info">SOP 준비</td>
+              <td class="info">김개발</td>
+              <td class="info">2026-09-01</td>
+              <td class="info">2026-10-01</td>
+              <td class="info">
+                <div class="prog-cell">
+                  <div class="prog-bar"><div class="prog-fill" style="width:0%"></div></div>
+                  <span class="prog-pct">0%</span>
+                </div>
+              </td>
+              <td class="info"><span class="st st-wait">예정</span></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td class="cur"></td>
+              <td></td>
+              <td></td>
+              <td><div class="g-bar plan"></div></td>
+              <td><div class="g-bar plan"></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 범례 -->
+      <div class="gantt-legend">
+        <div class="gantt-legend-item">
+          <div class="legend-box" style="background:var(--navy)"></div>완료
+        </div>
+        <div class="gantt-legend-item">
+          <div class="legend-box" style="background:var(--blue);opacity:0.65"></div>진행
+        </div>
+        <div class="gantt-legend-item">
+          <div class="legend-box" style="background:var(--navy);opacity:0.2"></div>예정
+        </div>
+        <div class="gantt-legend-item">
+          <div class="legend-box" style="background:var(--status-bad)"></div>지연
+        </div>
+      </div>
+
+    </div><!-- /section-box 작업 일정 -->
+
+  </div><!-- /content-scroll -->
+</div><!-- /page-wrap -->
+
+<script src="../common/sidebar.js"></script>
+<script>
+  function showToast(msg, type, ms) {
+    var bg = type === 'ok' ? '#16a34a' : type === 'bad' ? '#dc2626' : '#1f2937';
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.style.background = bg;
+    el.innerHTML = '<i data-lucide="' + (type === 'bad' ? 'alert-circle' : 'check-circle') + '" style="width:14px;height:14px;flex-shrink:0"></i><span>' + msg + '</span>';
+    document.body.appendChild(el);
+    if (window.lucide) window.lucide.createIcons({ nodes: [el] });
+    setTimeout(function() {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity .2s';
+      setTimeout(function() { el.remove(); }, 220);
+    }, ms || 2400);
+  }
+</script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>심의입찰 평가 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── eval-table ── */
+  .eval-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .eval-table th {
+    background:var(--grid-head); padding:0 12px; height:32px; font-weight:600;
+    color:var(--text); text-align:center; border:1px solid var(--border); white-space:nowrap;
+  }
+  .eval-table td {
+    padding:0 10px; height:34px; border:1px solid var(--border);
+    color:var(--text); text-align:center; vertical-align:middle;
+  }
+  .eval-table td.lbl { text-align:left; font-weight:500; background:#fafbfc; }
+  .eval-table .cell-in {
+    width:64px; height:26px; border:1px solid var(--border); border-radius:3px;
+    text-align:center; font-size:12px; font-family:'Pretendard',sans-serif;
+  }
+  .eval-table .cell-in:focus {
+    border-color:var(--blue); outline:none;
+    box-shadow:0 0 0 2px rgba(26,86,170,0.15);
+  }
+  .eval-table tr.sum-row td { background:var(--grid-head); font-weight:700; }
+  .eval-table tr.rank-row td { background:var(--grid-head); font-weight:700; }
+  .eval-table td.win { background:var(--blue-light); color:var(--blue); font-weight:700; }
+  .w-bad { color:var(--status-bad) !important; }
+
+  /* ── 최종 선정 의견 내 연동 링크 버튼 ── */
+  .link-btn {
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:12px; color:var(--blue); font-weight:600;
+    background:none; border:none; cursor:pointer; padding:0;
+    text-decoration:underline; font-family:'Pretendard',sans-serif;
+  }
+  .link-btn:hover { color:var(--blue-hover); }
+</style>
+</head>
+
+<body data-menu="04-11">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">심의입찰 평가</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="location.href='04-02_rfq_list.html'">
+        <i data-lucide="arrow-left"></i>목록
+      </button>
+      <button class="btn btn-primary" onclick="location.href='04-10_selection_approval.html'">
+        <i data-lucide="file-check"></i>업체 선정 품의 연동
+      </button>
+    </div>
+  </div>
+
+  <!-- 품번 컨텍스트 바 -->
+  <div style="padding:8px 24px;background:#f9fafb;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-sub);display:flex;gap:20px;flex-shrink:0">
+    <span>품번: <strong style="color:var(--text)">H1110-T100</strong></span>
+    <span>품명: <strong style="color:var(--text)">Frame Sub Ass'y</strong></span>
+    <span>RFQ: <strong style="color:var(--text)">RFQ-2026-0012</strong></span>
+    <span>평가 대상: <strong style="color:var(--text)">3개사</strong></span>
+  </div>
+
+  <!-- 컨텐츠 스크롤 -->
+  <div class="content-scroll">
+
+    <!-- Section 1: 평가 항목 가중치 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">평가 항목 가중치</span>
+        <span style="font-size:11px;color:var(--text-mute);margin-left:8px">합계가 100%가 되도록 설정하십시오.</span>
+      </div>
+      <table class="eval-table" style="max-width:360px">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding-left:12px;width:180px">평가 항목</th>
+            <th style="width:140px">가중치 (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="lbl">가격</td>
+            <td><input id="w-price" type="number" class="cell-in" value="40" min="0" max="100" oninput="calcScores()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">품질</td>
+            <td><input id="w-quality" type="number" class="cell-in" value="30" min="0" max="100" oninput="calcScores()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">납기</td>
+            <td><input id="w-delivery" type="number" class="cell-in" value="15" min="0" max="100" oninput="calcScores()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">기술</td>
+            <td><input id="w-tech" type="number" class="cell-in" value="15" min="0" max="100" oninput="calcScores()"></td>
+          </tr>
+          <tr class="sum-row">
+            <td class="lbl">합계</td>
+            <td><span id="w-sum">100</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Section 2: 협력사별 평가 점수 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">협력사별 평가 점수</span>
+        <span style="font-size:11px;color:var(--text-mute);margin-left:8px">각 항목별 점수를 0~100 범위로 입력하면 가중 합산이 자동 계산됩니다.</span>
+      </div>
+      <table class="eval-table">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding-left:12px;width:140px">평가 항목</th>
+            <th style="width:100px">가중치 (%)</th>
+            <th style="width:140px">A사</th>
+            <th style="width:140px">B사</th>
+            <th style="width:140px">C사</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="lbl">가격</td>
+            <td>40</td>
+            <td><input id="a-price" type="number" class="cell-in" value="85" min="0" max="100" oninput="calcScores()"></td>
+            <td><input id="b-price" type="number" class="cell-in" value="90" min="0" max="100" oninput="calcScores()"></td>
+            <td><input id="c-price" type="number" class="cell-in" value="80" min="0" max="100" oninput="calcScores()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">품질</td>
+            <td>30</td>
+            <td><input id="a-quality" type="number" class="cell-in" value="92" min="0" max="100" oninput="calcScores()"></td>
+            <td><input id="b-quality" type="number" class="cell-in" value="85" min="0" max="100" oninput="calcScores()"></td>
+            <td><input id="c-quality" type="number" class="cell-in" value="80" min="0" max="100" oninput="calcScores()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">납기</td>
+            <td>15</td>
+            <td><input id="a-delivery" type="number" class="cell-in" value="88" min="0" max="100" oninput="calcScores()"></td>
+            <td><input id="b-delivery" type="number" class="cell-in" value="82" min="0" max="100" oninput="calcScores()"></td>
+            <td><input id="c-delivery" type="number" class="cell-in" value="90" min="0" max="100" oninput="calcScores()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">기술</td>
+            <td>15</td>
+            <td><input id="a-tech" type="number" class="cell-in" value="90" min="0" max="100" oninput="calcScores()"></td>
+            <td><input id="b-tech" type="number" class="cell-in" value="84" min="0" max="100" oninput="calcScores()"></td>
+            <td><input id="c-tech" type="number" class="cell-in" value="78" min="0" max="100" oninput="calcScores()"></td>
+          </tr>
+          <tr class="sum-row">
+            <td class="lbl">가중 합산</td>
+            <td>100</td>
+            <td class="win"><span id="a-total">88.3</span></td>
+            <td><span id="b-total">86.4</span></td>
+            <td><span id="c-total">81.2</span></td>
+          </tr>
+          <tr class="rank-row">
+            <td class="lbl">순위</td>
+            <td></td>
+            <td class="win"><span id="a-rank">1위</span></td>
+            <td><span id="b-rank">2위</span></td>
+            <td><span id="c-rank">3위</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Section 3: 최종 선정 의견 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">최종 선정 의견</span>
+      </div>
+      <div class="form-row form-row-full" style="margin-bottom:12px">
+        <div class="form-field">
+          <label class="form-label">선정 의견 <span class="req">*</span></label>
+          <textarea class="form-textarea" rows="3">가중 합산 결과 A사 88.3점으로 최고점. 품질(92)·기술(90) 항목 우위. 가격은 B사가 우세하나 종합 평가에서 A사가 선정 기준 충족. A사 선정 권고.</textarea>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <i data-lucide="link" style="width:14px;height:14px;color:var(--text-mute)"></i>
+        <button class="link-btn" onclick="location.href='04-10_selection_approval.html'">
+          04-10 업체 선정 품의 연동
+        </button>
+        <span style="font-size:11px;color:var(--text-mute)">— 평가 결과를 품의 화면으로 전달합니다.</span>
+      </div>
+    </div>
+
+  </div><!-- /content-scroll -->
+</div><!-- /page-wrap -->
+
+<script>
+function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+function calcScores() {
+  var wp = num('w-price'), wq = num('w-quality'), wd = num('w-delivery'), wt = num('w-tech');
+  var sum = wp + wq + wd + wt;
+  var sumEl = document.getElementById('w-sum');
+  sumEl.textContent = sum;
+  sumEl.classList.toggle('w-bad', sum !== 100);
+
+  var firms = ['a', 'b', 'c'];
+  var totals = {};
+  firms.forEach(function(f) {
+    var t = num(f + '-price') * wp / 100
+          + num(f + '-quality') * wq / 100
+          + num(f + '-delivery') * wd / 100
+          + num(f + '-tech') * wt / 100;
+    totals[f] = Math.round(t * 10) / 10;
+    document.getElementById(f + '-total').textContent = totals[f].toFixed(1);
+  });
+
+  // rank
+  var sorted = firms.slice().sort(function(a, b) { return totals[b] - totals[a]; });
+  firms.forEach(function(f) {
+    var rank = sorted.indexOf(f) + 1;
+    document.getElementById(f + '-rank').textContent = rank + '위';
+  });
+}
+
+calcScores();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

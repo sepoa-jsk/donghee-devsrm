@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>LME 기준정보 등록 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  table.lme-hist { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.lme-hist thead th {
+    background: var(--grid-head); padding: 0 10px; height: 32px;
+    font-weight: 600; color: var(--text); text-align: center;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  table.lme-hist tbody td {
+    padding: 0 10px; height: 30px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text); vertical-align: middle;
+  }
+  table.lme-hist tbody tr:last-child td { border-bottom: none; }
+  table.lme-hist tbody tr:hover td { background: var(--grid-hover); }
+  table.lme-hist tbody td.r  { text-align: right; font-variant-numeric: tabular-nums; }
+  table.lme-hist tbody td.c  { text-align: center; }
+  table.lme-hist tbody td.muted { color: var(--text-sub); }
+  table.lme-hist tbody tr.current-row td {
+    background: var(--blue-light);
+  }
+  table.lme-hist tbody tr.current-row td strong {
+    font-weight: 600;
+  }
+
+  .conflict-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    padding: 6px 0;
+  }
+  .conflict-ok   { color: var(--status-ok); }
+  .conflict-warn { color: var(--status-warn); }
+</style>
+</head>
+
+<body data-menu="03-04">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 (§4.1) -->
+  <div class="page-title-bar">
+    <span class="page-title">LME 기준정보 등록</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="window.print()">
+        <i data-lucide="printer"></i>인쇄
+      </button>
+      <button class="btn btn-secondary" onclick="showToast('임시저장이 완료되었습니다.', 'ok')">
+        <i data-lucide="save"></i>임시저장
+      </button>
+      <button class="btn btn-primary" id="btn-confirm" onclick="showModal('modal-register')">
+        <i data-lucide="check"></i>등록 확정
+      </button>
+    </div>
+  </div>
+
+  <div class="content-scroll">
+
+    <!-- ── 1. 기본 정보 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">기본 정보</span>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">문서번호</label>
+          <input type="text" class="form-input" value="LME-2026-0012" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>기준월</label>
+          <input type="month" class="form-input" id="f-month" value="2026-01" onchange="checkConflict()">
+        </div>
+        <div class="form-field">
+          <label class="form-label">등록일</label>
+          <input type="text" class="form-input" value="2026-01-03" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">등록자</label>
+          <input type="text" class="form-input" value="이대리 (개발구매팀)" readonly>
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>소재</label>
+          <select class="form-select" id="f-material" onchange="checkConflict()">
+            <option value="AL6061" selected>Aluminum 6061</option>
+            <option value="AL5052">Aluminum 5052</option>
+            <option value="STS304">STS 304</option>
+            <option value="SPCC">SPCC (냉연강판)</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">LME 품목</label>
+          <input type="text" class="form-input" id="f-lme-item" value="Aluminium (LME Official)" readonly>
+          <span class="form-hint">소재 선택 시 자동 매칭</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label">비고</label>
+          <input type="text" class="form-input" placeholder="특이사항 입력">
+        </div>
+        <div class="form-field"></div>
+      </div>
+    </div>
+
+    <!-- ── 2. LME 기준가 입력 및 소재단가 산출 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">LME 기준가 입력 및 소재단가 산출</span>
+        <span style="font-size:11px;color:var(--text-mute)">소재단가 = LME × 환율 ÷ 1,000 + 프리미엄 + 부대비</span>
+      </div>
+
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>LME 기준가 (USD/ton)</label>
+          <input type="text" class="form-input num" id="f-lme" value="2,400" oninput="recalc()">
+          <span class="form-hint">LME 공식 고시가 기준</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>환율 (원/USD)</label>
+          <input type="text" class="form-input num" id="f-fx" value="1,350" oninput="recalc()">
+          <span class="form-hint">기준월 평균 환율 (한국은행)</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>프리미엄 (원/kg)</label>
+          <input type="text" class="form-input num" id="f-premium" value="300" oninput="recalc()">
+          <span class="form-hint">지역·품질·운송 할증분</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>부대비 (원/kg)</label>
+          <input type="text" class="form-input num" id="f-overhead" value="100" oninput="recalc()">
+          <span class="form-hint">통관·보험·포장비 합산</span>
+        </div>
+      </div>
+
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">LME 환산가 (원/kg)</label>
+          <input type="text" class="form-input num result" id="f-lme-krw" value="3,240" readonly>
+          <span class="form-hint" id="hint-lme-krw">= LME × 환율 ÷ 1,000  →  2,400 × 1,350 ÷ 1,000</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label">소재단가 (원/kg)</label>
+          <input type="text" class="form-input num result" id="f-unit" value="3,640" readonly>
+          <span class="form-hint" id="hint-unit">= LME환산가 + 프리미엄 + 부대비  →  3,240 + 300 + 100</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label">전월 대비 증감 (원/kg)</label>
+          <input type="text" class="form-input num" id="f-diff" value="+31" readonly>
+          <span class="form-hint" id="hint-diff">전월(2025-12) 소재단가 3,609원 대비</span>
+        </div>
+        <div class="form-field"></div>
+      </div>
+    </div>
+
+    <!-- ── 3. 적용 기간 및 충돌 검증 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">적용 기간 및 충돌 검증</span>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>적용 시작일</label>
+          <input type="date" class="form-input" id="f-start" value="2026-01-01" onchange="checkConflict()">
+        </div>
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>적용 종료일</label>
+          <input type="date" class="form-input" id="f-end" value="2026-01-31" onchange="checkConflict()">
+        </div>
+        <div class="form-field">
+          <label class="form-label">충돌 검증 결과</label>
+          <div class="conflict-row" id="conflict-result">
+            <i data-lucide="check-circle" style="width:14px;height:14px;color:var(--status-ok)"></i>
+            <span class="conflict-ok">충돌 없음 — 동일 소재·기간 중복 없음</span>
+          </div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">재산출 대상 품번</label>
+          <input type="text" class="form-input" value="3개 품번 (H1110-T100 외 2건)" readonly>
+          <span class="form-hint">등록 확정 시 재료비 자동 재산출</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 4. 소재별 LME 등록 이력 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">소재별 LME 등록 이력</span>
+        <span style="font-size:11px;color:var(--text-mute)">Aluminum 6061 · 최근 4개월</span>
+      </div>
+      <div class="table-wrap">
+        <table class="lme-hist">
+          <thead>
+            <tr>
+              <th style="width:88px">기준월</th>
+              <th style="text-align:left">소재</th>
+              <th style="width:130px;text-align:right">LME 기준가</th>
+              <th style="width:100px;text-align:right">환율</th>
+              <th style="width:110px;text-align:right">프리미엄</th>
+              <th style="width:90px;text-align:right">부대비</th>
+              <th style="width:120px;text-align:right">소재단가</th>
+              <th style="width:90px;text-align:right">전월비</th>
+              <th style="width:64px">상태</th>
+              <th style="width:100px">등록자</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="current-row">
+              <td class="c"><strong>2026-01</strong></td>
+              <td>Aluminum 6061</td>
+              <td class="r">2,400 USD/t</td>
+              <td class="r">1,350원</td>
+              <td class="r">300원/kg</td>
+              <td class="r">100원/kg</td>
+              <td class="r"><strong>3,640원/kg</strong></td>
+              <td class="r">+31원</td>
+              <td class="c"><span class="badge badge-prog">등록중</span></td>
+              <td class="muted">이대리</td>
+            </tr>
+            <tr>
+              <td class="c">2025-12</td>
+              <td>Aluminum 6061</td>
+              <td class="r">2,390 USD/t</td>
+              <td class="r">1,344원</td>
+              <td class="r">295원/kg</td>
+              <td class="r">100원/kg</td>
+              <td class="r">3,609원/kg</td>
+              <td class="r">+30원</td>
+              <td class="c"><span class="badge badge-ok">확정</span></td>
+              <td class="muted">이대리</td>
+            </tr>
+            <tr>
+              <td class="c">2025-11</td>
+              <td>Aluminum 6061</td>
+              <td class="r">2,380 USD/t</td>
+              <td class="r">1,340원</td>
+              <td class="r">290원/kg</td>
+              <td class="r">100원/kg</td>
+              <td class="r">3,579원/kg</td>
+              <td class="r">+97원</td>
+              <td class="c"><span class="badge badge-ok">확정</span></td>
+              <td class="muted">이대리</td>
+            </tr>
+            <tr>
+              <td class="c">2025-10</td>
+              <td>Aluminum 6061</td>
+              <td class="r">2,350 USD/t</td>
+              <td class="r">1,320원</td>
+              <td class="r">280원/kg</td>
+              <td class="r">100원/kg</td>
+              <td class="r">3,482원/kg</td>
+              <td class="r">+22원</td>
+              <td class="c"><span class="badge badge-ok">확정</span></td>
+              <td class="muted">박주임</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /content-scroll -->
+</div><!-- /page-wrap -->
+
+<!-- 등록 확정 모달 -->
+<div id="modal-register" class="modal-backdrop">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">LME 기준정보 등록 확정</span>
+      <button class="modal-close" onclick="toggleModal('modal-register', false)">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
+      <p style="font-size:13px;color:var(--text-sub);line-height:1.7">
+        <strong>Aluminum 6061</strong> 2026-01 기준 LME 정보를 등록합니다.<br>
+        소재단가 <strong>3,640원/kg</strong> 이 적용되어 연계된 3개 품번의<br>
+        재료비가 자동으로 재산출됩니다.
+      </p>
+      <div class="form-field">
+        <label class="form-label">등록 사유 (선택)</label>
+        <textarea class="form-textarea" rows="2" placeholder="등록 사유를 입력하세요"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="toggleModal('modal-register', false)">취소</button>
+      <button class="btn btn-primary" onclick="confirmRegister()">
+        <i data-lucide="check"></i>등록 확정
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 충돌 경고 모달 -->
+<div id="modal-conflict" class="modal-backdrop">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">기간 충돌 경고</span>
+      <button class="modal-close" onclick="toggleModal('modal-conflict', false)">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-sub);line-height:1.7">
+        <strong>Aluminum 6061 · 2025-12</strong> 기간과 겹치는 기존 등록 건이 있습니다.<br>
+        기존 2025-12 기준 (3,609원/kg, 확정)과 적용 기간이 중복됩니다.<br>
+        적용 시작일을 조정하거나 기존 등록 건을 비활성화한 후 등록하십시오.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="toggleModal('modal-conflict', false)">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── 소재 → LME 품목 자동 매칭 ── */
+  var LME_ITEM_MAP = {
+    AL6061: 'Aluminium (LME Official)',
+    AL5052: 'Aluminium (LME Official)',
+    STS304: 'Nickel / Stainless (LME)',
+    SPCC:   'Steel HRC (LME/Platts)',
+  };
+  document.getElementById('f-material').addEventListener('change', function() {
+    document.getElementById('f-lme-item').value = LME_ITEM_MAP[this.value] || '';
+  });
+
+  /* ── 소재단가 자동 계산 ── */
+  function numVal(id) {
+    return parseFloat((document.getElementById(id).value || '').replace(/,/g, '')) || 0;
+  }
+  function fmtNum(n) {
+    return Math.round(n).toLocaleString('ko-KR');
+  }
+
+  var PREV_UNIT = 3609; // 전월(2025-12) 소재단가 고정
+
+  function recalc() {
+    var lme      = numVal('f-lme');
+    var fx       = numVal('f-fx');
+    var premium  = numVal('f-premium');
+    var overhead = numVal('f-overhead');
+
+    var lmeKrw    = lme * fx / 1000;
+    var unitPrice = lmeKrw + premium + overhead;
+    var diff      = unitPrice - PREV_UNIT;
+
+    document.getElementById('f-lme-krw').value = fmtNum(lmeKrw);
+    document.getElementById('f-unit').value    = fmtNum(unitPrice);
+    document.getElementById('f-diff').value    = (diff >= 0 ? '+' : '') + fmtNum(diff);
+
+    document.getElementById('hint-lme-krw').textContent =
+      '= LME × 환율 ÷ 1,000  →  ' + fmtNum(lme) + ' × ' + fmtNum(fx) + ' ÷ 1,000';
+    document.getElementById('hint-unit').textContent =
+      '= LME환산가 + 프리미엄 + 부대비  →  ' + fmtNum(lmeKrw) + ' + ' + fmtNum(premium) + ' + ' + fmtNum(overhead);
+  }
+
+  /* ── 기간 충돌 검증 ── */
+  // 이미 확정된 등록 이력 (mock)
+  var CONFIRMED = [
+    { month: '2025-10', start: '2025-10-01', end: '2025-10-31' },
+    { month: '2025-11', start: '2025-11-01', end: '2025-11-30' },
+    { month: '2025-12', start: '2025-12-01', end: '2025-12-31' },
+  ];
+
+  function checkConflict() {
+    var start  = document.getElementById('f-start').value;
+    var end    = document.getElementById('f-end').value;
+    var el     = document.getElementById('conflict-result');
+
+    if (!start || !end || start > end) {
+      el.innerHTML =
+        '<i data-lucide="alert-circle" style="width:14px;height:14px;color:var(--status-warn)"></i>' +
+        '<span class="conflict-warn">적용 시작일과 종료일을 확인하십시오</span>';
+      if (window.lucide) lucide.createIcons({ nodes: [el] });
+      return;
+    }
+
+    var conflict = null;
+    for (var i = 0; i < CONFIRMED.length; i++) {
+      var c = CONFIRMED[i];
+      if (start <= c.end && end >= c.start) {
+        conflict = c;
+        break;
+      }
+    }
+
+    if (conflict) {
+      el.innerHTML =
+        '<i data-lucide="alert-circle" style="width:14px;height:14px;color:var(--status-warn)"></i>' +
+        '<span class="conflict-warn">충돌 — ' + conflict.month + ' 확정 건과 기간 중복 (적용 기간 조정 필요)</span>';
+      document.getElementById('btn-confirm').disabled = true;
+      document.getElementById('btn-confirm').style.opacity = '0.5';
+    } else {
+      el.innerHTML =
+        '<i data-lucide="check-circle" style="width:14px;height:14px;color:var(--status-ok)"></i>' +
+        '<span class="conflict-ok">충돌 없음 — 동일 소재·기간 중복 없음</span>';
+      document.getElementById('btn-confirm').disabled = false;
+      document.getElementById('btn-confirm').style.opacity = '1';
+    }
+    if (window.lucide) lucide.createIcons({ nodes: [el] });
+  }
+
+  /* ── 모달 ── */
+  function showModal(id) { toggleModal(id, true); }
+  function toggleModal(id, open) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('open', open === undefined ? !el.classList.contains('open') : open);
+  }
+
+  function confirmRegister() {
+    toggleModal('modal-register', false);
+    showToast('LME 기준정보 등록 완료. 연계 재료비 재산출 중...', 'ok');
+  }
+
+  /* ── 토스트 ── */
+  function showToast(msg, type) {
+    var bg = type === 'ok' ? '#16a34a' : type === 'bad' ? '#dc2626' : '#1f2937';
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.style.background = bg;
+    el.innerHTML = '<i data-lucide="check-circle" style="width:14px;height:14px;flex-shrink:0"></i><span>' + msg + '</span>';
+    document.body.appendChild(el);
+    if (window.lucide) lucide.createIcons({ nodes: [el] });
+    setTimeout(function() {
+      el.style.opacity = '0'; el.style.transition = 'opacity 0.2s';
+      setTimeout(function() { el.remove(); }, 220);
+    }, 2400);
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 's') { e.preventDefault(); showToast('임시저장이 완료되었습니다.', 'ok'); }
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-backdrop.open').forEach(function(m) { m.classList.remove('open'); });
+    }
+  });
+</script>
+
+<!-- sidebar.js: 헤더 + 오버레이 사이드바 자동 주입 -->
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

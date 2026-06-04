@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>BOM 구성 작성 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 키체인 컨텍스트 바 ── */
+  .kc-bar {
+    padding: 8px 24px; background: #f9fafb; border-bottom: 1px solid var(--border);
+    font-size: 12px; color: var(--text-sub); display: flex; align-items: center; gap: 10px;
+    flex-shrink: 0;
+  }
+  .kc-link { font-size: 11px; color: var(--blue); border: 1px solid var(--border); border-radius: 3px; padding: 2px 8px; text-decoration: none; }
+  .kc-link:hover { background: var(--blue-light); }
+
+  /* ── 편집 툴바 ── */
+  .edit-toolbar {
+    height: 44px; background: var(--surface); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 24px; gap: 8px; flex-shrink: 0;
+  }
+  .tb-btn {
+    height: 32px; padding: 0 12px; border-radius: 4px;
+    font-size: 13px; font-family: 'Pretendard', sans-serif; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--surface); border: 1px solid var(--border-strong); color: var(--navy);
+    cursor: pointer; white-space: nowrap; transition: background .12s;
+  }
+  .tb-btn:hover { background: var(--bg); }
+  .tb-btn:disabled { color: var(--text-mute); border-color: var(--border); background: var(--surface); cursor: not-allowed; }
+  .tb-btn.danger { color: var(--status-bad); border-color: var(--status-bad); }
+  .tb-btn.danger:hover { background: #fff5f5; }
+  .tb-btn.danger:disabled { color: var(--text-mute); border-color: var(--border); }
+  .tb-btn i { width: 14px; height: 14px; flex-shrink: 0; }
+  .tb-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; margin: 0 2px; }
+
+  /* ── 본문 분할 ── */
+  .work-split { flex: 1; display: flex; overflow: hidden; background: var(--bg); }
+
+  /* 좌: 편집 그리드 */
+  .grid-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 14px 0 16px 24px; min-width: 0; }
+  .grid-fill { flex: 1; overflow: auto; border: 1px solid var(--border); border-radius: 4px; }
+  .grid-fill::-webkit-scrollbar { width: 7px; height: 7px; }
+  .grid-fill::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+  table.bom-edit { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.bom-edit thead th {
+    background: var(--grid-head); padding: 0 8px; height: 32px;
+    font-size: 12px; font-weight: 600; color: var(--text); text-align: center;
+    border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
+    white-space: nowrap; position: sticky; top: 0; z-index: 2;
+  }
+  table.bom-edit thead th:last-child { border-right: none; }
+  table.bom-edit tbody td {
+    padding: 0 6px; height: 34px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
+    background: var(--surface); color: var(--text); vertical-align: middle; white-space: nowrap;
+  }
+  table.bom-edit tbody td:last-child { border-right: none; }
+  table.bom-edit tbody tr:hover td { background: var(--grid-hover); }
+  table.bom-edit tbody tr.selected td { background: var(--grid-select); }
+
+  /* 체크박스 셀 (선택 핸들) */
+  .chk-cell { text-align: center; position: relative; }
+  tr.selected .chk-cell::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--blue);
+  }
+  .row-chk { width: 14px; height: 14px; accent-color: var(--blue); cursor: pointer; vertical-align: middle; }
+  .row-no { text-align: center; color: var(--text-mute); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+  /* 레벨 칩 */
+  .lv-chip { font-size: 10px; color: var(--text-mute); font-variant-numeric: tabular-nums; }
+
+  /* 인라인 입력 */
+  .ti {
+    width: 100%; height: 26px; border: 1px solid transparent; border-radius: 3px;
+    padding: 0 6px; font-size: 12px; font-family: 'Pretendard', sans-serif; color: var(--text);
+    background: transparent; outline: none; transition: border-color .12s, background .12s;
+  }
+  .ti:hover { border-color: var(--border); background: var(--surface); }
+  .ti:focus { border-color: var(--blue); background: var(--surface); box-shadow: 0 0 0 1px rgba(26,86,170,.18); }
+  .ti.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .ti.code { font-weight: 600; color: var(--navy); }
+  .ti.ro { color: var(--text-mute); background: #f0f2f5; cursor: default; }
+  .ti.ro:hover { border-color: transparent; }
+  .ti.err { border-color: var(--status-bad); background: #fff5f5; }
+
+  .ts {
+    width: 100%; height: 26px; border: 1px solid transparent; border-radius: 3px;
+    padding: 0 20px 0 6px; font-size: 12px; font-family: 'Pretendard', sans-serif; color: var(--text);
+    background: transparent; outline: none; cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 5px center;
+  }
+  .ts:hover { border-color: var(--border); background-color: var(--surface); }
+  .ts:focus { border-color: var(--blue); background-color: var(--surface); }
+
+  /* 품번 셀 트리 들여쓰기 */
+  .code-cell { display: flex; align-items: center; }
+  .indent-guide { flex-shrink: 0; align-self: stretch; }
+
+  /* 행 인라인 액션 */
+  .row-act { display: inline-flex; align-items: center; justify-content: center; gap: 2px; }
+  .ra-btn {
+    width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid transparent; border-radius: 3px; cursor: pointer;
+    color: var(--text-sub); transition: background .1s, color .1s, border-color .1s;
+  }
+  .ra-btn:hover { background: var(--bg); border-color: var(--border); color: var(--text); }
+  .ra-btn.del:hover { color: var(--status-bad); border-color: var(--status-bad); background: #fff5f5; }
+  .ra-btn i { width: 13px; height: 13px; }
+
+  /* 우: 요약 패널 */
+  .sum-pane {
+    width: 300px; min-width: 300px; background: var(--surface); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow-y: auto; padding: 16px 18px 24px;
+  }
+  .sum-pane::-webkit-scrollbar { width: 5px; }
+  .sum-pane::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+  .sum-title { font-size: 11px; font-weight: 700; color: var(--text-sub); letter-spacing: .5px; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .sum-title:not(:first-child) { margin-top: 22px; }
+
+  .sum-kpi { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sum-card { border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; background: var(--bg); }
+  .sum-card.wide { grid-column: 1 / -1; }
+  .sum-card-label { font-size: 11px; color: var(--text-sub); margin-bottom: 4px; }
+  .sum-card-val { font-size: 19px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .sum-card-unit { font-size: 11px; font-weight: 500; color: var(--text-mute); margin-left: 2px; }
+
+  /* 구성 분포 막대 */
+  .dist-row { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 7px; }
+  .dist-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dist-dot.buy { background: var(--navy); }
+  .dist-dot.in  { background: var(--status-warn); }
+  .dist-dot.sup { background: var(--text-sub); }
+  .dist-label { color: var(--text-sub); width: 56px; flex-shrink: 0; }
+  .dist-bar-wrap { flex: 1; height: 6px; background: var(--grid-head); border-radius: 3px; overflow: hidden; }
+  .dist-bar { height: 100%; }
+  .dist-bar.buy { background: var(--navy); }
+  .dist-bar.in  { background: var(--status-warn); }
+  .dist-bar.sup { background: var(--text-sub); }
+  .dist-cnt { width: 22px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); font-weight: 600; flex-shrink: 0; }
+
+  /* 검증 리스트 */
+  .vchk { display: flex; align-items: center; gap: 7px; font-size: 12px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .vchk:last-child { border-bottom: none; }
+  .vchk-ico { width: 15px; height: 15px; flex-shrink: 0; }
+  .vchk.ok   { color: var(--text-sub); }
+  .vchk.ok   .vchk-ico { color: var(--status-ok); }
+  .vchk.bad  { color: var(--text); }
+  .vchk.bad  .vchk-ico { color: var(--status-bad); }
+  .vchk-cnt { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; }
+  .vchk.ok  .vchk-cnt { color: var(--text-mute); }
+  .vchk.bad .vchk-cnt { color: var(--status-bad); }
+
+  .verr-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .verr-item {
+    font-size: 11px; color: var(--status-bad); background: #fff5f5; border: 1px solid #fca5a5;
+    border-radius: 3px; padding: 5px 8px; cursor: pointer; line-height: 1.4;
+  }
+  .verr-item:hover { background: #fee2e2; }
+  .verr-item strong { color: #991b1b; }
+</style>
+</head>
+
+<body data-menu="02-05">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">BOM 구성 작성</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="location.href='02-04_bom_tree.html'">
+        <i data-lucide="git-branch"></i>트리 뷰로 보기
+      </button>
+      <button class="btn btn-secondary" onclick="showToast('임시저장이 완료되었습니다.','ok')">
+        <i data-lucide="save"></i>임시저장
+      </button>
+      <button class="btn btn-primary" onclick="openSaveModal()">
+        <i data-lucide="check"></i>BOM 저장
+      </button>
+    </div>
+  </div>
+
+  <!-- 키체인 컨텍스트 바 -->
+  <div class="kc-bar">
+    <span>프로젝트 <a href="../01_project/01-04_project_detail.html" style="color:var(--blue);font-weight:600;text-decoration:none">PJT-520PHEV-FT-2026</a></span>
+    <i data-lucide="chevron-right" style="width:13px;height:13px;color:var(--text-mute)"></i>
+    <span>최상위 품번 <strong style="color:var(--text)">H1110-T100</strong></span>
+    <i data-lucide="chevron-right" style="width:13px;height:13px;color:var(--text-mute)"></i>
+    <span>도면 Rev <strong style="color:var(--text)">Rev.B</strong></span>
+    <i data-lucide="chevron-right" style="width:13px;height:13px;color:var(--text-mute)"></i>
+    <span>적용시점 <strong style="color:var(--text)">2026-03-10</strong></span>
+    <span style="margin-left:auto;display:flex;gap:6px">
+      <a href="02-02_part_detail.html" class="kc-link">품번 상세</a>
+      <a href="../03_cost/03-07_material_cost.html" class="kc-link">재료비 산출</a>
+    </span>
+  </div>
+
+  <!-- 편집 툴바 -->
+  <div class="edit-toolbar">
+    <button class="tb-btn" id="tb-sib"    onclick="addRel('sibling')"><i data-lucide="plus"></i>동일 레벨 추가</button>
+    <button class="tb-btn" id="tb-child"  onclick="addRel('child')"><i data-lucide="corner-down-right"></i>하위 레벨 추가</button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" id="tb-indent" onclick="indentRow()"><i data-lucide="indent"></i>들여쓰기</button>
+    <button class="tb-btn" id="tb-outdent" onclick="outdentRow()"><i data-lucide="outdent"></i>내어쓰기</button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" id="tb-up"   onclick="moveRow(-1)"><i data-lucide="chevron-up"></i>위로</button>
+    <button class="tb-btn" id="tb-down" onclick="moveRow(1)"><i data-lucide="chevron-down"></i>아래로</button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn danger" id="tb-del" onclick="deleteChecked()"><i data-lucide="trash-2"></i>선택 삭제</button>
+    <span style="margin-left:auto;font-size:11px;color:var(--text-mute)">체크박스로 행을 선택해 추가·삭제, 동일/하위 레벨 추가는 한 행만 선택하세요</span>
+  </div>
+
+  <!-- 본문 -->
+  <div class="work-split">
+
+    <!-- 좌: 편집 그리드 -->
+    <div class="grid-pane">
+      <div class="grid-fill">
+        <table class="bom-edit">
+          <thead>
+            <tr>
+              <th style="width:40px"><input type="checkbox" id="chk-all" class="row-chk" onclick="toggleAll(this)"></th>
+              <th style="width:38px">No</th>
+              <th style="width:44px">레벨</th>
+              <th style="width:188px;text-align:left;padding-left:10px">품번</th>
+              <th style="text-align:left;padding-left:10px">품명</th>
+              <th style="width:54px">수량</th>
+              <th style="width:128px">재질</th>
+              <th style="width:70px">도면 Rev</th>
+              <th style="width:96px">구매구분</th>
+              <th style="width:86px">순중량(kg)</th>
+              <th style="width:86px">투입중량(kg)</th>
+              <th style="width:78px">스크랩(kg)</th>
+              <th style="width:70px">작업</th>
+            </tr>
+          </thead>
+          <tbody id="bom-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 우: 구성 요약 -->
+    <div class="sum-pane">
+      <div class="sum-title"><i data-lucide="layers" style="width:13px;height:13px"></i>구성 요약</div>
+      <div class="sum-kpi">
+        <div class="sum-card">
+          <div class="sum-card-label">총 품번</div>
+          <div class="sum-card-val" id="s-total">0<span class="sum-card-unit">개</span></div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-card-label">최대 레벨</div>
+          <div class="sum-card-val" id="s-depth">0<span class="sum-card-unit">단계</span></div>
+        </div>
+        <div class="sum-card wide">
+          <div class="sum-card-label">총 투입중량 (수량 반영)</div>
+          <div class="sum-card-val" id="s-weight">0.00<span class="sum-card-unit">kg</span></div>
+        </div>
+        <div class="sum-card wide">
+          <div class="sum-card-label">LME 연동 품번</div>
+          <div class="sum-card-val" id="s-lme">0<span class="sum-card-unit">개</span></div>
+        </div>
+      </div>
+
+      <div class="sum-title"><i data-lucide="pie-chart" style="width:13px;height:13px"></i>구매구분 분포</div>
+      <div id="dist-area"></div>
+
+      <div class="sum-title"><i data-lucide="clipboard-check" style="width:13px;height:13px"></i>구성 검증</div>
+      <div id="vchk-area"></div>
+      <div class="verr-list" id="verr-area"></div>
+    </div>
+
+  </div><!-- /work-split -->
+</div><!-- /page-wrap -->
+
+<!-- 저장 확인 모달 -->
+<div id="modal-save" class="modal-backdrop">
+  <div class="modal-box" style="min-width:440px">
+    <div class="modal-header">
+      <span class="modal-title">BOM 저장</span>
+      <button class="modal-close" onclick="toggleModal('modal-save', false)">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-sub);line-height:1.6;margin-bottom:12px">
+        H1110-T100 (Frame Sub Ass'y) 기준 BOM 구성을 저장합니다.<br>
+        저장 시 품번별 중량이 재료비 산출(03-07)에 반영됩니다.
+      </p>
+      <div id="modal-validate"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="toggleModal('modal-save', false)">취소</button>
+      <button class="btn btn-primary" onclick="confirmSave()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── BOM 데이터 (데모 시드: H1110-T100 Frame Sub Ass'y) ──
+   flat 배열 + level(1=최상위). 순서 = 화면 표시 순서.            */
+let BOM = [
+  { no:1, level:1, code:'H1110-T100',  name:"Frame Sub Ass'y",    qty:1, mat:'Aluminum 6061', rev:'Rev.B', type:'구매대상', net:2.60, in:2.85 },
+  { no:2, level:2, code:'H1110-T101',  name:'Bracket Assy Upper', qty:1, mat:'SPCC',          rev:'Rev.A', type:'구매대상', net:0.38, in:0.42 },
+  { no:3, level:3, code:'H1110-T101A', name:'Upper Bracket Body', qty:1, mat:'SPCC',          rev:'Rev.A', type:'내제',     net:0.28, in:0.32 },
+  { no:4, level:3, code:'H1110-T101B', name:'Mounting Tab',       qty:2, mat:'SPCC',          rev:'Rev.A', type:'내제',     net:0.05, in:0.06 },
+  { no:5, level:2, code:'H1110-T102',  name:'Cover Plate',        qty:1, mat:'Aluminum 6061', rev:'Rev.A', type:'구매대상', net:0.32, in:0.38 },
+  { no:6, level:3, code:'H1110-T102A', name:'Cover Base Plate',   qty:1, mat:'Aluminum 6061', rev:'Rev.A', type:'내제',     net:0.30, in:0.34 },
+  { no:7, level:2, code:'H1110-T103',  name:'Rubber Seal',        qty:2, mat:'NBR70',         rev:'Rev.A', type:'사급',     net:0.08, in:0.08 },
+  { no:8, level:2, code:'H1110-T104',  name:'Pipe Connector',     qty:1, mat:'Aluminum 6061', rev:'Rev.A', type:'구매대상', net:0.15, in:0.18 },
+  { no:9, level:2, code:'H1110-T105',  name:'Hose Assembly',      qty:1, mat:'EPDM',          rev:'Rev.A', type:'구매대상', net:0.20, in:0.22 },
+];
+
+const LME_MATERIALS = ['aluminum', 'copper', 'zinc', 'lead', 'nickel', 'tin'];
+const TYPE_OPTIONS = ['구매대상', '내제', '사급'];
+
+let checked = new Set([0]);   // 체크(선택)된 행 인덱스 집합
+let newSeq = 0;               // 신규 품번 임시 코드 시퀀스
+
+function isLme(mat) {
+  const m = (mat || '').toLowerCase();
+  return LME_MATERIALS.some(k => m.includes(k));
+}
+
+/* ── 그리드 렌더 ── */
+function render() {
+  const tb = document.getElementById('bom-body');
+  tb.innerHTML = '';
+
+  BOM.forEach((r, idx) => {
+    const tr = document.createElement('tr');
+    const isChk = checked.has(idx);
+    if (isChk) tr.classList.add('selected');
+    tr.dataset.idx = idx;
+
+    const scrap = Math.max(0, (r.in || 0) - (r.net || 0));
+    const indent = (r.level - 1) * 18;
+
+    const codeErr = !r.code || !r.code.trim() ? ' err' : '';
+    const nameErr = !r.name || !r.name.trim() ? ' err' : '';
+    const wErr = (r.in || 0) < (r.net || 0) ? ' err' : '';
+
+    const typeOpts = TYPE_OPTIONS.map(t =>
+      `<option value="${t}"${t === r.type ? ' selected' : ''}>${t}</option>`).join('');
+
+    tr.innerHTML = `
+      <td class="chk-cell">
+        <input type="checkbox" class="row-chk"${isChk ? ' checked' : ''}
+               onclick="event.stopPropagation();onCheck(${idx}, this.checked)">
+      </td>
+      <td class="row-no">${idx + 1}</td>
+      <td style="text-align:center"><span class="lv-chip">L${r.level}</span></td>
+      <td>
+        <div class="code-cell">
+          <span class="indent-guide" style="width:${indent}px"></span>
+          <input class="ti code${codeErr}" value="${esc(r.code)}" placeholder="품번"
+                 onchange="upd(${idx},'code',this.value)" onfocus="selectOnly(${idx})">
+        </div>
+      </td>
+      <td><input class="ti${nameErr}" value="${esc(r.name)}" placeholder="품명"
+                 onchange="upd(${idx},'name',this.value)" onfocus="selectOnly(${idx})"></td>
+      <td><input class="ti num" value="${r.qty}" inputmode="numeric"
+                 onchange="upd(${idx},'qty',this.value)" onfocus="selectOnly(${idx})"></td>
+      <td><input class="ti" value="${esc(r.mat)}" placeholder="재질"
+                 onchange="upd(${idx},'mat',this.value)" onfocus="selectOnly(${idx})"></td>
+      <td><input class="ti" value="${esc(r.rev)}" placeholder="Rev"
+                 onchange="upd(${idx},'rev',this.value)" onfocus="selectOnly(${idx})" style="text-align:center"></td>
+      <td><select class="ts" onchange="upd(${idx},'type',this.value)" onfocus="selectOnly(${idx})">${typeOpts}</select></td>
+      <td><input class="ti num" value="${fmtW(r.net)}" inputmode="decimal"
+                 onchange="upd(${idx},'net',this.value)" onfocus="selectOnly(${idx})"></td>
+      <td><input class="ti num${wErr}" value="${fmtW(r.in)}" inputmode="decimal"
+                 onchange="upd(${idx},'in',this.value)" onfocus="selectOnly(${idx})"></td>
+      <td><input class="ti num ro" value="${fmtW(scrap)}" readonly tabindex="-1"></td>
+      <td style="text-align:center">
+        <div class="row-act">
+          <button class="ra-btn" title="하위 레벨 추가" onclick="event.stopPropagation();addRelAt(${idx},'child')"><i data-lucide="corner-down-right"></i></button>
+          <button class="ra-btn del" title="행 삭제" onclick="event.stopPropagation();deleteAt(${idx})"><i data-lucide="trash-2"></i></button>
+        </div>
+      </td>
+    `;
+
+    tr.addEventListener('click', e => {
+      if (e.target.closest('input,select,button')) return;
+      selectOnly(idx);
+    });
+
+    tb.appendChild(tr);
+  });
+
+  /* 전체선택 체크박스 상태 */
+  const all = document.getElementById('chk-all');
+  if (all) {
+    all.checked = BOM.length > 0 && checked.size === BOM.length;
+    all.indeterminate = checked.size > 0 && checked.size < BOM.length;
+  }
+
+  updateToolbar();
+  updateSummary();
+  lucide.createIcons();
+}
+
+function esc(s) { return (s == null ? '' : String(s)).replace(/"/g, '&quot;'); }
+function fmtW(n) { return (n == null || isNaN(n)) ? '' : Number(n).toFixed(2); }
+
+/* ── 필드 수정 ── */
+function upd(idx, field, val) {
+  const r = BOM[idx];
+  if (field === 'qty') {
+    const n = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
+    r.qty = isNaN(n) || n < 1 ? 1 : n;
+  } else if (field === 'net' || field === 'in') {
+    const n = parseFloat(String(val).replace(/[^0-9.]/g, ''));
+    r[field] = isNaN(n) ? 0 : n;
+  } else {
+    r[field] = val;
+  }
+  render();
+}
+
+/* ── 선택(체크) 관리 ── */
+function anchor() { return checked.size === 1 ? [...checked][0] : null; }  // 단일 선택 행
+
+function onCheck(idx, on) {
+  if (on) checked.add(idx); else checked.delete(idx);
+  render();
+}
+function selectOnly(idx) {
+  if (idx < 0 || idx >= BOM.length) return;
+  checked = new Set([idx]);
+  render();
+}
+function toggleAll(m) {
+  checked = m.checked ? new Set(BOM.map((_, i) => i)) : new Set();
+  render();
+}
+
+/* ── 자식 서브트리 끝 인덱스 (마지막 자손 다음 위치) ── */
+function subtreeEnd(idx) {
+  const lv = BOM[idx].level;
+  let j = idx + 1;
+  while (j < BOM.length && BOM[j].level > lv) j++;
+  return j;
+}
+
+function blankRow(level) {
+  newSeq++;
+  return { code:'', name:'', qty:1, mat:'', rev:'Rev.A', type:'구매대상', net:0, in:0, level };
+}
+
+/* ── 행 추가 (특정 행 기준) ──
+   kind: 'child'   = 하위 레벨 (바로 아래, level+1)
+         'sibling' = 동일 레벨 (서브트리 끝, 같은 level)            */
+function addRelAt(idx, kind) {
+  const cur = BOM[idx];
+  if (!cur) return;
+  let pos, level;
+  if (kind === 'child') { pos = idx + 1;            level = cur.level + 1; }
+  else                  { pos = subtreeEnd(idx);    level = cur.level;     }
+  BOM.splice(pos, 0, blankRow(level));
+  checked = new Set([pos]);   // 새 행을 단일 선택 상태로
+  render();
+  focusCell(pos);
+}
+
+/* ── 행 추가 (선택 행 기준, 한 행만 선택돼 있어야 함) ── */
+function addRel(kind) {
+  const i = anchor();
+  if (i == null) { showToast('추가 기준 행을 한 개만 선택하세요.', 'bad'); return; }
+  addRelAt(i, kind);
+}
+
+/* ── 들여쓰기: 직전 행 level+1 까지만 허용 ── */
+function indentRow() {
+  const i = anchor();
+  if (i == null || i <= 0) return;
+  if (BOM[i].level > BOM[i - 1].level) return;   // 이미 충분히 깊음
+  BOM[i].level += 1;
+  render();
+}
+
+/* ── 내어쓰기: 최상위(L1) 미만 불가 ── */
+function outdentRow() {
+  const i = anchor();
+  if (i == null || BOM[i].level <= 1) return;
+  BOM[i].level -= 1;
+  render();
+}
+
+/* ── 행 이동 ── */
+function moveRow(dir) {
+  const i = anchor();
+  if (i == null) return;
+  const j = i + dir;
+  if (j < 0 || j >= BOM.length) return;
+  const tmp = BOM[i]; BOM[i] = BOM[j]; BOM[j] = tmp;
+  checked = new Set([j]);
+  render();
+}
+
+/* ── 단일 행 삭제 (자손 포함) ── */
+function deleteAt(idx) {
+  if (idx === 0) { showToast('최상위 품번은 삭제할 수 없습니다.', 'bad'); return; }
+  const end = subtreeEnd(idx);
+  BOM.splice(idx, end - idx);
+  checked.clear();
+  render();
+}
+
+/* ── 체크된 행 일괄 삭제 (자손 포함, 최상위 제외) ── */
+function deleteChecked() {
+  const rm = new Set();
+  checked.forEach(i => {
+    if (i === 0) return;                 // 최상위 보호
+    const end = subtreeEnd(i);
+    for (let j = i; j < end; j++) rm.add(j);
+  });
+  if (!rm.size) { showToast('삭제할 행을 선택하세요. (최상위 제외)', 'bad'); return; }
+  BOM = BOM.filter((_, i) => !rm.has(i));
+  checked.clear();
+  render();
+}
+
+function focusCell(idx) {
+  const tr = document.querySelector(`#bom-body tr[data-idx="${idx}"]`);
+  if (tr) { const inp = tr.querySelector('input.code'); if (inp) inp.focus(); }
+}
+
+/* ── 툴바 상태 ── */
+function updateToolbar() {
+  const i = anchor();                 // 단일 선택 인덱스 (없으면 null)
+  const one = i != null;
+  const setDis = (id, dis) => { const b = document.getElementById(id); if (b) b.disabled = dis; };
+
+  setDis('tb-sib',     !one);
+  setDis('tb-child',   !one);
+  setDis('tb-indent',  !one || i <= 0 || BOM[i].level > BOM[i - 1].level);
+  setDis('tb-outdent', !one || BOM[i].level <= 1);
+  setDis('tb-up',      !one || i <= 0);
+  setDis('tb-down',    !one || i >= BOM.length - 1);
+  setDis('tb-del',     ![...checked].some(x => x !== 0));   // 최상위 외 체크 행 존재 시 활성
+}
+
+/* ── 요약 + 검증 ── */
+function getErrors() {
+  const errs = [];
+  BOM.forEach((r, i) => {
+    if (!r.code || !r.code.trim()) errs.push({ i, msg: `${i + 1}번 행 — 품번 미입력` });
+    if (!r.name || !r.name.trim()) errs.push({ i, msg: `${i + 1}번 행 — 품명 미입력` });
+    if ((r.in || 0) < (r.net || 0))  errs.push({ i, msg: `${i + 1}번 행 (${r.code || '신규'}) — 투입중량 < 순중량` });
+  });
+  return errs;
+}
+
+function updateSummary() {
+  const total = BOM.length;
+  const depth = BOM.reduce((m, r) => Math.max(m, r.level), 0);
+  const weight = BOM.reduce((s, r) => s + (r.in || 0) * (r.qty || 1), 0);
+  const lme = BOM.filter(r => isLme(r.mat)).length;
+
+  document.getElementById('s-total').innerHTML  = `${total}<span class="sum-card-unit">개</span>`;
+  document.getElementById('s-depth').innerHTML  = `${depth}<span class="sum-card-unit">단계</span>`;
+  document.getElementById('s-weight').innerHTML = `${weight.toFixed(2)}<span class="sum-card-unit">kg</span>`;
+  document.getElementById('s-lme').innerHTML    = `${lme}<span class="sum-card-unit">개</span>`;
+
+  /* 구매구분 분포 */
+  const buy = BOM.filter(r => r.type === '구매대상').length;
+  const inn = BOM.filter(r => r.type === '내제').length;
+  const sup = BOM.filter(r => r.type === '사급').length;
+  const pct = n => total ? (n / total * 100).toFixed(0) : 0;
+  document.getElementById('dist-area').innerHTML = `
+    <div class="dist-row"><span class="dist-dot buy"></span><span class="dist-label">구매대상</span>
+      <span class="dist-bar-wrap"><span class="dist-bar buy" style="width:${pct(buy)}%"></span></span><span class="dist-cnt">${buy}</span></div>
+    <div class="dist-row"><span class="dist-dot in"></span><span class="dist-label">내제</span>
+      <span class="dist-bar-wrap"><span class="dist-bar in" style="width:${pct(inn)}%"></span></span><span class="dist-cnt">${inn}</span></div>
+    <div class="dist-row"><span class="dist-dot sup"></span><span class="dist-label">사급</span>
+      <span class="dist-bar-wrap"><span class="dist-bar sup" style="width:${pct(sup)}%"></span></span><span class="dist-cnt">${sup}</span></div>
+  `;
+
+  /* 검증 */
+  const errs = getErrors();
+  const lmeOk = lme > 0;
+  const vchk = document.getElementById('vchk-area');
+  const okIco  = 'check-circle';
+  const badIco = 'alert-circle';
+  vchk.innerHTML = `
+    <div class="vchk ${errs.length ? 'bad' : 'ok'}">
+      <i data-lucide="${errs.length ? badIco : okIco}" class="vchk-ico"></i>
+      필수 항목 (품번·품명·중량)<span class="vchk-cnt">${errs.length ? errs.length + '건' : 'OK'}</span>
+    </div>
+    <div class="vchk ${lmeOk ? 'ok' : 'bad'}">
+      <i data-lucide="${lmeOk ? okIco : badIco}" class="vchk-ico"></i>
+      LME 연동 소재 포함<span class="vchk-cnt">${lme}개</span>
+    </div>
+  `;
+
+  const verr = document.getElementById('verr-area');
+  verr.innerHTML = errs.length
+    ? errs.map(e => `<div class="verr-item" onclick="selectOnly(${e.i})"><strong>오류</strong> · ${e.msg}</div>`).join('')
+    : '';
+}
+
+/* ── 저장 ── */
+function openSaveModal() {
+  const errs = getErrors();
+  const box = document.getElementById('modal-validate');
+  if (errs.length) {
+    box.innerHTML = `<div class="alert-bar alert-warn">
+      <i data-lucide="alert-triangle" style="width:15px;height:15px"></i>
+      <span>검증 오류 ${errs.length}건이 있습니다. 저장은 가능하나 재료비 산출에 반영되려면 보완이 필요합니다.</span>
+    </div>`;
+  } else {
+    box.innerHTML = `<div class="alert-bar alert-info">
+      <i data-lucide="check-circle" style="width:15px;height:15px"></i>
+      <span>구성 검증을 모두 통과했습니다. 저장 후 바로 재료비 산출로 연결됩니다.</span>
+    </div>`;
+  }
+  toggleModal('modal-save', true);
+  lucide.createIcons();
+}
+
+function confirmSave() {
+  toggleModal('modal-save', false);
+  showToast('BOM 구성이 저장되었습니다.', 'ok');
+}
+
+/* ── 모달 ── */
+function toggleModal(id, open) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('open', open === undefined ? !el.classList.contains('open') : open);
+}
+
+/* ── 토스트 ── */
+function showToast(msg, type) {
+  const bg = type === 'ok' ? '#16a34a' : type === 'bad' ? '#dc2626' : '#1f2937';
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.style.background = bg;
+  const ico = type === 'bad' ? 'alert-circle' : 'check-circle';
+  el.innerHTML = '<i data-lucide="' + ico + '" style="width:14px;height:14px;flex-shrink:0"></i><span>' + msg + '</span>';
+  document.body.appendChild(el);
+  if (window.lucide) lucide.createIcons({ nodes: [el] });
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .2s'; setTimeout(() => el.remove(), 220); }, 2400);
+}
+
+/* ── 단축키 ── */
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 's') { e.preventDefault(); showToast('임시저장이 완료되었습니다.', 'ok'); return; }
+  if (e.key === 'Escape') { document.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open')); }
+  if (document.activeElement && document.activeElement.closest('input,select')) return;
+  const i = anchor();
+  if (i == null) return;
+  if (e.key === 'ArrowUp')   { e.preventDefault(); selectOnly(i - 1); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); selectOnly(i + 1); }
+});
+
+/* init */
+render();
+</script>
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

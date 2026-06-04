@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>구매대상 품목 확정 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .grid-area {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 16px 24px 0;
+  }
+  .project-card {
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 0;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+  .pc-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 20px;
+    border-right: 1px solid var(--border);
+  }
+  .pc-item:last-child { border-right: none; }
+  .pc-label { color: var(--text-mute); white-space: nowrap; }
+  .pc-value { color: var(--text); font-weight: 600; white-space: nowrap; }
+
+  .table-fill {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px 4px 0 0;
+    border-bottom: none;
+  }
+  .table-fill::-webkit-scrollbar { width: 6px; }
+  .table-fill::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+  .grid-footer {
+    background: var(--grid-head);
+    border: 1px solid var(--border);
+    border-radius: 0 0 4px 4px;
+    padding: 7px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 11px;
+    color: var(--text-sub);
+    flex-shrink: 0;
+    margin-bottom: 16px;
+  }
+  .gf-item { display: flex; align-items: center; gap: 4px; }
+  .gf-sep  { width: 1px; height: 12px; background: var(--border-strong); flex-shrink: 0; }
+  .gf-cnt  { font-weight: 700; color: var(--text); }
+</style>
+</head>
+
+<body data-menu="04-01">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">구매대상 품목 확정</span>
+  </div>
+
+  <!-- 검색 바 -->
+  <div class="search-bar">
+    <div class="search-field">
+      <span class="search-label">품번</span>
+      <input type="text" class="search-input" id="f-code" placeholder="품번 입력" style="width:120px" oninput="applyFilter()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">품명</span>
+      <input type="text" class="search-input" id="f-name" placeholder="품명 입력" style="width:150px" oninput="applyFilter()">
+    </div>
+    <div class="search-sep"></div>
+    <div class="search-field">
+      <span class="search-label">구매구분</span>
+      <select class="search-select" id="f-type" onchange="applyFilter()" style="width:110px">
+        <option value="">전체</option>
+        <option value="구매대상">구매대상</option>
+        <option value="내제">내제</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">확정상태</span>
+      <select class="search-select" id="f-status" onchange="applyFilter()" style="width:90px">
+        <option value="">전체</option>
+        <option value="확정">확정</option>
+        <option value="미확정">미확정</option>
+      </select>
+    </div>
+    <div class="page-title-spacer"></div>
+    <button class="btn btn-secondary" id="btn-confirm" onclick="confirmSelected()" disabled>
+      <i data-lucide="check-circle-2"></i>구매대상 확정
+    </button>
+    <button class="btn btn-primary" id="btn-rfq" onclick="goRfq()">
+      <i data-lucide="send"></i>RFQ 생성
+    </button>
+  </div>
+
+  <!-- 그리드 영역 -->
+  <div class="grid-area">
+
+    <!-- 프로젝트 정보 카드 -->
+    <div class="project-card">
+      <div class="pc-item">
+        <span class="pc-label">프로젝트</span>
+        <span class="pc-value">PJT-520PHEV-FT-2026</span>
+      </div>
+      <div class="pc-item">
+        <span class="pc-label">고객사</span>
+        <span class="pc-value">현대자동차</span>
+      </div>
+      <div class="pc-item">
+        <span class="pc-label">차종</span>
+        <span class="pc-value">520 PHEV</span>
+      </div>
+      <div class="pc-item">
+        <span class="pc-label">프로젝트명</span>
+        <span class="pc-value">Fuel Tank Module 개발</span>
+      </div>
+      <div class="pc-item">
+        <span class="pc-label">SOP</span>
+        <span class="pc-value">2026-10-01</span>
+      </div>
+      <div class="pc-item">
+        <span class="pc-label">담당</span>
+        <span class="pc-value">김개발 (개발구매팀)</span>
+      </div>
+    </div>
+
+    <!-- 테이블 -->
+    <div class="table-fill">
+      <table class="data-table" id="main-table">
+        <thead>
+          <tr>
+            <th style="width:36px;text-align:center">
+              <input type="checkbox" id="chk-all" onclick="toggleAll(this)"
+                style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer">
+            </th>
+            <th style="width:36px">No</th>
+            <th style="text-align:left;padding-left:10px;width:130px">품번</th>
+            <th style="text-align:left;padding-left:10px">품명</th>
+            <th style="text-align:left;padding-left:10px;width:130px">재질</th>
+            <th style="width:76px">도면 Rev</th>
+            <th class="r" style="width:96px">투입중량 (kg)</th>
+            <th class="r" style="width:110px">재료비 (원)</th>
+            <th class="r" style="width:120px">목표구매단가 (원)</th>
+            <th style="width:96px">구매구분</th>
+            <th style="width:86px">확정상태</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- 그리드 푸터 -->
+    <div class="grid-footer">
+      <div class="gf-item">전체 <span class="gf-cnt" id="cnt-total">0</span>건</div>
+      <div class="gf-sep"></div>
+      <div class="gf-item">구매대상 <span class="gf-cnt" id="cnt-purchase">0</span>건</div>
+      <div class="gf-sep"></div>
+      <div class="gf-item">확정 <span class="gf-cnt" id="cnt-confirmed">0</span>건</div>
+      <div class="gf-sep"></div>
+      <div class="gf-item">미확정 <span class="gf-cnt" id="cnt-unconfirmed">0</span>건</div>
+      <div class="gf-sep"></div>
+      <div class="gf-item">내제 <span class="gf-cnt" id="cnt-internal">0</span>건</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+/* ── Mock Data ── */
+const ROWS = [
+  { no:1, code:'H1110-T100', name:"Frame Sub Ass'y",    mat:'Aluminum 6061', rev:'Rev.B', weight:2.85, material:11168, target:12100, type:'구매대상', status:'확정'   },
+  { no:2, code:'H1110-T101', name:'Bracket Assy Upper', mat:'SPHC',          rev:'Rev.A', weight:0.42, material:1680,  target:2200,  type:'구매대상', status:'확정'   },
+  { no:3, code:'H1110-T102', name:'Cover Plate',        mat:'Aluminum 6061', rev:'Rev.A', weight:0.38, material:1490,  target:1800,  type:'구매대상', status:'미확정' },
+  { no:4, code:'H1110-T103', name:'Rubber Seal',        mat:'NBR70',         rev:'Rev.A', weight:0.08, material:320,   target:420,   type:'구매대상', status:'미확정' },
+  { no:5, code:'H1110-T104', name:'Bolt Set M8×16',     mat:'SCM435',        rev:'Rev.A', weight:0.12, material:480,   target:null,  type:'내제',     status:null    },
+];
+
+function fmt(n) { return n !== null ? n.toLocaleString() : '-'; }
+
+/* ── Render ── */
+function renderRows(rows) {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+
+  rows.forEach(r => {
+    const internal = r.type === '내제';
+    const tr = document.createElement('tr');
+    tr.dataset.code = r.code;
+
+    const typeBadge = internal
+      ? '<span class="badge badge-outline">내제</span>'
+      : '<span class="badge badge-prog">구매대상</span>';
+
+    let statusCell = '<span style="color:var(--text-mute)">-</span>';
+    if (r.status === '확정')   statusCell = '<span class="badge badge-prog">확정</span>';
+    if (r.status === '미확정') statusCell = '<span class="badge badge-wait">미확정</span>';
+
+    const targetCell = r.target
+      ? `<span style="font-weight:600">${fmt(r.target)}</span>`
+      : '<span style="color:var(--text-mute)">-</span>';
+
+    tr.innerHTML = `
+      <td style="text-align:center">
+        <input type="checkbox" class="row-chk" data-code="${r.code}"
+          style="width:14px;height:14px;accent-color:var(--blue);cursor:${internal?'not-allowed':'pointer'}"
+          ${internal ? 'disabled' : ''}
+          onchange="onRowCheck()">
+      </td>
+      <td class="c" style="color:var(--text-mute)">${r.no}</td>
+      <td style="padding-left:10px">
+        <a href="#" class="text-blue fw-600" style="text-decoration:none" onclick="return false">${r.code}</a>
+      </td>
+      <td style="padding-left:10px">${r.name}</td>
+      <td style="padding-left:10px;color:var(--text-sub)">${r.mat}</td>
+      <td class="c" style="color:var(--text-sub)">${r.rev}</td>
+      <td class="r">${r.weight.toFixed(2)}</td>
+      <td class="r">${fmt(r.material)}</td>
+      <td class="r">${targetCell}</td>
+      <td class="c">${typeBadge}</td>
+      <td class="c">${statusCell}</td>
+    `;
+
+    tr.addEventListener('click', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'A') return;
+      if (internal) return;
+      const chk = tr.querySelector('.row-chk');
+      chk.checked = !chk.checked;
+      tr.classList.toggle('selected', chk.checked);
+      onRowCheck();
+    });
+
+    tbody.appendChild(tr);
+  });
+
+  updateFooter(rows);
+}
+
+function updateFooter(rows) {
+  document.getElementById('cnt-total').textContent       = rows.length;
+  document.getElementById('cnt-purchase').textContent    = rows.filter(r => r.type === '구매대상').length;
+  document.getElementById('cnt-confirmed').textContent   = rows.filter(r => r.status === '확정').length;
+  document.getElementById('cnt-unconfirmed').textContent = rows.filter(r => r.status === '미확정').length;
+  document.getElementById('cnt-internal').textContent    = rows.filter(r => r.type === '내제').length;
+}
+
+/* ── Filter ── */
+function applyFilter() {
+  const code   = document.getElementById('f-code').value.trim().toLowerCase();
+  const name   = document.getElementById('f-name').value.trim().toLowerCase();
+  const type   = document.getElementById('f-type').value;
+  const status = document.getElementById('f-status').value;
+
+  const filtered = ROWS.filter(r => {
+    if (code   && !r.code.toLowerCase().includes(code))   return false;
+    if (name   && !r.name.toLowerCase().includes(name))   return false;
+    if (type   && r.type !== type)                         return false;
+    if (status && r.status !== status)                     return false;
+    return true;
+  });
+
+  document.getElementById('chk-all').checked       = false;
+  document.getElementById('chk-all').indeterminate = false;
+  document.getElementById('btn-confirm').disabled  = true;
+  renderRows(filtered);
+}
+
+/* ── Checkbox ── */
+function toggleAll(master) {
+  document.querySelectorAll('.row-chk:not(:disabled)').forEach(c => {
+    c.checked = master.checked;
+    c.closest('tr').classList.toggle('selected', master.checked);
+  });
+  onRowCheck();
+}
+
+function onRowCheck() {
+  const all     = document.querySelectorAll('.row-chk:not(:disabled)');
+  const checked = document.querySelectorAll('.row-chk:checked');
+  const master  = document.getElementById('chk-all');
+
+  master.indeterminate = checked.length > 0 && checked.length < all.length;
+  master.checked       = all.length > 0 && checked.length === all.length;
+  document.getElementById('btn-confirm').disabled = checked.length === 0;
+}
+
+/* ── Actions ── */
+function confirmSelected() {
+  const checked = document.querySelectorAll('.row-chk:checked');
+  let count = 0;
+  checked.forEach(chk => {
+    const row = ROWS.find(r => r.code === chk.dataset.code);
+    if (row) { row.type = '구매대상'; row.status = '확정'; count++; }
+    chk.checked = false;
+    chk.closest('tr').classList.remove('selected');
+  });
+  document.getElementById('chk-all').checked       = false;
+  document.getElementById('chk-all').indeterminate = false;
+  document.getElementById('btn-confirm').disabled  = true;
+  applyFilter();
+  showToast(`${count}건을 구매대상으로 확정했습니다.`, 'ok');
+}
+
+function goRfq() {
+  window.location.href = '04-03_rfq_create.html';
+}
+
+/* ── Toast ── */
+let _toastTimer;
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  const color = type === 'ok' ? '#16a34a' : '#dc2626';
+  const icon  = type === 'ok' ? 'check-circle' : 'alert-circle';
+  t.innerHTML = `<i data-lucide="${icon}" style="width:16px;height:16px;color:${color}"></i>${msg}`;
+  t.style.display = 'flex';
+  lucide.createIcons();
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2600);
+}
+
+/* ── Init ── */
+renderRows(ROWS);
+</script>
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>APQP 일정 관리 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 검색 바 ── */
+  .search-wrap { flex:1; position:relative; max-width:400px; }
+  .search-wrap input {
+    width:100%; height:32px; border:1px solid var(--border); border-radius:4px;
+    padding:0 34px 0 12px; font-size:13px; font-family:'Pretendard',sans-serif;
+    color:var(--text); background:var(--surface); outline:none; transition:border-color .15s;
+  }
+  .search-wrap input:focus { border-color:var(--blue); box-shadow:0 0 0 2px rgba(26,86,170,.12); }
+  .search-wrap input::placeholder { color:var(--text-mute); }
+  .search-wrap .s-icon { position:absolute; right:9px; top:50%; transform:translateY(-50%); color:var(--text-mute); pointer-events:none; }
+
+  /* ── 좌우 분할 ── */
+  .main-split {
+    flex:1; overflow:hidden; display:flex;
+  }
+
+  /* ── 좌: 프로젝트 목록 패널 ── */
+  .left-panel {
+    width:300px; flex-shrink:0;
+    border-right:1px solid var(--border);
+    display:flex; flex-direction:column;
+    background:var(--surface);
+  }
+  .left-hdr {
+    height:36px; padding:0 14px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid var(--border);
+    background:var(--grid-head); flex-shrink:0;
+  }
+  .left-hdr-title { font-size:11px; font-weight:700; color:var(--text-sub); letter-spacing:0.3px; }
+  .left-hdr-cnt   { font-size:11px; color:var(--text-mute); font-variant-numeric:tabular-nums; }
+  .left-body { flex:1; overflow-y:auto; }
+  .left-body::-webkit-scrollbar { width:4px; }
+  .left-body::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:2px; }
+
+  /* 좌측 리스트 아이템 */
+  .left-item {
+    padding:10px 14px; border-bottom:1px solid var(--border);
+    cursor:pointer; transition:background .1s;
+    border-left:3px solid transparent;
+  }
+  .left-item:hover { background:var(--grid-hover); }
+  .left-item.active {
+    background:var(--blue-light);
+    border-left-color:var(--blue);
+  }
+  .li-top   { display:flex; align-items:center; justify-content:space-between; margin-bottom:3px; }
+  .li-code  { font-size:13px; font-weight:700; color:var(--navy); }
+  .left-item.active .li-code { color:var(--blue); }
+  .li-name  { font-size:12px; color:var(--text-sub); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .li-proj  { font-size:11px; color:var(--text-mute); margin-bottom:5px; }
+  .li-bot   { display:flex; align-items:center; justify-content:space-between; }
+  .li-phase { font-size:11px; font-weight:600; color:var(--text-sub); }
+  .li-phase.prog { color:var(--blue); }
+  .li-prog  { font-size:11px; color:var(--text-mute); font-variant-numeric:tabular-nums; }
+
+  /* 상태 점 (좌측 아이템) */
+  .stt { display:inline-flex; align-items:center; gap:4px; font-size:11px; white-space:nowrap; }
+  .stt::before { content:''; width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+  .stt-ok   { color:var(--text-sub);   } .stt-ok::before   { background:var(--navy); }
+  .stt-prog { color:var(--text-sub);   } .stt-prog::before { background:var(--text-sub); }
+  .stt-wait { color:var(--text-mute);  } .stt-wait::before { background:var(--border-strong); }
+  .stt-bad  { color:var(--status-bad); } .stt-bad::before  { background:var(--status-bad); }
+
+  /* ── 우: 상세 패널 ── */
+  .right-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); }
+
+  /* 정보 + 스텝퍼 섹션 */
+  .info-section {
+    display:flex; gap:12px; padding:12px 20px;
+    border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+
+  /* 프로젝트 정보 박스 */
+  .proj-box {
+    background:var(--surface); border:1px solid var(--border); border-radius:4px;
+    padding:12px 16px; width:296px; flex-shrink:0;
+  }
+  .box-cap {
+    font-size:11px; font-weight:700; color:var(--text-mute); letter-spacing:0.5px;
+    text-transform:uppercase; margin-bottom:10px;
+    display:flex; align-items:center;
+  }
+  .box-cap::after { content:''; flex:1; height:1px; background:var(--border); margin-left:8px; }
+  .pf-row { display:flex; align-items:baseline; padding:5px 0; border-bottom:1px solid var(--border); }
+  .pf-row:last-child { border-bottom:none; padding-bottom:0; }
+  .pf-label { font-size:12px; color:var(--text-mute); width:76px; flex-shrink:0; }
+  .pf-val   { font-size:12px; font-weight:600; color:var(--text); }
+
+  /* APQP 스텝퍼 박스 */
+  .stepper-box {
+    background:var(--surface); border:1px solid var(--border); border-radius:4px;
+    padding:12px 24px 16px; flex:1; display:flex; flex-direction:column;
+  }
+  .apqp-steps { display:flex; align-items:flex-start; flex:1; margin-top:6px; }
+  .apqp-phase { display:flex; flex-direction:column; align-items:center; flex:1; min-width:0; }
+  .apqp-conn  { flex:1; height:2px; margin-top:9px; background:var(--border-strong); flex-shrink:0; min-width:20px; }
+  .apqp-conn.done { background:var(--navy); }
+  .apqp-dot { width:20px; height:20px; border-radius:50%; flex-shrink:0; margin-bottom:8px; }
+  .apqp-dot.done    { background:var(--navy); }
+  .apqp-dot.active  { background:var(--blue); box-shadow:0 0 0 4px rgba(26,86,170,.15); }
+  .apqp-dot.pending { background:var(--surface); border:2px solid var(--border-strong); }
+  .apqp-name { font-size:13px; font-weight:600; white-space:nowrap; color:var(--text-sub); }
+  .apqp-phase.done   .apqp-name { color:var(--navy); }
+  .apqp-phase.active .apqp-name { color:var(--blue); }
+  .apqp-phase.pending .apqp-name { color:var(--text-mute); }
+  .apqp-date { font-size:11px; color:var(--text-mute); margin-top:4px; }
+  .apqp-st   { font-size:11px; margin-top:2px; color:var(--text-mute); }
+  .apqp-phase.done   .apqp-st { color:var(--text-sub); }
+  .apqp-phase.active .apqp-st { color:var(--blue); font-weight:600; }
+
+  /* 우측 서브 바 (항목 필터) */
+  .right-sub-bar {
+    height:40px; padding:0 20px; gap:16px;
+    background:var(--surface); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; flex-shrink:0;
+  }
+  .ss-btn {
+    background:none; border:none; cursor:pointer; padding:0;
+    font-size:12px; color:var(--text-sub); font-family:'Pretendard',sans-serif;
+    display:flex; align-items:center; gap:5px; transition:color .1s;
+  }
+  .ss-btn:hover { color:var(--text); }
+  .ss-btn.active { color:var(--blue); font-weight:600; }
+  .ss-cnt { font-weight:700; font-variant-numeric:tabular-nums; }
+  .ss-btn.active .ss-cnt { color:var(--blue); }
+
+  /* 그리드 */
+  .grid-area { flex:1; overflow:hidden; display:flex; flex-direction:column; padding:12px 20px 16px; }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  /* 상태 점 (그리드) */
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--text);       } .st-ok::before   { background:var(--navy); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+
+  .phase-tag        { font-size:11px; color:var(--text-sub); }
+  .phase-tag.active { color:var(--blue); font-weight:600; }
+
+  /* 빈 상태 */
+  .empty-state {
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:var(--text-mute); font-size:13px; gap:8px;
+  }
+</style>
+</head>
+
+<body data-menu="05-02">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">APQP 일정 관리</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-primary"><i data-lucide="plus"></i>APQP 등록</button>
+    </div>
+  </div>
+
+  <!-- 검색 바 (좌측 리스트 필터) -->
+  <div class="search-bar">
+    <div class="search-wrap">
+      <input type="text" id="list-search" placeholder="품번 또는 프로젝트 검색" oninput="renderList()">
+      <i data-lucide="search" class="s-icon" style="width:14px;height:14px"></i>
+    </div>
+    <div class="search-field">
+      <span class="search-label">단계</span>
+      <select class="search-select" style="width:110px" id="filter-phase" onchange="renderList()">
+        <option value="">전체</option>
+        <option value="계획">계획</option>
+        <option value="제품설계">제품설계</option>
+        <option value="공정설계">공정설계</option>
+        <option value="유효화">유효화</option>
+        <option value="양산">양산</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 메인 분할 영역 -->
+  <div class="main-split">
+
+    <!-- 좌: 프로젝트 목록 -->
+    <div class="left-panel">
+      <div class="left-hdr">
+        <span class="left-hdr-title">품번 목록</span>
+        <span class="left-hdr-cnt" id="list-cnt">4건</span>
+      </div>
+      <div class="left-body" id="left-body"></div>
+    </div>
+
+    <!-- 우: 상세 -->
+    <div class="right-panel" id="right-panel">
+      <!-- JS로 채워짐 -->
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+/* ── 데이터 ── */
+const PROJECTS = [
+  {
+    partCode: 'H1110-T100', partName: "Frame Sub Ass'y",
+    projectCode: 'PJT-520PHEV-FT-2026', customer: '현대자동차', vehicle: '520 PHEV',
+    sop: '2026-10-01', manager: '이품질', dept: '품질팀',
+    currentPhase: '공정설계', totalItems: 15, doneItems: 7, delayItems: 1,
+    phases: [
+      { name:'계획',    date:'2026-01-25', status:'done'    },
+      { name:'제품설계', date:'2026-03-05', status:'done'   },
+      { name:'공정설계', date:'2026-04-30', status:'active' },
+      { name:'유효화',  date:'2026-07-20', status:'pending' },
+      { name:'양산',    date:'2026-09-15', status:'pending' },
+    ],
+    items: [
+      { name:'프로젝트 계획서 작성',   phase:'계획',    plan:'2026-01-15', actual:'2026-01-12', mgr:'김개발', st:'ok',   note:'' },
+      { name:'고객 요구사항 검토',     phase:'계획',    plan:'2026-01-20', actual:'2026-01-18', mgr:'이품질', st:'ok',   note:'' },
+      { name:'개발 팀 구성',          phase:'계획',    plan:'2026-01-25', actual:'2026-01-24', mgr:'박팀장', st:'ok',   note:'' },
+      { name:'DFMEA 작성',           phase:'제품설계', plan:'2026-02-15', actual:'2026-02-14', mgr:'정설계', st:'ok',   note:'' },
+      { name:'설계 도면 승인',        phase:'제품설계', plan:'2026-02-25', actual:'2026-02-28', mgr:'정설계', st:'ok',   note:'3일 지연 완료' },
+      { name:'재료 사양 확정',        phase:'제품설계', plan:'2026-03-05', actual:'2026-03-04', mgr:'김구매', st:'ok',   note:'' },
+      { name:'공정흐름도 작성',       phase:'공정설계', plan:'2026-03-20', actual:'2026-03-22', mgr:'이공정', st:'ok',   note:'' },
+      { name:'PFMEA 작성',          phase:'공정설계', plan:'2026-04-05', actual:'—',          mgr:'이공정', st:'prog', note:'초안 검토 중' },
+      { name:'Control Plan 수립',   phase:'공정설계', plan:'2026-04-15', actual:'—',          mgr:'이품질', st:'prog', note:'' },
+      { name:'설비·공구 계획',        phase:'공정설계', plan:'2026-04-30', actual:'—',          mgr:'이공정', st:'bad',  note:'D+35 초과' },
+      { name:'측정시스템 분석 (MSA)', phase:'공정설계', plan:'2026-05-20', actual:'—',          mgr:'이품질', st:'wait', note:'' },
+      { name:'시험·검증 결과 확인',   phase:'유효화',  plan:'2026-06-30', actual:'—',          mgr:'정설계', st:'wait', note:'' },
+      { name:'고객 승인 시험',        phase:'유효화',  plan:'2026-07-20', actual:'—',          mgr:'김영업', st:'wait', note:'' },
+      { name:'PPAP 제출',           phase:'양산',    plan:'2026-08-15', actual:'—',          mgr:'이품질', st:'wait', note:'' },
+      { name:'ERP 양산 전환',       phase:'양산',    plan:'2026-09-15', actual:'—',          mgr:'박팀장', st:'wait', note:'' },
+    ]
+  },
+  {
+    partCode: 'H1110-T101', partName: 'Bracket Assy Upper',
+    projectCode: 'PJT-520PHEV-FT-2026', customer: '현대자동차', vehicle: '520 PHEV',
+    sop: '2026-10-01', manager: '이품질', dept: '품질팀',
+    currentPhase: '제품설계', totalItems: 12, doneItems: 4, delayItems: 0,
+    phases: [
+      { name:'계획',    date:'2026-01-25', status:'done'    },
+      { name:'제품설계', date:'2026-03-20', status:'active' },
+      { name:'공정설계', date:'2026-05-15', status:'pending' },
+      { name:'유효화',  date:'2026-08-01', status:'pending' },
+      { name:'양산',    date:'2026-09-15', status:'pending' },
+    ],
+    items: [
+      { name:'프로젝트 계획서 작성', phase:'계획',    plan:'2026-01-15', actual:'2026-01-12', mgr:'김개발', st:'ok',   note:'' },
+      { name:'고객 요구사항 검토',   phase:'계획',    plan:'2026-01-20', actual:'2026-01-18', mgr:'이품질', st:'ok',   note:'' },
+      { name:'개발 팀 구성',        phase:'계획',    plan:'2026-01-25', actual:'2026-01-24', mgr:'박팀장', st:'ok',   note:'' },
+      { name:'DFMEA 작성',         phase:'계획',    plan:'2026-01-30', actual:'2026-01-28', mgr:'정설계', st:'ok',   note:'' },
+      { name:'설계 도면 승인',      phase:'제품설계', plan:'2026-03-05', actual:'—',          mgr:'정설계', st:'prog', note:'Rev.A 검토 중' },
+      { name:'재료 사양 확정',      phase:'제품설계', plan:'2026-03-20', actual:'—',          mgr:'김구매', st:'prog', note:'' },
+      { name:'공정흐름도 작성',     phase:'공정설계', plan:'2026-04-10', actual:'—',          mgr:'이공정', st:'wait', note:'' },
+      { name:'PFMEA 작성',        phase:'공정설계', plan:'2026-04-25', actual:'—',          mgr:'이공정', st:'wait', note:'' },
+      { name:'Control Plan 수립', phase:'공정설계', plan:'2026-05-05', actual:'—',          mgr:'이품질', st:'wait', note:'' },
+      { name:'MSA 분석',          phase:'공정설계', plan:'2026-05-15', actual:'—',          mgr:'이품질', st:'wait', note:'' },
+      { name:'시험·검증 결과',     phase:'유효화',  plan:'2026-07-10', actual:'—',          mgr:'정설계', st:'wait', note:'' },
+      { name:'PPAP 제출',         phase:'양산',    plan:'2026-08-20', actual:'—',          mgr:'이품질', st:'wait', note:'' },
+    ]
+  },
+  {
+    partCode: 'H2210-R200', partName: 'Rear Bumper Assy',
+    projectCode: 'PJT-SANTA-RB-2026', customer: '현대자동차', vehicle: 'SANTA-FE',
+    sop: '2027-03-01', manager: '박품질', dept: '품질팀',
+    currentPhase: '계획', totalItems: 15, doneItems: 2, delayItems: 0,
+    phases: [
+      { name:'계획',    date:'2026-04-30', status:'active'  },
+      { name:'제품설계', date:'2026-07-31', status:'pending' },
+      { name:'공정설계', date:'2026-10-31', status:'pending' },
+      { name:'유효화',  date:'2027-01-15', status:'pending' },
+      { name:'양산',    date:'2027-02-15', status:'pending' },
+    ],
+    items: [
+      { name:'프로젝트 계획서 작성', phase:'계획', plan:'2026-04-10', actual:'2026-04-09', mgr:'박품질', st:'ok',   note:'' },
+      { name:'고객 요구사항 검토',   phase:'계획', plan:'2026-04-20', actual:'2026-04-18', mgr:'박품질', st:'ok',   note:'' },
+      { name:'개발 팀 구성',        phase:'계획', plan:'2026-04-30', actual:'—',          mgr:'박팀장', st:'prog', note:'' },
+      { name:'DFMEA 작성',         phase:'제품설계', plan:'2026-06-15', actual:'—',      mgr:'정설계', st:'wait', note:'' },
+      { name:'설계 도면 승인',      phase:'제품설계', plan:'2026-07-15', actual:'—',      mgr:'정설계', st:'wait', note:'' },
+    ]
+  },
+  {
+    partCode: 'H3310-B150', partName: 'Battery Mount Assy',
+    projectCode: 'PJT-ION9-BM-2026', customer: '현대자동차', vehicle: 'IONIQ 9',
+    sop: '2027-06-01', manager: '김품질', dept: '품질팀',
+    currentPhase: '계획', totalItems: 15, doneItems: 0, delayItems: 0,
+    phases: [
+      { name:'계획',    date:'2026-06-30', status:'pending' },
+      { name:'제품설계', date:'2026-09-30', status:'pending' },
+      { name:'공정설계', date:'2026-12-31', status:'pending' },
+      { name:'유효화',  date:'2027-03-31', status:'pending' },
+      { name:'양산',    date:'2027-05-15', status:'pending' },
+    ],
+    items: [
+      { name:'프로젝트 계획서 작성', phase:'계획', plan:'2026-06-15', actual:'—', mgr:'김품질', st:'wait', note:'' },
+      { name:'고객 요구사항 검토',   phase:'계획', plan:'2026-06-25', actual:'—', mgr:'김품질', st:'wait', note:'' },
+    ]
+  }
+];
+
+const ST_LABEL = { ok:'완료', prog:'진행중', bad:'지연', wait:'대기' };
+const ST_CLASS = { ok:'st-ok', prog:'st-prog', bad:'st-bad', wait:'st-wait' };
+const STT_CLASS = { ok:'stt-ok', prog:'stt-prog', bad:'stt-bad', wait:'stt-wait' };
+const PHASE_ACTIVE = ['공정설계', '제품설계', '계획'];
+
+let selectedCode = 'H1110-T100';
+let rightPhaseFilter = '';
+let rightStatusFilter = '';
+
+/* ── 좌측 리스트 렌더링 ── */
+function renderList() {
+  const q     = document.getElementById('list-search').value.trim().toLowerCase();
+  const phase = document.getElementById('filter-phase').value;
+
+  const filtered = PROJECTS.filter(p => {
+    const matchQ = !q || p.partCode.toLowerCase().includes(q) || p.projectCode.toLowerCase().includes(q) || p.partName.toLowerCase().includes(q);
+    const matchP = !phase || p.currentPhase === phase;
+    return matchQ && matchP;
+  });
+
+  document.getElementById('list-cnt').textContent = filtered.length + '건';
+
+  const body = document.getElementById('left-body');
+  body.innerHTML = filtered.map(p => {
+    const pct   = Math.round(p.doneItems / p.totalItems * 100);
+    const isAct = PHASE_ACTIVE.includes(p.currentPhase);
+    const stClass = p.delayItems > 0 ? 'stt-bad' : (isAct ? 'stt-prog' : 'stt-wait');
+    const stLabel = p.delayItems > 0 ? '지연' : (isAct ? '진행중' : '대기');
+    return `
+      <div class="left-item${p.partCode === selectedCode ? ' active' : ''}"
+           onclick="selectProject('${p.partCode}')">
+        <div class="li-top">
+          <span class="li-code">${p.partCode}</span>
+          <span class="stt ${stClass}">${stLabel}</span>
+        </div>
+        <div class="li-name">${p.partName}</div>
+        <div class="li-proj">${p.projectCode}</div>
+        <div class="li-bot">
+          <span class="li-phase${isAct ? ' prog' : ''}">${p.currentPhase} 단계</span>
+          <span class="li-prog">${p.doneItems}/${p.totalItems} (${pct}%)</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ── 우측 상세 렌더링 ── */
+function selectProject(code) {
+  selectedCode = code;
+  rightPhaseFilter = '';
+  rightStatusFilter = '';
+  renderList();
+  renderRight();
+}
+
+function renderRight() {
+  const p = PROJECTS.find(x => x.partCode === selectedCode);
+  if (!p) return;
+
+  const pct = Math.round(p.doneItems / p.totalItems * 100);
+  const inProgress = p.items.filter(i => i.st === 'prog').length;
+  const delayed    = p.items.filter(i => i.st === 'bad').length;
+  const waiting    = p.items.filter(i => i.st === 'wait').length;
+
+  /* 스텝퍼 HTML */
+  let stepperHtml = '<div class="apqp-steps">';
+  p.phases.forEach((ph, i) => {
+    stepperHtml += `
+      <div class="apqp-phase ${ph.status}">
+        <div class="apqp-dot ${ph.status}"></div>
+        <div class="apqp-name">${ph.name}</div>
+        <div class="apqp-date">${ph.date}</div>
+        <div class="apqp-st">${ph.status === 'done' ? '완료' : ph.status === 'active' ? '진행중' : '대기'}</div>
+      </div>`;
+    if (i < p.phases.length - 1) {
+      const connDone = ph.status === 'done' ? ' done' : '';
+      stepperHtml += `<div class="apqp-conn${connDone}"></div>`;
+    }
+  });
+  stepperHtml += '</div>';
+
+  /* 항목 필터링 */
+  const filteredItems = p.items.filter(it => {
+    const mp = !rightPhaseFilter || it.phase === rightPhaseFilter;
+    const ms = !rightStatusFilter || it.st === rightStatusFilter;
+    return mp && ms;
+  });
+
+  /* 항목 그리드 행 */
+  const rows = filteredItems.map((it, i) => {
+    const isActivePh = (p.currentPhase === it.phase);
+    return `
+      <tr>
+        <td class="c"><input type="checkbox"></td>
+        <td style="padding-left:12px;font-weight:500">${it.name}</td>
+        <td class="c"><span class="phase-tag${isActivePh ? ' active' : ''}">${it.phase}</span></td>
+        <td class="c muted">${it.plan}</td>
+        <td class="c muted">${it.actual}</td>
+        <td class="c muted">${it.mgr}</td>
+        <td class="c"><span class="st ${ST_CLASS[it.st]}">${ST_LABEL[it.st]}</span></td>
+        <td style="padding-left:12px" class="muted">${it.note}</td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('right-panel').innerHTML = `
+    <!-- 정보 + 스텝퍼 -->
+    <div class="info-section">
+      <div class="proj-box">
+        <div class="box-cap">프로젝트 정보</div>
+        <div class="pf-row"><span class="pf-label">프로젝트</span><span class="pf-val">${p.projectCode}</span></div>
+        <div class="pf-row"><span class="pf-label">품번</span><span class="pf-val">${p.partCode} · ${p.partName}</span></div>
+        <div class="pf-row"><span class="pf-label">고객사</span><span class="pf-val">${p.customer} / ${p.vehicle}</span></div>
+        <div class="pf-row"><span class="pf-label">SOP</span><span class="pf-val">${p.sop}</span></div>
+        <div class="pf-row"><span class="pf-label">담당</span><span class="pf-val">${p.manager} / ${p.dept}</span></div>
+        <div class="pf-row"><span class="pf-label">현재 단계</span><span class="pf-val" style="color:var(--blue)">${p.currentPhase}</span></div>
+        <div class="pf-row"><span class="pf-label">완료율</span><span class="pf-val">${p.doneItems} / ${p.totalItems} (${pct}%)</span></div>
+      </div>
+      <div class="stepper-box">
+        <div class="box-cap">APQP 5단계 진행 현황</div>
+        ${stepperHtml}
+      </div>
+    </div>
+
+    <!-- 항목 필터 + 상태 카운트 -->
+    <div class="right-sub-bar">
+      <div class="search-field">
+        <span class="search-label">단계</span>
+        <select class="search-select" style="width:110px" onchange="rightPhaseFilter=this.value;renderRight()">
+          <option value="">전체</option>
+          ${p.phases.map(ph => `<option value="${ph.name}"${rightPhaseFilter===ph.name?' selected':''}>${ph.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="search-field">
+        <span class="search-label">상태</span>
+        <select class="search-select" style="width:90px" onchange="rightStatusFilter=this.value;renderRight()">
+          <option value="">전체</option>
+          <option value="ok">완료</option>
+          <option value="prog">진행중</option>
+          <option value="bad">지연</option>
+          <option value="wait">대기</option>
+        </select>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:16px">
+        <button class="ss-btn${!rightStatusFilter?' active':''}" onclick="rightStatusFilter='';renderRight()">전체 <span class="ss-cnt">${p.totalItems}</span></button>
+        <button class="ss-btn${rightStatusFilter==='ok'?' active':''}" onclick="rightStatusFilter='ok';renderRight()">완료 <span class="ss-cnt">${p.doneItems}</span></button>
+        <button class="ss-btn${rightStatusFilter==='prog'?' active':''}" onclick="rightStatusFilter='prog';renderRight()">진행중 <span class="ss-cnt">${inProgress}</span></button>
+        <button class="ss-btn${rightStatusFilter==='bad'?' active':''}" onclick="rightStatusFilter='bad';renderRight()" style="color:${delayed>0?'var(--status-bad)':''}">지연 <span class="ss-cnt">${delayed}</span></button>
+        <button class="ss-btn${rightStatusFilter==='wait'?' active':''}" onclick="rightStatusFilter='wait';renderRight()">대기 <span class="ss-cnt">${waiting}</span></button>
+      </div>
+    </div>
+
+    <!-- 항목 그리드 -->
+    <div class="grid-area">
+      <div class="table-fill">
+        <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+          <thead>
+            <tr>
+              <th style="width:40px"><input type="checkbox"></th>
+              <th style="min-width:220px">항목</th>
+              <th style="width:100px">단계</th>
+              <th style="width:108px">계획일</th>
+              <th style="width:108px">실적일</th>
+              <th style="width:90px">담당자</th>
+              <th style="width:80px">상태</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  lucide.createIcons();
+}
+
+/* ── 초기 렌더 ── */
+renderList();
+renderRight();
+</script>
+
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

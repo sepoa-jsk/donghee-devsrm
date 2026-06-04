@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>RFQ 상세 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 스냅 인라인 표 ── */
+  .snap-table { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; }
+  .snap-table th {
+    background:var(--grid-head); padding:0 12px; height:30px; font-weight:600;
+    color:var(--text); text-align:center; border:1px solid var(--border); white-space:nowrap;
+  }
+  .snap-table td {
+    padding:0 12px; height:30px; border:1px solid var(--border); color:var(--text);
+    vertical-align:middle;
+  }
+  .snap-table td.r { text-align:right; font-variant-numeric:tabular-nums; }
+  .snap-table td.c { text-align:center; }
+
+  /* ── 상태 점 ── */
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--status-ok);  } .st-ok::before   { background:var(--status-ok); }
+  .st-prog { color:var(--status-prog);} .st-prog::before { background:var(--status-prog); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+</style>
+</head>
+
+<body data-menu="04-04">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">RFQ 상세</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="location.href='04-02_rfq_list.html'">
+        <i data-lucide="arrow-left"></i>목록
+      </button>
+      <button class="btn btn-secondary" onclick="location.href='04-05_supplier_quote.html'">
+        <i data-lucide="send"></i>협력사 견적 제출
+      </button>
+      <button class="btn btn-primary" onclick="location.href='04-06_quote_compare.html'">
+        <i data-lucide="bar-chart-2"></i>견적 비교
+      </button>
+    </div>
+  </div>
+
+  <div class="content-scroll">
+
+    <!-- 1. RFQ 정보 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">RFQ 정보</span>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">RFQ번호</label>
+          <input class="form-input" value="RFQ-2026-0012" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">품번</label>
+          <input class="form-input" value="H1110-T100" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">품명</label>
+          <input class="form-input" value="Frame Sub Ass'y" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">담당자</label>
+          <input class="form-input" value="김구매" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">발송일</label>
+          <input class="form-input" value="2026-02-10" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">마감일</label>
+          <input class="form-input" value="2026-02-28" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">프로젝트</label>
+          <input class="form-input" value="PJT-520PHEV-FT-2026" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">재질</label>
+          <input class="form-input" value="Aluminum 6061" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 4년치 단가 요청 조건 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">4년치 단가 요청 조건</span>
+      </div>
+      <table class="snap-table">
+        <thead>
+          <tr>
+            <th style="width:200px;text-align:left;padding-left:12px">구분</th>
+            <th style="width:140px">1차년 (2026)</th>
+            <th style="width:140px">2차년 (2027)</th>
+            <th style="width:140px">3차년 (2028)</th>
+            <th style="width:140px">4차년 (2029)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color:var(--text)">요청 단가 기준 (원)</td>
+            <td class="c" style="color:var(--text-mute)">협력사 제출</td>
+            <td class="c" style="color:var(--text-mute)">협력사 제출</td>
+            <td class="c" style="color:var(--text-mute)">협력사 제출</td>
+            <td class="c" style="color:var(--text-mute)">협력사 제출</td>
+          </tr>
+          <tr>
+            <td style="color:var(--text)">인하율 (%)</td>
+            <td class="c">0</td>
+            <td class="c">2</td>
+            <td class="c">3</td>
+            <td class="c">3</td>
+          </tr>
+          <tr>
+            <td style="color:var(--text)">옵션율 (%)</td>
+            <td class="c">0</td>
+            <td class="c">1</td>
+            <td class="c">1</td>
+            <td class="c">2</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3. 대상 협력사 진행 현황 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">대상 협력사 진행 현황</span>
+      </div>
+      <table class="data-table" style="border:1px solid var(--border);border-radius:4px;margin-top:6px">
+        <thead>
+          <tr>
+            <th>협력사</th>
+            <th style="width:110px">발송일</th>
+            <th style="width:110px">열람일</th>
+            <th style="width:110px">견적 제출일</th>
+            <th style="width:100px">진행 상태</th>
+            <th style="width:80px">Breakdown</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding-left:12px">A사 (동희부품)</td>
+            <td class="c muted">2026-02-10</td>
+            <td class="c muted">2026-02-11</td>
+            <td class="c muted">2026-02-20</td>
+            <td class="c"><span class="st st-ok">제출완료</span></td>
+            <td class="c"><a class="td-link" href="04-06_quote_compare.html">보기</a></td>
+          </tr>
+          <tr>
+            <td style="padding-left:12px">B사 (한국알미늄)</td>
+            <td class="c muted">2026-02-10</td>
+            <td class="c muted">2026-02-15</td>
+            <td class="c" style="color:var(--text-mute)">—</td>
+            <td class="c"><span class="st st-prog">열람</span></td>
+            <td class="c" style="color:var(--text-mute)">—</td>
+          </tr>
+          <tr>
+            <td style="padding-left:12px">C사 (신흥정공)</td>
+            <td class="c muted">2026-02-10</td>
+            <td class="c" style="color:var(--text-mute)">—</td>
+            <td class="c" style="color:var(--text-mute)">—</td>
+            <td class="c"><span class="st st-wait">미열람</span></td>
+            <td class="c" style="color:var(--text-mute)">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

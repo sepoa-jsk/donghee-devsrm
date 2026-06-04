@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>품번 목록 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .search-wrap { flex:1; position:relative; max-width:560px; }
+  .search-wrap input {
+    width:100%; height:32px; border:1px solid var(--border); border-radius:4px;
+    padding:0 34px 0 12px; font-size:13px; font-family:'Pretendard',sans-serif;
+    color:var(--text); background:var(--surface); outline:none; transition:border-color .15s;
+  }
+  .search-wrap input:focus { border-color:var(--blue); box-shadow:0 0 0 2px rgba(26,86,170,.12); }
+  .search-wrap input::placeholder { color:var(--text-mute); }
+  .search-wrap .s-icon { position:absolute; right:9px; top:50%; transform:translateY(-50%); color:#dc2626; pointer-events:none; }
+  .btn-ctrl {
+    height:32px; padding:0 12px; border-radius:4px;
+    font-size:13px; font-family:'Pretendard',sans-serif; font-weight:500;
+    display:inline-flex; align-items:center; gap:5px;
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    cursor:pointer; white-space:nowrap; transition:background .12s;
+  }
+  .btn-ctrl:hover { background:var(--bg); }
+  .date-range {
+    height:32px; display:flex; align-items:center; gap:4px;
+    border:1px solid var(--border); border-radius:4px;
+    padding:0 10px; background:var(--surface); font-size:12px;
+  }
+  .date-range input[type="date"] {
+    border:none; outline:none; font-size:12px;
+    font-family:'Pretendard',sans-serif; color:var(--text);
+    background:transparent; width:108px; cursor:pointer;
+  }
+  .date-range input[type="date"]::-webkit-calendar-picker-indicator { display:none; }
+  .date-range .dr-sep { color:var(--text-mute); }
+  .status-strip {
+    height:36px; background:var(--surface);
+    display:flex; align-items:center; padding:0 24px; gap:24px; flex-shrink:0;
+  }
+  .ss-btn {
+    background:none; border:none; cursor:pointer;
+    font-size:12px; color:var(--text-sub); font-family:'Pretendard',sans-serif;
+    display:flex; align-items:center; gap:5px; padding:0; transition:color .1s;
+  }
+  .ss-btn:hover { color:var(--text); }
+  .ss-btn.active { color:var(--blue); font-weight:600; }
+  .ss-cnt { font-weight:700; font-variant-numeric:tabular-nums; }
+  .ss-btn.active .ss-cnt { color:var(--blue); }
+  .filter-panel {
+    background:var(--bg); border-bottom:1px solid var(--border);
+    padding:10px 24px; display:none; flex-shrink:0;
+    gap:16px; align-items:center; flex-wrap:wrap;
+  }
+  .filter-panel.open { display:flex; }
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column;
+    padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--text);       } .st-ok::before   { background:var(--navy); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+</style>
+</head>
+
+<body data-menu="02-01">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">품번 목록</span>
+  </div>
+
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-ctrl" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-ctrl" onclick="toggleStatusPanel()">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to"   value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+    <div class="ml-auto">
+      <button class="btn btn-primary" onclick="location.href='02-02_part_detail.html'">
+        <i data-lucide="plus"></i>품번 등록
+      </button>
+    </div>
+  </div>
+
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">프로젝트</span>
+      <input type="text" class="search-input" id="f-proj" placeholder="코드/명" style="width:150px" oninput="applyFilter()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">품번</span>
+      <input type="text" class="search-input" id="f-code" placeholder="품번" style="width:110px" oninput="applyFilter()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">재질</span>
+      <input type="text" class="search-input" id="f-mat" placeholder="재질명" style="width:100px" oninput="applyFilter()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">구매구분</span>
+      <select class="search-select" id="f-type" onchange="applyFilter()" style="width:100px">
+        <option value="">전체</option>
+        <option value="구매대상">구매대상</option>
+        <option value="내제">내제</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="status-strip" id="status-strip">
+    <button class="ss-btn active" data-s="" onclick="setStatus(this,'')">
+      전체 <span class="ss-cnt" id="cnt-all">0</span>
+    </button>
+    <button class="ss-btn" data-s="개발중" onclick="setStatus(this,'개발중')">
+      개발중 <span class="ss-cnt" id="cnt-dev">0</span>
+    </button>
+    <button class="ss-btn" data-s="도면등록중" onclick="setStatus(this,'도면등록중')">
+      도면등록중 <span class="ss-cnt" id="cnt-draw">0</span>
+    </button>
+    <button class="ss-btn" data-s="양산" onclick="setStatus(this,'양산')">
+      양산 <span class="ss-cnt" id="cnt-prod">0</span>
+    </button>
+    <button class="ss-btn" data-s="폐지" onclick="setStatus(this,'폐지')">
+      폐지 <span class="ss-cnt" id="cnt-obs">0</span>
+    </button>
+  </div>
+
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="main-table">
+        <thead>
+          <tr>
+            <th style="width:36px">
+              <input type="checkbox" id="chk-all" onclick="toggleAll(this)"
+                style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer">
+            </th>
+            <th style="width:36px">No</th>
+            <th style="width:160px">프로젝트</th>
+            <th style="width:120px">품번</th>
+            <th>품명</th>
+            <th style="width:110px">재질</th>
+            <th style="width:72px">도면 Rev</th>
+            <th style="width:80px">레벨</th>
+            <th style="width:80px">구매구분</th>
+            <th class="r" style="width:116px">목표구매단가(원)</th>
+            <th style="width:96px">등록일</th>
+            <th style="width:80px">상태</th>
+            <th style="width:56px">상세</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const ROWS = [
+  { no:1,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM', code:'H1110-T100',  name:"Frame Sub Ass'y",    mat:'Aluminum 6061', rev:'Rev.B', level:'1', type:'구매대상', target:12100, date:'2026-01-05', status:'개발중' },
+  { no:2,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM', code:'H1110-T101',  name:'Bracket Assy Upper', mat:'SPCC',          rev:'Rev.A', level:'2', type:'구매대상', target:2200,  date:'2026-01-05', status:'개발중' },
+  { no:3,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM', code:'H1110-T101A', name:'Upper Bracket Body', mat:'SPCC',          rev:'Rev.A', level:'3', type:'내제',     target:1600,  date:'2026-01-05', status:'개발중' },
+  { no:4,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM', code:'H1110-T101B', name:'Mounting Tab',       mat:'SPCC',          rev:'Rev.A', level:'3', type:'내제',     target:null,  date:'2026-01-05', status:'개발중' },
+  { no:5,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM', code:'H1110-T102',  name:'Cover Plate',        mat:'Aluminum 6061', rev:'Rev.A', level:'2', type:'구매대상', target:1800,  date:'2026-01-10', status:'개발중' },
+  { no:6,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM', code:'H1110-T102A', name:'Cover Base Plate',   mat:'Aluminum 6061', rev:'Rev.A', level:'3', type:'내제',     target:1500,  date:'2026-01-10', status:'개발중' },
+  { no:7,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM', code:'H1110-T103',  name:'Rubber Seal',        mat:'NBR70',         rev:'Rev.A', level:'2', type:'사급',     target:420,   date:'2026-01-10', status:'개발중' },
+  { no:8,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM', code:'H1110-T104',  name:'Pipe Connector',     mat:'Aluminum 6061', rev:'Rev.A', level:'2', type:'구매대상', target:1100,  date:'2026-01-10', status:'개발중' },
+  { no:9,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM', code:'H1110-T105',  name:'Hose Assembly',      mat:'EPDM',          rev:'Rev.A', level:'2', type:'구매대상', target:3200,  date:'2026-01-10', status:'개발중' },
+  { no:10, proj:'PJT-NX5-CM-2026',     projName:'NX5 쿨링모듈', code:'K2200-C100',  name:'Cooling Module Assy',mat:'Aluminum 6061', rev:'Rev.A', level:'1', type:'구매대상', target:18500, date:'2026-02-10', status:'개발중' },
+  { no:11, proj:'PJT-MQ4-BR-2026',     projName:'MQ4 브래킷',   code:'M3300-B100',  name:'Bracket Assy',       mat:'SPCC',          rev:'Rev.A', level:'1', type:'구매대상', target:9500,  date:'2026-03-05', status:'개발중' },
+];
+
+let activeStatus = '';
+
+function fmt(n) { return n !== null && n !== undefined ? n.toLocaleString() : '-'; }
+
+function stText(s) {
+  const map = { '개발중':'st-prog', '도면등록중':'st-wait', '양산':'st-ok', '폐지':'st-bad' };
+  return `<span class="st ${map[s] || 'st-wait'}">${s}</span>`;
+}
+
+function updateStrip(rows) {
+  document.getElementById('cnt-all').textContent  = rows.length;
+  document.getElementById('cnt-dev').textContent  = rows.filter(r => r.status === '개발중').length;
+  document.getElementById('cnt-draw').textContent = rows.filter(r => r.status === '도면등록중').length;
+  document.getElementById('cnt-prod').textContent = rows.filter(r => r.status === '양산').length;
+  document.getElementById('cnt-obs').textContent  = rows.filter(r => r.status === '폐지').length;
+}
+
+function renderRows(rows) {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.innerHTML = `
+      <td style="text-align:center">
+        <input type="checkbox" class="row-chk"
+          style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer"
+          onchange="onRowCheck()">
+      </td>
+      <td style="text-align:center;color:var(--text-mute)">${r.no}</td>
+      <td style="padding-left:10px">
+        <div style="font-weight:500;color:var(--text)">${r.projName}</div>
+        <div style="font-size:11px;color:var(--text-mute)">${r.proj}</div>
+      </td>
+      <td style="text-align:center">
+        <a href="02-02_part_detail.html" class="td-link" onclick="event.stopPropagation()">${r.code}</a>
+      </td>
+      <td style="padding-left:10px;color:var(--text-sub)">${r.name}</td>
+      <td style="text-align:center;color:var(--text-sub)">${r.mat}</td>
+      <td style="text-align:center;color:var(--text-sub)">${r.rev}</td>
+      <td style="text-align:center;color:var(--text-mute);font-size:11px">${r.level}레벨</td>
+      <td style="text-align:center;color:var(--text-sub);font-size:11px">${r.type}</td>
+      <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${fmt(r.target)}</td>
+      <td style="text-align:center;color:var(--text-mute);font-size:11px;font-variant-numeric:tabular-nums">${r.date}</td>
+      <td style="text-align:center">${stText(r.status)}</td>
+      <td style="text-align:center">
+        <button class="btn btn-ghost btn-sm btn-grid"
+          onclick="event.stopPropagation();location.href='02-02_part_detail.html'">
+          <i data-lucide="chevron-right"></i>
+        </button>
+      </td>
+    `;
+    tr.addEventListener('click', e => {
+      if (e.target.tagName === 'INPUT' || e.target.closest('button') || e.target.tagName === 'A') return;
+      location.href = '02-02_part_detail.html';
+    });
+    tbody.appendChild(tr);
+  });
+  lucide.createIcons();
+}
+
+function getBaseFiltered() {
+  const q    = document.getElementById('f-search').value.trim().toLowerCase();
+  const proj = (document.getElementById('f-proj') || {}).value?.trim().toLowerCase() || '';
+  const code = (document.getElementById('f-code') || {}).value?.trim().toLowerCase() || '';
+  const mat  = (document.getElementById('f-mat')  || {}).value?.trim().toLowerCase() || '';
+  const type = (document.getElementById('f-type') || {}).value || '';
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+
+  return ROWS.filter(r => {
+    if (q    && !r.code.toLowerCase().includes(q) && !r.name.toLowerCase().includes(q)
+              && !r.projName.toLowerCase().includes(q)) return false;
+    if (proj && !r.proj.toLowerCase().includes(proj) && !r.projName.toLowerCase().includes(proj)) return false;
+    if (code && !r.code.toLowerCase().includes(code)) return false;
+    if (mat  && !r.mat.toLowerCase().includes(mat))   return false;
+    if (type && r.type !== type)   return false;
+    if (from && r.date < from)     return false;
+    if (to   && r.date > to)       return false;
+    return true;
+  });
+}
+
+function applyFilter() {
+  const base = getBaseFiltered();
+  const rows = activeStatus ? base.filter(r => r.status === activeStatus) : base;
+  renderRows(rows);
+  updateStrip(base);
+  resetChecks();
+}
+
+function setStatus(btn, s) {
+  activeStatus = s;
+  document.querySelectorAll('.ss-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+
+function toggleFilter() { document.getElementById('filter-panel').classList.toggle('open'); }
+function toggleStatusPanel() {
+  const s = document.getElementById('status-strip');
+  s.style.display = s.style.display === 'none' ? 'flex' : 'none';
+}
+function toggleAll(m) {
+  document.querySelectorAll('.row-chk').forEach(c => {
+    c.checked = m.checked;
+    c.closest('tr').classList.toggle('selected', m.checked);
+  });
+  onRowCheck();
+}
+function onRowCheck() {
+  const all = document.querySelectorAll('.row-chk');
+  const chk = document.querySelectorAll('.row-chk:checked');
+  const m   = document.getElementById('chk-all');
+  m.indeterminate = chk.length > 0 && chk.length < all.length;
+  m.checked = all.length > 0 && chk.length === all.length;
+}
+function resetChecks() {
+  document.getElementById('chk-all').checked       = false;
+  document.getElementById('chk-all').indeterminate = false;
+}
+
+updateStrip(ROWS);
+renderRows(ROWS);
+</script>
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

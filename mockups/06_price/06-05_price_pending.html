@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>단가 미결 현황 모니터링 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .kpi-row { display:flex; gap:16px; padding:16px 24px 0; flex-shrink:0; }
+  .kpi-card {
+    flex:1; background:var(--surface); border:1px solid var(--border); border-radius:4px;
+    padding:14px 18px; cursor:pointer; transition:border-color .15s;
+  }
+  .kpi-card:hover { border-color:var(--blue); }
+  .kpi-card.active { border-color:var(--blue); border-left:3px solid var(--blue); }
+  .kpi-label { font-size:12px; color:var(--text-sub); margin-bottom:6px; }
+  .kpi-value { font-size:22px; font-weight:700; color:var(--text); line-height:1.2; }
+  .kpi-card.warn .kpi-value { color:var(--status-warn); }
+  .kpi-card.bad  .kpi-value { color:var(--status-bad); }
+  .kpi-sub { font-size:11px; color:var(--text-sub); margin-top:4px; }
+
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column; padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .row-warn { background:#fefce8 !important; }
+  .row-bad  { background:#fef2f2 !important; }
+  .row-warn:hover { background:#fef9c3 !important; }
+  .row-bad:hover  { background:#fee2e2 !important; }
+
+  .pt { display:inline-block; font-size:11px; padding:0 7px; height:18px; line-height:18px;
+        border-radius:2px; border:1px solid; white-space:nowrap; }
+  .pt-prov   { border-color:var(--status-warn); color:var(--status-warn); }
+  .pt-final  { border-color:var(--blue);        color:var(--blue); }
+
+  .td-act { color:var(--blue); text-decoration:none; font-size:12px; }
+  .td-act:hover { text-decoration:underline; }
+
+  .days-over60 { color:var(--status-bad); font-weight:700; }
+  .days-over30 { color:var(--status-warn); font-weight:600; }
+</style>
+</head>
+
+<body data-menu="06-05">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">단가 미결 현황 모니터링</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="location.href='06-04_price_approval.html'">
+        <i data-lucide="file-text"></i>품의 등록
+      </button>
+    </div>
+  </div>
+
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-filter" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to" value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+  </div>
+
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">단가종류</span>
+      <select class="search-input" id="f-type" style="width:110px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="가단가">가단가</option>
+        <option value="정단가">정단가</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">담당자</span>
+      <select class="search-input" id="f-mgr" style="width:100px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="김구매">김구매</option>
+        <option value="이구매">이구매</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-row">
+    <div class="kpi-card active" id="kpi-all" onclick="setDaysFilter(0)">
+      <div class="kpi-label">전체 미결</div>
+      <div class="kpi-value" id="kpi-all-val">5</div>
+      <div class="kpi-sub">품의 진행 중</div>
+    </div>
+    <div class="kpi-card warn" id="kpi-30" onclick="setDaysFilter(30)">
+      <div class="kpi-label">30일 초과</div>
+      <div class="kpi-value" id="kpi-30-val">3</div>
+      <div class="kpi-sub">노란 행 표시 — 경고</div>
+    </div>
+    <div class="kpi-card bad" id="kpi-60" onclick="setDaysFilter(60)">
+      <div class="kpi-label">60일 초과</div>
+      <div class="kpi-value" id="kpi-60-val">1</div>
+      <div class="kpi-sub">빨간 행 표시 — 즉시 조치</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">평균 미결 일수</div>
+      <div class="kpi-value" id="kpi-avg">38</div>
+      <div class="kpi-sub">전월 대비 +12일</div>
+    </div>
+  </div>
+
+  <!-- 그리드 -->
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="tbl" style="border:1px solid var(--border);border-radius:4px">
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox"></th>
+            <th style="width:120px">품번</th>
+            <th>품명</th>
+            <th style="width:80px">단가종류</th>
+            <th style="width:108px">가단가 적용일</th>
+            <th style="width:80px">미결일수</th>
+            <th style="width:108px">예상 확정일</th>
+            <th style="width:80px">담당자</th>
+            <th style="width:80px">협력사</th>
+            <th style="width:100px">조치</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DATA = [
+  { part:'H1110-T100', name:"Frame Sub Ass'y",    type:'정단가', start:'2026-04-01', days:64, est:'2026-06-10', mgr:'김구매', sup:'A사' },
+  { part:'H1110-T101', name:'Bracket Assy Upper',  type:'가단가', start:'2026-03-01', days:95, est:'2026-06-30', mgr:'김구매', sup:'B사' },
+  { part:'H1110-T102', name:'Cover Plate',         type:'가단가', start:'2026-04-10', days:55, est:'2026-07-15', mgr:'이구매', sup:'A사' },
+  { part:'H1110-T103', name:'Rubber Seal',         type:'가단가', start:'2026-05-01', days:34, est:'2026-07-31', mgr:'이구매', sup:'C사' },
+  { part:'H1110-T104', name:'Pipe Connector',      type:'가단가', start:'2026-05-20', days:15, est:'2026-08-01', mgr:'김구매', sup:'B사' },
+];
+
+const TYPE_CLS = { '가단가':'pt-prov', '정단가':'pt-final' };
+let minDays = 0;
+
+function rowClass(days) {
+  if (days > 60) return 'row-bad';
+  if (days > 30) return 'row-warn';
+  return '';
+}
+function daysCls(days) {
+  if (days > 60) return 'days-over60';
+  if (days > 30) return 'days-over30';
+  return '';
+}
+
+function applyFilter() {
+  const q    = document.getElementById('f-search').value.trim().toLowerCase();
+  const type = document.getElementById('f-type')?.value || '';
+  const mgr  = document.getElementById('f-mgr')?.value || '';
+
+  const rows = DATA.filter(d => {
+    if (d.days < minDays) return false;
+    if (q && !d.part.toLowerCase().includes(q) && !d.name.toLowerCase().includes(q)) return false;
+    if (type && d.type !== type) return false;
+    if (mgr  && d.mgr  !== mgr)  return false;
+    return true;
+  });
+  renderRows(rows);
+}
+
+function renderRows(rows) {
+  document.getElementById('tbody').innerHTML = rows.map(d => `
+    <tr class="${rowClass(d.days)}">
+      <td class="c" onclick="event.stopPropagation()"><input type="checkbox"></td>
+      <td class="c" style="font-weight:600;color:var(--blue)">${d.part}</td>
+      <td style="padding-left:12px">${d.name}</td>
+      <td class="c"><span class="pt ${TYPE_CLS[d.type]}">${d.type}</span></td>
+      <td class="c muted">${d.start}</td>
+      <td class="c"><span class="${daysCls(d.days)}">${d.days}일</span></td>
+      <td class="c muted">${d.est}</td>
+      <td class="c muted">${d.mgr}</td>
+      <td class="c muted">${d.sup}</td>
+      <td class="c"><a class="td-act" href="06-04_price_approval.html">품의 진행</a></td>
+    </tr>`).join('');
+}
+
+function setDaysFilter(min) {
+  minDays = min;
+  document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('active'));
+  if (min === 0)  document.getElementById('kpi-all').classList.add('active');
+  if (min === 30) document.getElementById('kpi-30').classList.add('active');
+  if (min === 60) document.getElementById('kpi-60').classList.add('active');
+  applyFilter();
+}
+
+function toggleFilter() { document.getElementById('filter-panel').classList.toggle('open'); }
+
+/* KPI 집계 */
+document.getElementById('kpi-all-val').textContent = DATA.length;
+document.getElementById('kpi-30-val').textContent  = DATA.filter(d => d.days > 30).length;
+document.getElementById('kpi-60-val').textContent  = DATA.filter(d => d.days > 60).length;
+const avg = Math.round(DATA.reduce((s, d) => s + d.days, 0) / DATA.length);
+document.getElementById('kpi-avg').textContent = avg;
+
+applyFilter();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

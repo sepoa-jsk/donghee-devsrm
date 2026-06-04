@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>협력사 품질 평가 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .search-wrap { flex:1; position:relative; max-width:480px; }
+  .search-wrap input {
+    width:100%; height:32px; border:1px solid var(--border); border-radius:4px;
+    padding:0 34px 0 12px; font-size:13px; font-family:'Pretendard',sans-serif;
+    color:var(--text); background:var(--surface); outline:none; transition:border-color .15s;
+  }
+  .search-wrap input:focus { border-color:var(--blue); box-shadow:0 0 0 2px rgba(26,86,170,.12); }
+  .search-wrap input::placeholder { color:var(--text-mute); }
+  .search-wrap .s-icon { position:absolute; right:9px; top:50%; transform:translateY(-50%); color:var(--text-mute); pointer-events:none; }
+
+  .ss-btn {
+    background:none; border:none; cursor:pointer;
+    font-size:12px; color:var(--text-sub); font-family:'Pretendard',sans-serif;
+    display:flex; align-items:center; gap:5px; padding:0; transition:color .1s;
+  }
+  .ss-btn:hover { color:var(--text); }
+  .ss-btn.active { color:var(--blue); font-weight:600; }
+  .ss-cnt { font-weight:700; font-variant-numeric:tabular-nums; }
+  .ss-btn.active .ss-cnt { color:var(--blue); }
+
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column; padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+
+  /* 상태 점 */
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--text);       } .st-ok::before   { background:var(--navy); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+
+  /* 점수 셀: 값에 따라 색 힌트 — 텍스트만, 배경 없음 */
+  .score-high  { font-variant-numeric:tabular-nums; color:var(--navy); font-weight:600; }
+  .score-mid   { font-variant-numeric:tabular-nums; color:var(--text-sub); }
+  .score-low   { font-variant-numeric:tabular-nums; color:var(--status-bad); font-weight:600; }
+
+  /* Q지수 (종합점수) */
+  .q-score {
+    font-size:14px; font-weight:700; font-variant-numeric:tabular-nums;
+  }
+  .q-score.high { color:var(--navy); }
+  .q-score.mid  { color:var(--text-sub); }
+  .q-score.low  { color:var(--status-bad); }
+
+  /* 조치사항 텍스트 */
+  .action-txt { font-size:11px; color:var(--text-sub); white-space:nowrap; }
+  .action-txt.warn { color:var(--status-bad); font-weight:600; }
+</style>
+</head>
+
+<body data-menu="05-01">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">협력사 품질 평가</span>
+  </div>
+
+  <!-- 검색 바 -->
+  <div class="search-bar">
+    <div class="search-wrap">
+      <input type="text" placeholder="협력사명 또는 협력사코드 검색">
+      <i data-lucide="search" class="s-icon" style="width:14px;height:14px"></i>
+    </div>
+    <div class="search-field">
+      <span class="search-label">평가기간</span>
+      <select class="search-select" style="width:110px">
+        <option selected>2026-Q1</option>
+        <option>2025-Q4</option>
+        <option>2025-Q3</option>
+        <option>2025-Q2</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">품목군</span>
+      <select class="search-select" style="width:130px">
+        <option>전체</option>
+        <option>알루미늄 가공</option>
+        <option>고무/씰</option>
+        <option>스탬핑</option>
+        <option>플라스틱 사출</option>
+        <option>다이캐스팅</option>
+        <option>볼트/너트</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">등급</span>
+      <select class="search-select" style="width:80px">
+        <option>전체</option>
+        <option>S</option>
+        <option>A</option>
+        <option>B</option>
+        <option>C</option>
+        <option>D</option>
+      </select>
+    </div>
+    <div class="ml-auto">
+      <button class="btn btn-primary">
+        <i data-lucide="plus"></i>평가 등록
+      </button>
+    </div>
+  </div>
+
+  <!-- 상태 스트립 (등급별 카운트) -->
+  <div class="search-bar" style="height:36px;border-top:none;gap:20px">
+    <button class="ss-btn active">전체 <span class="ss-cnt">7</span></button>
+    <button class="ss-btn">S등급 <span class="ss-cnt">2</span></button>
+    <button class="ss-btn">A등급 <span class="ss-cnt">2</span></button>
+    <button class="ss-btn">B등급 <span class="ss-cnt">2</span></button>
+    <button class="ss-btn" style="color:var(--status-bad)">C등급 <span class="ss-cnt" style="color:var(--status-bad)">1</span></button>
+    <button class="ss-btn" style="color:var(--status-bad)">D등급 <span class="ss-cnt" style="color:var(--status-bad)">0</span></button>
+  </div>
+
+  <!-- 그리드 -->
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox"></th>
+            <th style="width:90px">협력사코드</th>
+            <th style="min-width:100px">협력사명</th>
+            <th style="min-width:130px">품목군</th>
+            <th style="width:86px">평가기간</th>
+            <th style="width:100px">납기준수율</th>
+            <th style="width:100px">불량률</th>
+            <th style="width:100px">시스템운영</th>
+            <th style="width:100px">개선활동</th>
+            <th style="width:80px">Q지수</th>
+            <th style="width:76px">등급</th>
+            <th style="min-width:130px">조치사항</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- A사: 우리 선정 협력사 (H1110-T100) -->
+          <tr class="selected">
+            <td class="c"><input type="checkbox" checked></td>
+            <td class="c"><a class="td-link" href="#">VC-001</a></td>
+            <td style="padding-left:12px;font-weight:600">A사 <span style="font-size:11px;color:var(--blue);font-weight:400">★ H1110-T100</span></td>
+            <td style="padding-left:12px;color:var(--text-sub)">알루미늄 가공</td>
+            <td class="c muted">2026-Q1</td>
+            <td class="c"><span class="score-high">4.5</span></td>
+            <td class="c"><span class="score-high">4.0</span></td>
+            <td class="c"><span class="score-high">4.5</span></td>
+            <td class="c"><span class="score-mid">4.0</span></td>
+            <td class="c"><span class="q-score high">4.25</span></td>
+            <td class="c"><span class="st st-ok">A등급</span></td>
+            <td style="padding-left:12px"><span class="action-txt">정상 거래</span></td>
+          </tr>
+          <!-- D사: S등급 -->
+          <tr>
+            <td class="c"><input type="checkbox"></td>
+            <td class="c"><a class="td-link" href="#">VC-004</a></td>
+            <td style="padding-left:12px;font-weight:500">D사</td>
+            <td style="padding-left:12px;color:var(--text-sub)">플라스틱 사출</td>
+            <td class="c muted">2026-Q1</td>
+            <td class="c"><span class="score-high">4.5</span></td>
+            <td class="c"><span class="score-high">4.5</span></td>
+            <td class="c"><span class="score-high">4.5</span></td>
+            <td class="c"><span class="score-high">4.5</span></td>
+            <td class="c"><span class="q-score high">4.50</span></td>
+            <td class="c"><span class="st st-ok">S등급</span></td>
+            <td style="padding-left:12px"><span class="action-txt">우선 발주 대상</span></td>
+          </tr>
+          <!-- F사: S등급 -->
+          <tr>
+            <td class="c"><input type="checkbox"></td>
+            <td class="c"><a class="td-link" href="#">VC-006</a></td>
+            <td style="padding-left:12px;font-weight:500">F사</td>
+            <td style="padding-left:12px;color:var(--text-sub)">볼트/너트</td>
+            <td class="c muted">2026-Q1</td>
+            <td class="c"><span class="score-high">5.0</span></td>
+            <td class="c"><span class="score-high">5.0</span></td>
+            <td class="c"><span class="score-high">4.0</span></td>
+            <td class="c"><span class="score-high">4.5</span></td>
+            <td class="c"><span class="q-score high">4.63</span></td>
+            <td class="c"><span class="st st-ok">S등급</span></td>
+            <td style="padding-left:12px"><span class="action-txt">우선 발주 대상</span></td>
+          </tr>
+          <!-- B사: A등급 -->
+          <tr>
+            <td class="c"><input type="checkbox"></td>
+            <td class="c"><a class="td-link" href="#">VC-002</a></td>
+            <td style="padding-left:12px;font-weight:500">B사</td>
+            <td style="padding-left:12px;color:var(--text-sub)">고무/씰</td>
+            <td class="c muted">2026-Q1</td>
+            <td class="c"><span class="score-mid">3.5</span></td>
+            <td class="c"><span class="score-high">4.0</span></td>
+            <td class="c"><span class="score-mid">3.5</span></td>
+            <td class="c"><span class="score-mid">3.0</span></td>
+            <td class="c"><span class="q-score high">3.50</span></td>
+            <td class="c"><span class="st st-ok">A등급</span></td>
+            <td style="padding-left:12px"><span class="action-txt">정상 거래</span></td>
+          </tr>
+          <!-- C사: B등급 -->
+          <tr>
+            <td class="c"><input type="checkbox"></td>
+            <td class="c"><a class="td-link" href="#">VC-003</a></td>
+            <td style="padding-left:12px;font-weight:500">C사</td>
+            <td style="padding-left:12px;color:var(--text-sub)">스탬핑</td>
+            <td class="c muted">2026-Q1</td>
+            <td class="c"><span class="score-mid">2.5</span></td>
+            <td class="c"><span class="score-mid">3.0</span></td>
+            <td class="c"><span class="score-mid">3.0</span></td>
+            <td class="c"><span class="score-mid">2.5</span></td>
+            <td class="c"><span class="q-score mid">2.75</span></td>
+            <td class="c"><span class="st st-wait">B등급</span></td>
+            <td style="padding-left:12px"><span class="action-txt">관찰 필요</span></td>
+          </tr>
+          <!-- E사: B등급 -->
+          <tr>
+            <td class="c"><input type="checkbox"></td>
+            <td class="c"><a class="td-link" href="#">VC-005</a></td>
+            <td style="padding-left:12px;font-weight:500">E사</td>
+            <td style="padding-left:12px;color:var(--text-sub)">알루미늄 다이캐스팅</td>
+            <td class="c muted">2026-Q1</td>
+            <td class="c"><span class="score-mid">3.0</span></td>
+            <td class="c"><span class="score-low">2.5</span></td>
+            <td class="c"><span class="score-mid">3.5</span></td>
+            <td class="c"><span class="score-mid">3.0</span></td>
+            <td class="c"><span class="q-score mid">3.00</span></td>
+            <td class="c"><span class="st st-wait">B등급</span></td>
+            <td style="padding-left:12px"><span class="action-txt">관찰 필요</span></td>
+          </tr>
+          <!-- G사: C등급 -->
+          <tr>
+            <td class="c"><input type="checkbox"></td>
+            <td class="c"><a class="td-link" href="#">VC-007</a></td>
+            <td style="padding-left:12px;font-weight:500">G사</td>
+            <td style="padding-left:12px;color:var(--text-sub)">스탬핑</td>
+            <td class="c muted">2026-Q1</td>
+            <td class="c"><span class="score-low">1.5</span></td>
+            <td class="c"><span class="score-low">1.5</span></td>
+            <td class="c"><span class="score-mid">2.0</span></td>
+            <td class="c"><span class="score-mid">2.0</span></td>
+            <td class="c"><span class="q-score low">1.75</span></td>
+            <td class="c"><span class="st st-bad">C등급</span></td>
+            <td style="padding-left:12px"><span class="action-txt warn">개선 계획 요청</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

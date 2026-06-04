@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>메인 대시보드 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+
+/* ── 본문 세로 flex (공백 제거) ── */
+.dash-flow { display: flex; flex-direction: column; }
+
+/* ── 3열 균등 그리드 (stretch로 컬럼 높이 정렬 → 하단 공백 제거) ── */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 14px;
+}
+.dash-grid > .section-box {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+.dash-grid > .section-box > .section-box-header { flex-shrink: 0; }
+
+/* ── KPI 스트립 (컴팩트 아이콘형) ── */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.kpi-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.kpi-tile.tile-bad  { border-left: 3px solid var(--status-bad); }
+.kpi-tile.tile-warn { border-left: 3px solid var(--status-warn); }
+.kpi-tile.tile-prog { border-left: 3px solid var(--status-prog); }
+.kpi-tile.tile-ok   { border-left: 3px solid var(--status-ok); }
+.kpi-icon {
+  width: 38px; height: 38px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.kpi-icon.c-bad  { background:#fee2e2; color:var(--status-bad); }
+.kpi-icon.c-warn { background:#fef3c7; color:var(--status-warn); }
+.kpi-icon.c-prog { background:var(--blue-light); color:var(--blue); }
+.kpi-icon.c-ok   { background:#dcfce7; color:var(--status-ok); }
+.kpi-body { min-width: 0; }
+.kpi-num  { font-size: 24px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.kpi-lbl  { font-size: 11px; color: var(--text-sub); margin-top: 1px; white-space: nowrap; }
+.kpi-hint { font-size: 10px; color: var(--text-mute); margin-top: 2px; }
+
+/* ── 프로젝트 현황 테이블 ── */
+.td-link { color: var(--blue); font-weight: 600; text-decoration: none; }
+.td-link:hover { text-decoration: underline; }
+.prog-cell { display:flex; align-items:center; gap:6px; }
+.prog-bar { flex:1; height:6px; background:var(--grid-head); border-radius:3px; overflow:hidden; min-width:40px; }
+.prog-fill { height:100%; background:var(--blue); border-radius:3px; }
+.prog-pct { font-size:11px; color:var(--text-sub); width:32px; text-align:right; font-variant-numeric:tabular-nums; }
+.st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+.st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.st-prog { color:var(--status-prog);} .st-prog::before { background:var(--status-prog); }
+.st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+.st-ok   { color:var(--status-ok);  } .st-ok::before   { background:var(--status-ok); }
+
+/* ── 원가 달성 바 ── */
+.cbar-row { margin-bottom: 14px; }
+.cbar-row:last-child { margin-bottom: 0; }
+.cbar-hd { display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px; }
+.cbar-proj { font-weight: 600; color: var(--text); }
+.cbar-delta.over  { font-weight: 700; color: var(--status-bad); }
+.cbar-delta.under { font-weight: 700; color: var(--status-ok); }
+.cbar-sub { font-size: 11px; color: var(--text-mute); margin-bottom: 4px; }
+.cbar-track {
+  height: 26px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 3px;
+  position: relative; overflow: hidden;
+}
+.cbar-tgt {
+  position: absolute; left:0; top:0; bottom:0;
+  background: rgba(26,86,170,0.07);
+  border-right: 2px dashed #93c5fd;
+}
+.cbar-act {
+  position: absolute; left:0; top:3px; bottom:3px;
+  border-radius: 2px;
+  display: flex; align-items: center;
+  padding: 0 8px; font-size: 11px; font-weight: 600; color: #fff;
+}
+.cbar-act.over  { background: var(--status-bad); opacity: 0.82; }
+.cbar-act.under { background: var(--navy); opacity: 0.78; }
+.cbar-foot { display:flex; justify-content:space-between; margin-top:3px; font-size:10px; color:var(--text-mute); font-variant-numeric: tabular-nums; }
+
+/* ── 협력사 등급 도넛 ── */
+.donut-section { display:flex; align-items:center; gap:20px; padding: 6px 0; flex:1; }
+.donut-wrap {
+  width: 104px; height: 104px; border-radius: 50%;
+  flex-shrink: 0; position: relative;
+}
+.donut-hole {
+  position: absolute;
+  width: 64px; height: 64px;
+  background: var(--surface); border-radius: 50%;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.donut-center-num { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; }
+.donut-center-sub { font-size: 9px; color: var(--text-mute); margin-top: 1px; }
+.donut-legend { flex: 1; }
+.d-leg { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--text-sub); margin-bottom:9px; }
+.d-leg:last-child { margin-bottom:0; }
+.d-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.d-cnt { font-weight:700; color:var(--text); margin-left:auto; font-variant-numeric:tabular-nums; }
+
+/* ── 결재 대기 ── */
+.appr-item {
+  display:flex; align-items:center; gap:10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px; cursor: pointer;
+}
+.appr-item:last-child { border-bottom:none; }
+.appr-item:hover { margin:0 -4px; padding:11px 4px; background:var(--grid-hover); border-radius:3px; }
+.appr-icon {
+  width:32px; height:32px; border-radius:4px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.appr-icon.urgent { background:#fee2e2; color:var(--status-bad); }
+.appr-icon.warn   { background:#fef3c7; color:var(--status-warn); }
+.appr-icon.info   { background:var(--blue-light); color:var(--blue); }
+.appr-body { flex:1; min-width:0; }
+.appr-title { font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.appr-meta  { font-size:10px; color:var(--text-mute); margin-top:1px; }
+.appr-days  { font-size:11px; font-weight:600; white-space:nowrap; flex-shrink:0; }
+
+/* ── SOP 임박 ── */
+.sop-item {
+  display:flex; align-items:center; gap:10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.sop-item:last-child { border-bottom:none; }
+.sop-badge {
+  width:40px; height:40px; border-radius:4px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  flex-shrink:0; line-height:1.1;
+}
+.sop-badge.warn { background:#fef3c7; }
+.sop-badge.ok   { background:#dcfce7; }
+.sop-d-label { font-size:8px; font-weight:700; color:var(--text-mute); letter-spacing:.2px; }
+.sop-d-val   { font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; }
+.sop-badge.warn .sop-d-val { color:var(--status-warn); }
+.sop-badge.ok   .sop-d-val { color:var(--status-ok); }
+.sop-body { flex:1; min-width:0; }
+.sop-code { font-weight:600; color:var(--blue); font-size:12px; }
+.sop-desc { font-size:11px; color:var(--text-mute); margin-top:1px; }
+.sop-date { font-size:11px; color:var(--text-sub); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+/* ── LME 격자 ── */
+.lme-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; flex:1; align-content:center; }
+.lme-cell {
+  background:var(--bg); border:1px solid var(--border); border-radius:3px; padding:10px 12px;
+}
+.lme-cell-label { font-size:10px; color:var(--text-mute); margin-bottom:3px; }
+.lme-cell-val   { font-size:14px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
+.lme-cell-delta { font-size:10px; margin-top:3px; display:flex; align-items:center; gap:2px; }
+.lme-cell-delta.up   { color:var(--status-bad); }
+.lme-cell-delta.down { color:var(--status-ok); }
+
+/* ── 내 할 일 테이블 (하단) ── */
+table.todo-t { width:100%; border-collapse:collapse; font-size:12px; }
+table.todo-t tbody td { padding:0 8px; height:40px; border-bottom:1px solid var(--border); vertical-align:middle; }
+table.todo-t tbody tr:last-child td { border-bottom:none; }
+table.todo-t tbody tr:hover td { background:var(--grid-hover); cursor:pointer; }
+.ptag {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:34px; height:17px; border-radius:2px; font-size:10px; font-weight:700;
+}
+.ptag.urgent { background:#fee2e2; color:var(--status-bad); }
+.ptag.warn   { background:#fef3c7; color:var(--status-warn); }
+.ptag.info   { background:var(--blue-light); color:var(--blue); }
+
+/* ── 바로가기 ── */
+.sc-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; flex:1; align-content:center; }
+.sc-btn {
+  display:flex; align-items:center;
+  gap:9px; padding:11px 12px;
+  background:var(--bg); border:1px solid var(--border); border-radius:4px;
+  font-size:12px; font-weight:500; color:var(--text-sub);
+  text-decoration:none; transition:all .12s;
+}
+.sc-btn:hover { background:var(--blue-light); border-color:#b3d0f5; color:var(--blue); }
+.sc-btn:hover i { color:var(--blue); }
+.sc-btn i { color:var(--text-mute); transition:color .12s; flex-shrink:0; }
+
+/* ── 하단 2열 ── */
+.dash-bottom { display:grid; grid-template-columns:1fr 360px; gap:14px; }
+.dash-bottom > .section-box { margin-bottom:0; display:flex; flex-direction:column; }
+
+/* 토스트 */
+.toast {
+  position:fixed; bottom:24px; right:24px;
+  background:#1f2937; color:#fff;
+  padding:10px 16px; border-radius:4px; font-size:13px;
+  z-index:500; align-items:center; gap:8px;
+  box-shadow:0 4px 16px rgba(0,0,0,.18);
+}
+</style>
+</head>
+
+<body data-menu="00-02">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">메인 대시보드</span>
+    <div class="page-title-spacer"></div>
+    <span style="font-size:12px;color:var(--text-mute)">2026-06-04 (목) 기준</span>
+    <button class="btn btn-ghost btn-sm" onclick="showToast('데이터를 새로고침했습니다.', 'ok')">
+      <i data-lucide="refresh-cw"></i>새로고침
+    </button>
+  </div>
+
+  <div class="content-scroll">
+    <div class="dash-flow">
+
+    <!-- ── 행1: KPI 스트립 ── -->
+    <div class="kpi-row">
+      <div class="kpi-tile tile-prog">
+        <div class="kpi-icon c-prog"><i data-lucide="folder-open" style="width:18px;height:18px"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-num">4</div>
+          <div class="kpi-lbl">진행 중 프로젝트</div>
+          <div class="kpi-hint">지연 1 포함 · 완료 1 별도</div>
+        </div>
+      </div>
+      <div class="kpi-tile tile-bad">
+        <div class="kpi-icon c-bad"><i data-lucide="triangle-alert" style="width:18px;height:18px"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-num">1</div>
+          <div class="kpi-lbl">지연 프로젝트</div>
+          <div class="kpi-hint">Reinforcement 78%</div>
+        </div>
+      </div>
+      <div class="kpi-tile tile-bad">
+        <div class="kpi-icon c-bad"><i data-lucide="trending-up" style="width:18px;height:18px"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-num">1</div>
+          <div class="kpi-lbl">목표가 초과 품번</div>
+          <div class="kpi-hint">H1110-T100 +19.8%</div>
+        </div>
+      </div>
+      <div class="kpi-tile tile-warn">
+        <div class="kpi-icon c-warn"><i data-lucide="handshake" style="width:18px;height:18px"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-num">1</div>
+          <div class="kpi-lbl">협상 / 결재 진행</div>
+          <div class="kpi-hint">520 PHEV FTM</div>
+        </div>
+      </div>
+      <div class="kpi-tile tile-warn">
+        <div class="kpi-icon c-warn"><i data-lucide="clock" style="width:18px;height:18px"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-num">1</div>
+          <div class="kpi-lbl">단가 미결</div>
+          <div class="kpi-hint">정단가 전환 대기</div>
+        </div>
+      </div>
+      <div class="kpi-tile tile-ok">
+        <div class="kpi-icon c-ok"><i data-lucide="award" style="width:18px;height:18px"></i></div>
+        <div class="kpi-body">
+          <div class="kpi-num">1</div>
+          <div class="kpi-lbl">협력사 S등급</div>
+          <div class="kpi-hint">A사 (동희부품)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 행2: 프로젝트 현황 | 원가 | SOP ── -->
+    <div class="dash-grid">
+
+      <!-- ① 개발 프로젝트 현황 -->
+      <div class="section-box">
+        <div class="section-box-header">
+          <span class="section-box-title">개발 프로젝트 현황</span>
+          <a href="../01_project/01-03_project_list.html" style="font-size:12px;color:var(--blue);text-decoration:none">전체 보기</a>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="text-align:left;padding-left:10px">프로젝트명</th>
+                <th style="text-align:left;padding-left:8px">대표품번</th>
+                <th>단계</th>
+                <th style="width:120px">진척</th>
+                <th>SOP</th>
+                <th>PM</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr onclick="location.href='../01_project/01-04_project_detail.html'" style="cursor:pointer">
+                <td style="padding-left:10px">
+                  <a href="../01_project/01-04_project_detail.html" class="td-link">Fuel Tank Module</a>
+                  <div style="font-size:10px;color:var(--text-mute)">520 PHEV · 현대</div>
+                </td>
+                <td style="padding-left:8px"><span class="text-blue fw-600" style="font-size:11px">H1110-T100</span><span style="font-size:10px;color:var(--text-mute)"> 외4</span></td>
+                <td class="c"><span class="badge badge-warn" style="font-size:10px">개발구매</span></td>
+                <td class="c"><div class="prog-cell"><div class="prog-bar"><div class="prog-fill" style="width:45%"></div></div><span class="prog-pct">45%</span></div></td>
+                <td class="c" style="color:var(--text-sub);font-size:11px">2026-10</td>
+                <td class="c" style="color:var(--text-sub);font-size:11px">김개발</td>
+                <td class="c"><span class="st st-prog">진행중</span></td>
+              </tr>
+              <tr onclick="location.href='../01_project/01-03_project_list.html'" style="cursor:pointer">
+                <td style="padding-left:10px">
+                  <a href="../01_project/01-03_project_list.html" class="td-link">Cooling Module</a>
+                  <div style="font-size:10px;color:var(--text-mute)">NX5 · 기아</div>
+                </td>
+                <td style="padding-left:8px"><span class="text-blue fw-600" style="font-size:11px">K2200-C100</span></td>
+                <td class="c"><span class="badge badge-prog" style="font-size:10px">원가산출</span></td>
+                <td class="c"><div class="prog-cell"><div class="prog-bar"><div class="prog-fill" style="width:22%"></div></div><span class="prog-pct">22%</span></div></td>
+                <td class="c" style="color:var(--text-sub);font-size:11px">2026-12</td>
+                <td class="c" style="color:var(--text-sub);font-size:11px">이프로</td>
+                <td class="c"><span class="st st-prog">진행중</span></td>
+              </tr>
+              <tr onclick="location.href='../01_project/01-03_project_list.html'" style="cursor:pointer">
+                <td style="padding-left:10px">
+                  <a href="../01_project/01-03_project_list.html" class="td-link">Bracket Assy</a>
+                  <div style="font-size:10px;color:var(--text-mute)">MQ4 · 모비스</div>
+                </td>
+                <td style="padding-left:8px"><span class="text-blue fw-600" style="font-size:11px">M3300-B100</span></td>
+                <td class="c"><span class="badge badge-prog" style="font-size:10px">설계</span></td>
+                <td class="c"><div class="prog-cell"><div class="prog-bar"><div class="prog-fill" style="width:12%"></div></div><span class="prog-pct">12%</span></div></td>
+                <td class="c" style="color:var(--text-sub);font-size:11px">2027-01</td>
+                <td class="c" style="color:var(--text-sub);font-size:11px">박PM</td>
+                <td class="c"><span class="st st-prog">진행중</span></td>
+              </tr>
+              <tr onclick="location.href='../01_project/01-03_project_list.html'" style="cursor:pointer">
+                <td style="padding-left:10px">
+                  <a href="../01_project/01-03_project_list.html" class="td-link">Reinforcement</a>
+                  <div style="font-size:10px;color:var(--text-mute)">520 PHEV · 현대</div>
+                </td>
+                <td style="padding-left:8px"><span class="text-blue fw-600" style="font-size:11px">H1120-R100</span></td>
+                <td class="c"><span class="badge badge-warn" style="font-size:10px">품질준비</span></td>
+                <td class="c"><div class="prog-cell"><div class="prog-bar"><div class="prog-fill" style="width:78%;background:var(--status-bad)"></div></div><span class="prog-pct">78%</span></div></td>
+                <td class="c" style="color:var(--text-sub);font-size:11px">2026-09</td>
+                <td class="c" style="color:var(--text-sub);font-size:11px">김개발</td>
+                <td class="c"><span class="st st-bad">지연</span></td>
+              </tr>
+              <tr onclick="location.href='../01_project/01-03_project_list.html'" style="cursor:pointer">
+                <td style="padding-left:10px">
+                  <a href="../01_project/01-03_project_list.html" class="td-link">Heat Protector</a>
+                  <div style="font-size:10px;color:var(--text-mute)">NX5 · 기아</div>
+                </td>
+                <td style="padding-left:8px"><span class="text-blue fw-600" style="font-size:11px">K2210-H100</span></td>
+                <td class="c"><span class="badge badge-ok" style="font-size:10px">양산전환</span></td>
+                <td class="c"><div class="prog-cell"><div class="prog-bar"><div class="prog-fill" style="width:100%;background:var(--status-ok)"></div></div><span class="prog-pct">100%</span></div></td>
+                <td class="c" style="color:var(--text-sub);font-size:11px">2026-03</td>
+                <td class="c" style="color:var(--text-sub);font-size:11px">이프로</td>
+                <td class="c"><span class="st st-ok">완료</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ② 목표가 대비 원가 현황 -->
+      <div class="section-box">
+        <div class="section-box-header">
+          <span class="section-box-title">목표가 대비 원가 현황</span>
+          <a href="../03_cost/03-08_cost_analysis.html" style="font-size:12px;color:var(--blue);text-decoration:none">상세 보기</a>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+          <div class="cbar-row">
+            <div class="cbar-hd">
+              <span class="cbar-proj">520 PHEV · Fuel Tank Module</span>
+              <span class="cbar-delta over">+19.8% 초과</span>
+            </div>
+            <div class="cbar-sub">목표 12,100원 / 현재 14,500원</div>
+            <div class="cbar-track">
+              <div class="cbar-tgt" style="width:80.7%"></div>
+              <div class="cbar-act over" style="width:96.7%">14,500원</div>
+            </div>
+            <div class="cbar-foot">
+              <span>-- 목표 12,100원</span>
+              <span style="color:var(--status-bad)">▲ +2,400원</span>
+            </div>
+          </div>
+
+          <div class="cbar-row">
+            <div class="cbar-hd">
+              <span class="cbar-proj">NX5 · Cooling Module</span>
+              <span class="cbar-delta under">-3.8% 달성</span>
+            </div>
+            <div class="cbar-sub">목표 18,500원 / 현재 17,800원</div>
+            <div class="cbar-track">
+              <div class="cbar-tgt" style="width:92.5%"></div>
+              <div class="cbar-act under" style="width:89%">17,800원</div>
+            </div>
+            <div class="cbar-foot">
+              <span>-- 목표 18,500원</span>
+              <span style="color:var(--status-ok)">▼ -700원</span>
+            </div>
+          </div>
+
+          <div class="cbar-row">
+            <div class="cbar-hd">
+              <span class="cbar-proj">MQ4 · Bracket Assy</span>
+              <span class="cbar-delta under">-3.2% 달성</span>
+            </div>
+            <div class="cbar-sub">목표 9,500원 / 현재 9,200원</div>
+            <div class="cbar-track">
+              <div class="cbar-tgt" style="width:95%"></div>
+              <div class="cbar-act under" style="width:92%">9,200원</div>
+            </div>
+            <div class="cbar-foot">
+              <span>-- 목표 9,500원</span>
+              <span style="color:var(--status-ok)">▼ -300원</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ③ SOP 임박 현황 -->
+      <div class="section-box">
+        <div class="section-box-header">
+          <span class="section-box-title">SOP 임박 현황</span>
+          <a href="../01_project/01-05_milestone.html" style="font-size:12px;color:var(--blue);text-decoration:none">일정 보기</a>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+          <div class="sop-item">
+            <div class="sop-badge warn">
+              <div class="sop-d-label">D-DAY</div>
+              <div class="sop-d-val">89</div>
+            </div>
+            <div class="sop-body">
+              <div class="sop-code">H1120-R100</div>
+              <div class="sop-desc">520 PHEV · Reinforcement (지연)</div>
+            </div>
+            <div class="sop-date">2026-09-01</div>
+          </div>
+          <div class="sop-item">
+            <div class="sop-badge ok">
+              <div class="sop-d-label">D-DAY</div>
+              <div class="sop-d-val">119</div>
+            </div>
+            <div class="sop-body">
+              <div class="sop-code">H1110-T100</div>
+              <div class="sop-desc">520 PHEV · Fuel Tank Module</div>
+            </div>
+            <div class="sop-date">2026-10-01</div>
+          </div>
+          <div class="sop-item">
+            <div class="sop-badge ok">
+              <div class="sop-d-label">D-DAY</div>
+              <div class="sop-d-val">180</div>
+            </div>
+            <div class="sop-body">
+              <div class="sop-code">K2200-C100</div>
+              <div class="sop-desc">NX5 · Cooling Module</div>
+            </div>
+            <div class="sop-date">2026-12-01</div>
+          </div>
+          <div class="sop-item">
+            <div class="sop-badge ok">
+              <div class="sop-d-label">D-DAY</div>
+              <div class="sop-d-val">225</div>
+            </div>
+            <div class="sop-body">
+              <div class="sop-code">M3300-B100</div>
+              <div class="sop-desc">MQ4 · Bracket Assy</div>
+            </div>
+            <div class="sop-date">2027-01-15</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /행2 -->
+
+    <!-- ── 행3: 결재 대기 | 협력사 등급 | LME ── -->
+    <div class="dash-grid">
+
+      <!-- ④ 결재 대기 -->
+      <div class="section-box">
+        <div class="section-box-header">
+          <span class="section-box-title">결재 대기</span>
+          <span class="badge badge-bad" style="font-size:10px;height:16px;padding:0 6px">3건</span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+          <div class="appr-item" onclick="location.href='../04_dev_purchase/04-10_selection_approval.html'">
+            <div class="appr-icon urgent"><i data-lucide="file-check-2" style="width:14px;height:14px"></i></div>
+            <div class="appr-body">
+              <div class="appr-title">업체 선정 품의서</div>
+              <div class="appr-meta">H1110-T100 · 김개발 상신</div>
+            </div>
+            <div class="appr-days" style="color:var(--status-bad)">D+1</div>
+          </div>
+          <div class="appr-item" onclick="location.href='../06_price/06-04_price_approval.html'">
+            <div class="appr-icon warn"><i data-lucide="tag" style="width:14px;height:14px"></i></div>
+            <div class="appr-body">
+              <div class="appr-title">정단가 품의</div>
+              <div class="appr-meta">H1110-T100 · 김구매 상신</div>
+            </div>
+            <div class="appr-days" style="color:var(--status-warn)">D+2</div>
+          </div>
+          <div class="appr-item" onclick="location.href='../09_supplier/09-01_supplier_register_detail.html'">
+            <div class="appr-icon info"><i data-lucide="user-check" style="width:14px;height:14px"></i></div>
+            <div class="appr-body">
+              <div class="appr-title">협력사 사전등록 승인</div>
+              <div class="appr-meta">I사 금강정밀 · 이구매 상신</div>
+            </div>
+            <div class="appr-days" style="color:var(--text-mute)">D+3</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑤ 협력사 등급 분포 -->
+      <div class="section-box">
+        <div class="section-box-header">
+          <span class="section-box-title">협력사 등급 분포</span>
+          <a href="../09_supplier/09-02_supplier_eval.html" style="font-size:12px;color:var(--blue);text-decoration:none">평가 보기</a>
+        </div>
+        <div class="donut-section">
+          <div class="donut-wrap">
+            <!-- S 25% · A 50% · B 25% -->
+            <div style="width:104px;height:104px;border-radius:50%;background:conic-gradient(#16a34a 0% 25%,#1a56aa 25% 75%,#d97706 75% 100%)"></div>
+            <div class="donut-hole">
+              <div class="donut-center-num">4</div>
+              <div class="donut-center-sub">개사</div>
+            </div>
+          </div>
+          <div class="donut-legend">
+            <div class="d-leg"><div class="d-dot" style="background:#16a34a"></div>S등급 · A사 (동희부품)<div class="d-cnt">1</div></div>
+            <div class="d-leg"><div class="d-dot" style="background:#1a56aa"></div>A등급 · B·C사<div class="d-cnt">2</div></div>
+            <div class="d-leg"><div class="d-dot" style="background:#d97706"></div>B등급 · D사 (대원금속)<div class="d-cnt">1</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑥ LME / 환율 -->
+      <div class="section-box">
+        <div class="section-box-header">
+          <span class="section-box-title">LME / 환율</span>
+          <a href="../03_cost/03-03_lme_list.html" style="font-size:11px;color:var(--blue);text-decoration:none">2026-06-04 상세</a>
+        </div>
+        <div class="lme-grid">
+          <div class="lme-cell">
+            <div class="lme-cell-label">Al LME</div>
+            <div class="lme-cell-val">$2,650<span style="font-size:10px;font-weight:400;color:var(--text-mute)">/ton</span></div>
+            <div class="lme-cell-delta up"><i data-lucide="trending-up" style="width:10px;height:10px"></i>+2.1% vs 전월</div>
+          </div>
+          <div class="lme-cell">
+            <div class="lme-cell-label">원 / 달러</div>
+            <div class="lme-cell-val">1,380<span style="font-size:10px;font-weight:400;color:var(--text-mute)">원</span></div>
+            <div class="lme-cell-delta up"><i data-lucide="trending-up" style="width:10px;height:10px"></i>+0.8% vs 전월</div>
+          </div>
+          <div class="lme-cell">
+            <div class="lme-cell-label">Al 소재단가</div>
+            <div class="lme-cell-val">3,810<span style="font-size:10px;font-weight:400;color:var(--text-mute)">원/kg</span></div>
+            <div class="lme-cell-delta up"><i data-lucide="trending-up" style="width:10px;height:10px"></i>+120원 vs 전월</div>
+          </div>
+          <div class="lme-cell">
+            <div class="lme-cell-label">Al 프리미엄</div>
+            <div class="lme-cell-val">$120<span style="font-size:10px;font-weight:400;color:var(--text-mute)">/ton</span></div>
+            <div class="lme-cell-delta down"><i data-lucide="trending-down" style="width:10px;height:10px"></i>-$10 vs 전월</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /행3 -->
+
+    <!-- ── 행4: 내 할 일 | 바로가기 ── -->
+    <div class="dash-bottom">
+
+      <!-- ⑦ 내 할 일 -->
+      <div class="section-box">
+        <div class="section-box-header">
+          <span class="section-box-title">내 할 일</span>
+          <span class="badge badge-bad" style="font-size:10px;height:16px;padding:0 7px">3건</span>
+        </div>
+        <table class="todo-t">
+          <thead>
+            <tr style="background:var(--grid-head)">
+              <th style="width:44px;padding:0 8px;height:28px;font-size:11px;color:var(--text-sub);font-weight:600;border-bottom:1px solid var(--border);text-align:center">우선</th>
+              <th style="padding:0 8px;height:28px;font-size:11px;color:var(--text-sub);font-weight:600;border-bottom:1px solid var(--border);text-align:left">내용</th>
+              <th style="width:160px;padding:0 8px;height:28px;font-size:11px;color:var(--text-sub);font-weight:600;border-bottom:1px solid var(--border);text-align:left">프로젝트 / 품번</th>
+              <th style="width:70px;padding:0 8px;height:28px;font-size:11px;color:var(--text-sub);font-weight:600;border-bottom:1px solid var(--border);text-align:center">마감</th>
+              <th style="width:64px;padding:0 8px;height:28px;font-size:11px;color:var(--text-sub);font-weight:600;border-bottom:1px solid var(--border);text-align:center">이동</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr onclick="location.href='../04_dev_purchase/04-10_selection_approval.html'" style="cursor:pointer">
+              <td style="text-align:center"><span class="ptag urgent">긴급</span></td>
+              <td>
+                <div style="font-weight:500;color:var(--text)">H1110-T100 업체 선정 결재 상신</div>
+                <div style="font-size:11px;color:var(--text-mute)">Fuel Tank Module · 결재 대기</div>
+              </td>
+              <td style="color:var(--text-sub);font-size:11px">520 PHEV / H1110-T100</td>
+              <td style="text-align:center"><span class="badge badge-bad" style="font-size:10px;height:16px;padding:0 5px">오늘</span></td>
+              <td style="text-align:center"><a href="../04_dev_purchase/04-10_selection_approval.html" style="font-size:11px;color:var(--blue);text-decoration:none" onclick="event.stopPropagation()">바로가기</a></td>
+            </tr>
+            <tr onclick="location.href='../06_price/06-04_price_approval.html'" style="cursor:pointer">
+              <td style="text-align:center"><span class="ptag warn">검토</span></td>
+              <td>
+                <div style="font-weight:500;color:var(--text)">정단가 품의 결재 대기</div>
+                <div style="font-size:11px;color:var(--text-mute)">H1110-T100 · 정단가 전환</div>
+              </td>
+              <td style="color:var(--text-sub);font-size:11px">520 PHEV / H1110-T100</td>
+              <td style="text-align:center;font-size:11px;color:var(--text-mute)">대기</td>
+              <td style="text-align:center"><a href="../06_price/06-04_price_approval.html" style="font-size:11px;color:var(--blue);text-decoration:none" onclick="event.stopPropagation()">바로가기</a></td>
+            </tr>
+            <tr onclick="location.href='../04_dev_purchase/04-06_quote_compare.html'" style="cursor:pointer">
+              <td style="text-align:center"><span class="ptag info">마감</span></td>
+              <td>
+                <div style="font-weight:500;color:var(--text)">NX5 Cooling Module 견적 검토</div>
+                <div style="font-size:11px;color:var(--text-mute)">K2200-C100 · 견적 비교 대기</div>
+              </td>
+              <td style="color:var(--text-sub);font-size:11px">NX5 / K2200-C100</td>
+              <td style="text-align:center"><span class="badge badge-warn" style="font-size:10px;height:16px;padding:0 5px">D-5</span></td>
+              <td style="text-align:center"><a href="../04_dev_purchase/04-06_quote_compare.html" style="font-size:11px;color:var(--blue);text-decoration:none" onclick="event.stopPropagation()">바로가기</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ⑧ 바로가기 -->
+      <div class="section-box">
+        <div class="section-box-header">
+          <span class="section-box-title">바로가기</span>
+        </div>
+        <div class="sc-grid">
+          <a href="../01_project/01-01_rfq_list.html" class="sc-btn">
+            <i data-lucide="file-plus" style="width:17px;height:17px"></i>고객 RFQ 목록
+          </a>
+          <a href="../01_project/01-03_project_list.html" class="sc-btn">
+            <i data-lucide="briefcase" style="width:17px;height:17px"></i>프로젝트 목록
+          </a>
+          <a href="../03_cost/03-04_lme_register.html" class="sc-btn">
+            <i data-lucide="trending-up" style="width:17px;height:17px"></i>LME 기준정보
+          </a>
+          <a href="../04_dev_purchase/04-03_rfq_create.html" class="sc-btn">
+            <i data-lucide="send" style="width:17px;height:17px"></i>RFQ 생성/발송
+          </a>
+          <a href="../04_dev_purchase/04-06_quote_compare.html" class="sc-btn">
+            <i data-lucide="bar-chart-2" style="width:17px;height:17px"></i>견적 비교
+          </a>
+          <a href="../09_supplier/09-02_supplier_eval.html" class="sc-btn">
+            <i data-lucide="star" style="width:17px;height:17px"></i>협력사 평가
+          </a>
+        </div>
+      </div>
+
+    </div><!-- /행4 -->
+
+    </div><!-- /.dash-flow -->
+  </div><!-- /.content-scroll -->
+</div><!-- /.page-wrap -->
+
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+let _tt;
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  const color = type === 'ok' ? '#16a34a' : '#dc2626';
+  const icon  = type === 'ok' ? 'check-circle' : 'alert-circle';
+  t.innerHTML = `<i data-lucide="${icon}" style="width:16px;height:16px;color:${color}"></i>${msg}`;
+  t.style.display = 'flex';
+  lucide.createIcons();
+  clearTimeout(_tt);
+  _tt = setTimeout(() => { t.style.display = 'none'; }, 2400);
+}
+</script>
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>단가 품의 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 품의 탭 ── */
+  .type-tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:16px; }
+  .type-tab {
+    padding:0 20px; height:36px; font-size:13px; font-weight:500; cursor:pointer;
+    border:none; background:transparent; color:var(--text-sub);
+    border-bottom:2px solid transparent; margin-bottom:-2px;
+    transition:color .15s, border-color .15s;
+  }
+  .type-tab.active { color:var(--blue); border-bottom-color:var(--blue); font-weight:600; }
+  .type-pane { display:none; }
+  .type-pane.active { display:block; }
+
+  /* ── 첨부 체크리스트 ── */
+  .checklist { list-style:none; display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+  .checklist li { display:flex; align-items:center; gap:8px; font-size:13px; }
+  .checklist input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:var(--blue); }
+  .checklist .cl-req { color:var(--status-bad); font-size:11px; }
+
+  /* ── 결재선 ── */
+  .step-bar { display:flex; align-items:center; gap:0; }
+  .step-node { display:flex; align-items:center; }
+  .step-box {
+    width:110px; border:1px solid var(--border); border-radius:4px;
+    padding:8px 10px; display:flex; flex-direction:column; gap:3px;
+    background:var(--surface);
+  }
+  .step-box.done { border-color:var(--status-ok); background:#f0fdf4; }
+  .step-box.prog { border-color:var(--blue); background:var(--blue-light); }
+  .step-box.wait { border-color:var(--border); background:#f9fafb; }
+  .step-role { font-size:10px; color:var(--text-mute); }
+  .step-name { font-size:12px; font-weight:600; color:var(--text); }
+  .step-date { font-size:10px; color:var(--text-sub); }
+  .step-sep {
+    width:28px; height:1px; background:var(--border-strong); flex-shrink:0; position:relative;
+  }
+  .step-sep::after {
+    content:''; position:absolute; right:-4px; top:-3px;
+    border:4px solid transparent; border-left-color:var(--border-strong);
+  }
+
+  .toast {
+    position:fixed; bottom:24px; right:24px; background:#1f2937; color:#fff;
+    padding:10px 16px; border-radius:4px; font-size:13px;
+    z-index:500; display:none; align-items:center; gap:8px;
+    box-shadow:0 4px 16px rgba(0,0,0,.18);
+  }
+  .toast.show { display:flex; }
+</style>
+</head>
+
+<body data-menu="06-04">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">단가 품의</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="location.href='06-01_price_list.html'">
+        <i data-lucide="arrow-left"></i>목록
+      </button>
+      <button class="btn btn-secondary" onclick="showToast('임시저장이 완료되었습니다.')">
+        <i data-lucide="save"></i>임시저장
+      </button>
+      <button class="btn btn-primary" onclick="showToast('품의 결재 요청이 완료되었습니다.')">
+        <i data-lucide="send"></i>결재 요청
+      </button>
+    </div>
+  </div>
+
+  <div class="content-scroll">
+
+    <!-- 1. 기본 정보 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">품의 기본 정보</span>
+        <span class="badge badge-wait" style="font-size:10px;margin-left:8px">기안 작성 중</span>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">품의번호</label>
+          <input class="form-input" value="APV-PRC-2026-0031" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">작성일</label>
+          <input type="date" class="form-input" value="2026-06-04">
+        </div>
+        <div class="form-field">
+          <label class="form-label">기안자</label>
+          <input class="form-input" value="김구매 (구매팀)" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">프로젝트</label>
+          <input class="form-input" value="PJT-520PHEV-FT-2026" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">품번</label>
+          <input class="form-input" value="H1110-T100">
+        </div>
+        <div class="form-field">
+          <label class="form-label">품명</label>
+          <input class="form-input" value="Frame Sub Ass'y" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">협력사</label>
+          <input class="form-input" value="A사 (협성알루미늄)" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">연계 화면</label>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost" style="font-size:12px;padding:0 8px;height:32px" onclick="location.href='../05_quality/05-06_dev_request.html'">05-06 DR</button>
+            <button class="btn btn-ghost" style="font-size:12px;padding:0 8px;height:32px" onclick="location.href='06-02_price_detail.html'">06-02 상세</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 단가 유형 탭 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">단가 유형 선택</span>
+      </div>
+
+      <div class="type-tabs">
+        <button class="type-tab" onclick="switchTab('prov')">가단가 품의</button>
+        <button class="type-tab active" onclick="switchTab('final')">정단가 품의</button>
+        <button class="type-tab" onclick="switchTab('supply')">사급단가 품의</button>
+      </div>
+
+      <!-- 가단가 패널 -->
+      <div class="type-pane" id="pane-prov">
+        <div class="form-row form-row-4">
+          <div class="form-field">
+            <label class="form-label">요청 가단가 (원) <span class="req">*</span></label>
+            <input class="form-input num" value="14,200">
+          </div>
+          <div class="form-field">
+            <label class="form-label">적용 시작일 <span class="req">*</span></label>
+            <input type="date" class="form-input" value="2026-07-01">
+          </div>
+          <div class="form-field">
+            <label class="form-label">적용 종료일 <span class="req">*</span></label>
+            <input type="date" class="form-input" value="2026-09-30">
+          </div>
+          <div class="form-field">
+            <label class="form-label">정단가 전환 예정일</label>
+            <input type="date" class="form-input" value="2026-09-30">
+          </div>
+        </div>
+        <div class="form-row form-row-full">
+          <div class="form-field">
+            <label class="form-label">품의 사유 <span class="req">*</span></label>
+            <textarea class="form-textarea" rows="2">개발 초기 단계로 도면 Rev.B 미확정 상태. DR-2026-0042 가단가 결정 기준 적용. PPAP 완료 후 정단가 전환 예정.</textarea>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <div class="form-label" style="margin-bottom:6px">필수 첨부 서류</div>
+          <ul class="checklist">
+            <li><input type="checkbox" checked><span>견적서 (A사 제출)</span><span class="cl-req">*필수</span></li>
+            <li><input type="checkbox" checked><span>원가 비교표 (내부 기준 vs A사)</span><span class="cl-req">*필수</span></li>
+            <li><input type="checkbox"><span>DR 원본 (DR-2026-0042)</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 정단가 패널 -->
+      <div class="type-pane active" id="pane-final">
+        <div class="form-row form-row-4">
+          <div class="form-field">
+            <label class="form-label">요청 정단가 (원) <span class="req">*</span></label>
+            <input class="form-input num" value="14,500">
+          </div>
+          <div class="form-field">
+            <label class="form-label">적용 시작일 <span class="req">*</span></label>
+            <input type="date" class="form-input" value="2026-04-01">
+          </div>
+          <div class="form-field">
+            <label class="form-label">적용 종료일 <span class="req">*</span></label>
+            <input type="date" class="form-input" value="2030-09-30">
+          </div>
+          <div class="form-field">
+            <label class="form-label">LME 기준월</label>
+            <input class="form-input" value="2026-03" readonly style="background:#f0f2f5;color:var(--text-sub)">
+          </div>
+        </div>
+        <div class="form-row form-row-4">
+          <div class="form-field">
+            <label class="form-label">LME 확정가 (USD/MT)</label>
+            <input class="form-input num" value="2,650" readonly style="background:#f0f2f5;color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">환율 (KRW/USD)</label>
+            <input class="form-input num" value="1,380" readonly style="background:#f0f2f5;color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">도면 리비전</label>
+            <input class="form-input" value="Rev.C" readonly style="background:#f0f2f5;color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">조정 조건</label>
+            <input class="form-input" value="LME ±10% 초과 시 재협의">
+          </div>
+        </div>
+        <div class="form-row form-row-full">
+          <div class="form-field">
+            <label class="form-label">품의 사유 <span class="req">*</span></label>
+            <textarea class="form-textarea" rows="2">04-08 협상 이력 3라운드 최종 합의 완료. LME/환율/도면 스냅샷 확정. 목표가(12,100원) 대비 +2,400원 초과 — 고객가 재협상 병행 진행 예정.</textarea>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <div class="form-label" style="margin-bottom:6px">필수 첨부 서류</div>
+          <ul class="checklist">
+            <li><input type="checkbox" checked><span>LME 확인서 (2026-03 기준)</span><span class="cl-req">*필수</span></li>
+            <li><input type="checkbox" checked><span>환율 확인서 (한국은행 기준)</span><span class="cl-req">*필수</span></li>
+            <li><input type="checkbox" checked><span>견적 Breakdown (A사 제출본)</span><span class="cl-req">*필수</span></li>
+            <li><input type="checkbox" checked><span>협상 결과서 (04-08 이력 출력본)</span><span class="cl-req">*필수</span></li>
+            <li><input type="checkbox"><span>도면 Rev.C 확인서</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 사급단가 패널 -->
+      <div class="type-pane" id="pane-supply">
+        <div class="form-row form-row-4">
+          <div class="form-field">
+            <label class="form-label">지급소재 금액 합계 (원)</label>
+            <input class="form-input num" value="10,229" readonly style="background:#f0f2f5">
+          </div>
+          <div class="form-field">
+            <label class="form-label">가공비 단가 (원) <span class="req">*</span></label>
+            <input class="form-input num" value="4,271">
+          </div>
+          <div class="form-field">
+            <label class="form-label">사급단가 합계 (원)</label>
+            <input class="form-input num" value="14,500" readonly style="background:#f0f2f5;font-weight:700;color:var(--navy)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">지급소재 공급 방식</label>
+            <select class="form-select">
+              <option>동희산업 직납</option>
+              <option>지정 업체 공급</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row form-row-2">
+          <div class="form-field">
+            <label class="form-label">적용 시작일 <span class="req">*</span></label>
+            <input type="date" class="form-input" value="2026-04-01">
+          </div>
+          <div class="form-field">
+            <label class="form-label">적용 종료일 <span class="req">*</span></label>
+            <input type="date" class="form-input" value="2030-09-30">
+          </div>
+        </div>
+        <div class="form-row form-row-full">
+          <div class="form-field">
+            <label class="form-label">품의 사유 <span class="req">*</span></label>
+            <textarea class="form-textarea" rows="2">지급소재(Al 6061) 동희산업 직납 방식. 가공비만 협력사(A사) 단가로 처리. 소재 LME 변동은 별도 정산.</textarea>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <div class="form-label" style="margin-bottom:6px">필수 첨부 서류</div>
+          <ul class="checklist">
+            <li><input type="checkbox" checked><span>소재 공급 단가서</span><span class="cl-req">*필수</span></li>
+            <li><input type="checkbox" checked><span>가공비 산출서 (A사)</span><span class="cl-req">*필수</span></li>
+            <li><input type="checkbox"><span>지급소재 공급 계약서</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 결재선 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">결재선</span>
+      </div>
+      <div class="step-bar">
+        <div class="step-node">
+          <div class="step-box done">
+            <span class="step-role">구매담당</span>
+            <span class="step-name">김구매</span>
+            <span class="step-date">2026-06-04</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">구매팀장</span>
+            <span class="step-name">이팀장</span>
+            <span class="step-date">대기</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">구매부장</span>
+            <span class="step-name">박부장</span>
+            <span class="step-date">대기</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">재경팀장</span>
+            <span class="step-name">최팀장</span>
+            <span class="step-date">대기</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">대표이사</span>
+            <span class="step-name">정대표</span>
+            <span class="step-date">대기</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <i data-lucide="check-circle" style="width:15px;height:15px;color:#4ade80;flex-shrink:0"></i>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+function switchTab(type) {
+  document.querySelectorAll('.type-tab').forEach((t, i) => {
+    const types = ['prov', 'final', 'supply'];
+    t.classList.toggle('active', types[i] === type);
+  });
+  document.querySelectorAll('.type-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('pane-' + type).classList.add('active');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

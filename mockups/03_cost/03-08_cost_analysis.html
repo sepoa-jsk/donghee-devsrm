@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>목표가 대비 원가 분석 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── KPI 카드 행 ── */
+  .kpi-row { display: flex; gap: 12px; margin-bottom: 16px; }
+  .kpi-card {
+    flex: 1; padding: 14px 18px;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: var(--surface);
+  }
+  .kpi-label { font-size: 12px; color: var(--text-sub); margin-bottom: 6px; }
+  .kpi-value { font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  .kpi-sub   { font-size: 11px; color: var(--text-mute); margin-top: 4px; }
+
+  /* ── 분석 2-컬럼 그리드 ── */
+  .analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .analysis-grid .section-box { margin-bottom: 0; }
+
+  /* ── 수평 누적 막대 차트 ── */
+  .chart-wrap { padding: 4px 0 8px; }
+  .chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .chart-row-label { width: 72px; font-size: 11px; color: var(--text-sub); text-align: right; flex-shrink: 0; }
+  .chart-track {
+    flex: 1; height: 28px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 2px; overflow: hidden;
+    position: relative;
+  }
+  .chart-row-val { width: 80px; font-size: 12px; font-weight: 600; color: var(--text);
+                   text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  /* 세그먼트 색상 — navy 계열 */
+  .seg-mat  { background: #1e2d4e; height: 100%; display: inline-block; vertical-align: top; }
+  .seg-proc { background: #2a5298; height: 100%; display: inline-block; vertical-align: top; }
+  .seg-logi { background: #4472c4; height: 100%; display: inline-block; vertical-align: top; }
+  .seg-mgmt { background: #8faadc; height: 100%; display: inline-block; vertical-align: top; }
+  .seg-tgt  { background: #6b7280; height: 100%; display: inline-block; vertical-align: top; }
+  /* 목표가 기준선 */
+  .target-line {
+    position: absolute; top: 0; width: 2px; height: 100%;
+    background: var(--text); opacity: 0.5;
+  }
+  /* x축 눈금 */
+  .chart-xaxis {
+    display: flex; justify-content: space-between;
+    padding-left: 82px; padding-right: 90px;
+    font-size: 10px; color: var(--text-mute);
+    margin-bottom: 12px;
+  }
+  /* 범례 */
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 20px; margin-top: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-sub); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 1px; flex-shrink: 0; }
+
+  /* ── 비교 테이블 ── */
+  table.cmp-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.cmp-table thead th {
+    background: var(--grid-head); padding: 0 10px; height: 32px;
+    font-weight: 600; color: var(--text); text-align: center;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  table.cmp-table tbody td {
+    padding: 0 10px; height: 32px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text); vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+  }
+  table.cmp-table tbody tr:nth-child(even) td { background: var(--grid-row-alt); }
+  table.cmp-table tbody tr:hover td { background: var(--grid-hover); }
+  table.cmp-table tbody td.r  { text-align: right; }
+  table.cmp-table tbody td.c  { text-align: center; }
+  table.cmp-table tbody td.over  { color: var(--status-bad); font-weight: 600; }
+  table.cmp-table tbody td.under { color: var(--status-ok); }
+  table.cmp-table tbody tr.total-row td {
+    background: var(--grid-head); font-weight: 700;
+    border-top: 2px solid var(--border-strong); border-bottom: none;
+  }
+  /* 소계 바 (항목별 목표 대비 비율) */
+  .mini-bar { display: flex; align-items: center; gap: 6px; }
+  .mini-track { flex: 1; height: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 1px; overflow: hidden; }
+  .mini-fill  { height: 100%; border-radius: 1px; }
+
+  /* ── 부서별 검토 의견 ── */
+  .review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .review-card {
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 12px 14px;
+    background: var(--surface);
+  }
+  .review-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .review-card-dept { font-size: 13px; font-weight: 600; color: var(--text); }
+  .review-card-by   { font-size: 11px; color: var(--text-mute); }
+  .review-card-body { font-size: 12px; color: var(--text-sub); line-height: 1.7; }
+</style>
+</head>
+
+<body data-menu="03-08">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 (§4.1) -->
+  <div class="page-title-bar">
+    <span class="page-title">목표가 대비 원가 분석</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="window.print()">
+        <i data-lucide="printer"></i>인쇄
+      </button>
+    </div>
+  </div>
+
+  <div class="content-scroll">
+
+    <!-- ── 1. 기본 정보 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">기본 정보</span>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">품번</label>
+          <input type="text" class="form-input" value="H1110-T100" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">품명</label>
+          <input type="text" class="form-input" value="Frame Sub Ass'y" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">도면 리비전</label>
+          <input type="text" class="form-input" value="Rev.A" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">프로젝트</label>
+          <input type="text" class="form-input" value="PJT-520PHEV-FT-2026 · 520 PHEV Fuel Tank Module" readonly>
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">분석 기준일</label>
+          <input type="text" class="form-input" value="2026-01-05" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">기준 목표가 문서</label>
+          <input type="text" class="form-input" value="TGT-2026-0024 (확정)" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">기준 재료비 문서</label>
+          <input type="text" class="form-input" value="MAT-2026-0031 (LME-2026-0012)" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">SOP</label>
+          <input type="text" class="form-input" value="2026-10-01 · 연간 100,000개" readonly>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 2. KPI 요약 3장 ── -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-label">목표 구매단가</div>
+        <div class="kpi-value">12,100원</div>
+        <div class="kpi-sub">= 판매가 16,000 × (1−15%) − 내부비용 1,500</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">예상 원가 합계</div>
+        <div class="kpi-value">13,868원</div>
+        <div class="kpi-sub">재료비 11,168 + 가공비 1,900 + 물류비 420 + 관리비 380</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">목표 대비 초과</div>
+        <div class="kpi-value">+1,768원</div>
+        <div class="kpi-sub">목표 대비 +14.6% 초과 — 원가절감 또는 고객 재협의 필요</div>
+      </div>
+    </div>
+
+    <!-- ── 3. 분석 2-컬럼 ── -->
+    <div class="analysis-grid">
+
+      <!-- 좌: 원가 구성 누적 막대 차트 -->
+      <div class="section-box">
+        <div class="section-box-header">
+          <span class="section-box-title">원가 구성 분석</span>
+          <span style="font-size:11px;color:var(--text-mute)">MAX 기준 15,000원 = 100%</span>
+        </div>
+
+        <div class="chart-wrap">
+          <!-- 목표 구매단가 bar -->
+          <div class="chart-row">
+            <div class="chart-row-label">목표<br>구매단가</div>
+            <div class="chart-track">
+              <!-- 80.7% = 12,100 / 15,000 -->
+              <span class="seg-tgt" style="width:80.7%"></span>
+            </div>
+            <div class="chart-row-val">12,100원</div>
+          </div>
+
+          <!-- 예상 원가 stacked bar -->
+          <div class="chart-row">
+            <div class="chart-row-label">예상<br>원가</div>
+            <div class="chart-track">
+              <!-- 재료비: 11,168/15,000=74.5% | 가공비: 1,900/15,000=12.7% | 물류비: 420/15,000=2.8% | 관리비: 380/15,000=2.5% -->
+              <span class="seg-mat"  style="width:74.5%"></span>
+              <span class="seg-proc" style="width:12.7%"></span>
+              <span class="seg-logi" style="width:2.8%"></span>
+              <span class="seg-mgmt" style="width:2.5%"></span>
+              <!-- 목표 기준선 80.7% -->
+              <div class="target-line" style="left:80.7%"></div>
+            </div>
+            <div class="chart-row-val">13,868원</div>
+          </div>
+
+          <!-- x축 눈금 -->
+          <div class="chart-xaxis">
+            <span>0</span>
+            <span>3,000</span>
+            <span>6,000</span>
+            <span>9,000</span>
+            <span>12,000</span>
+            <span>15,000원</span>
+          </div>
+
+          <!-- 범례 -->
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#1e2d4e"></div>재료비 11,168원 (80.5%)
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#2a5298"></div>가공비 1,900원 (13.7%)
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#4472c4"></div>물류비 420원 (3.0%)
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#8faadc"></div>관리비/이윤 380원 (2.7%)
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#6b7280"></div>목표 기준선 (12,100원)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 우: 항목별 목표 대비 비교 -->
+      <div class="section-box">
+        <div class="section-box-header">
+          <span class="section-box-title">항목별 목표 대비 비교</span>
+        </div>
+        <div class="table-wrap">
+          <table class="cmp-table">
+            <thead>
+              <tr>
+                <th style="text-align:left">원가 항목</th>
+                <th style="width:100px;text-align:right">목표 배분 (원)</th>
+                <th style="width:100px;text-align:right">예상 원가 (원)</th>
+                <th style="width:90px;text-align:right">차이 (원)</th>
+                <th style="width:120px">목표 대비</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>재료비 <span class="badge badge-outline" style="font-size:10px;vertical-align:middle">LME 확정</span></td>
+                <td class="r">10,500</td>
+                <td class="r">11,168</td>
+                <td class="r over">+668</td>
+                <td>
+                  <div class="mini-bar">
+                    <div class="mini-track">
+                      <!-- 100% = 11,168, 목표선 = 10,500/11,168 = 94.0% -->
+                      <div class="mini-fill" style="width:100%;background:#2a5298"></div>
+                    </div>
+                    <span style="font-size:10px;color:var(--text-mute);width:36px;text-align:right">+6.4%</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>가공비</td>
+                <td class="r">900</td>
+                <td class="r">1,900</td>
+                <td class="r over">+1,000</td>
+                <td>
+                  <div class="mini-bar">
+                    <div class="mini-track">
+                      <div class="mini-fill" style="width:100%;background:#2a5298"></div>
+                    </div>
+                    <span style="font-size:10px;color:var(--text-mute);width:36px;text-align:right">+111%</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>물류비</td>
+                <td class="r">400</td>
+                <td class="r">420</td>
+                <td class="r over">+20</td>
+                <td>
+                  <div class="mini-bar">
+                    <div class="mini-track">
+                      <div class="mini-fill" style="width:95%;background:#4472c4"></div>
+                    </div>
+                    <span style="font-size:10px;color:var(--text-mute);width:36px;text-align:right">+5.0%</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>관리비/이윤</td>
+                <td class="r">300</td>
+                <td class="r">380</td>
+                <td class="r over">+80</td>
+                <td>
+                  <div class="mini-bar">
+                    <div class="mini-track">
+                      <div class="mini-fill" style="width:100%;background:#8faadc"></div>
+                    </div>
+                    <span style="font-size:10px;color:var(--text-mute);width:36px;text-align:right">+26.7%</span>
+                  </div>
+                </td>
+              </tr>
+              <tr class="total-row">
+                <td>합계</td>
+                <td class="r">12,100</td>
+                <td class="r">13,868</td>
+                <td class="r over">+1,768</td>
+                <td class="c"><span class="badge badge-bad" style="font-size:10px">+14.6% 초과</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 영업 손익 요약 -->
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+          <div class="sec-hdr"><span class="sec-cap">영업 손익 예상</span></div>
+          <div class="form-row form-row-4" style="margin-top:10px">
+            <div class="form-field">
+              <label class="form-label">고객 목표 판매가</label>
+              <input type="text" class="form-input num result" value="16,000원" readonly>
+            </div>
+            <div class="form-field">
+              <label class="form-label">예상 원가</label>
+              <input type="text" class="form-input num result" value="13,868원" readonly>
+            </div>
+            <div class="form-field">
+              <label class="form-label">예상 마진</label>
+              <input type="text" class="form-input num result" value="2,132원" readonly>
+              <span class="form-hint">= 판매가 − 예상원가</span>
+            </div>
+            <div class="form-field">
+              <label class="form-label">예상 마진율</label>
+              <input type="text" class="form-input num result" value="13.3%" readonly>
+              <span class="form-hint">목표 15.0% 대비 −1.7%p 미달</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /analysis-grid -->
+
+    <!-- ── 4. 부서별 검토 의견 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">부서별 검토 의견</span>
+        <span style="font-size:11px;color:var(--text-mute)">4개 부서 · 2026-01-05 기준</span>
+      </div>
+
+      <div class="review-grid">
+
+        <!-- 설계팀 -->
+        <div class="review-card">
+          <div class="review-card-header">
+            <span class="review-card-dept">설계팀</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="review-card-by">이설계 대리 · 2026-01-05</span>
+              <span class="badge badge-ok" style="font-size:10px">검토 완료</span>
+            </div>
+          </div>
+          <div class="review-card-body">
+            BOM Rev.A 기준 중량 검증 완료. 투입중량 3.20 kg, 스크랩 0.40 kg 적정 수준으로 확인.<br>
+            추가 경량화 설계 검토 중. Rev.B 전환 시 Frame Body 가공 개선으로 약 0.2 kg 감량 가능 예상.
+            감량 적용 시 재료비 약 720원 추가 절감 가능.
+          </div>
+        </div>
+
+        <!-- 구매팀 -->
+        <div class="review-card">
+          <div class="review-card-header">
+            <span class="review-card-dept">구매팀</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="review-card-by">김개발 대리 · 2026-01-05</span>
+              <span class="badge badge-warn" style="font-size:10px">조치 필요</span>
+            </div>
+          </div>
+          <div class="review-card-body">
+            재료비 11,168원은 LME-2026-0012 기준 적정 산출. 가공비 1,900원이 목표 배분(900원) 대비 +1,000원 초과.<br>
+            협력사 RFQ 발송 시 가공비 내역(공수·금형비) 상세 Breakdown 필수 요청 예정.
+            3개사 비교 후 협상 여지 확인 필요.
+          </div>
+        </div>
+
+        <!-- 영업팀 -->
+        <div class="review-card">
+          <div class="review-card-header">
+            <span class="review-card-dept">영업팀</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="review-card-by">박영업 과장 · 2026-01-05</span>
+              <span class="badge badge-warn" style="font-size:10px">주의</span>
+            </div>
+          </div>
+          <div class="review-card-body">
+            고객 목표 판매가 16,000원 기준 예상 마진 2,132원(13.3%) — 목표 마진율 15.0% 대비 −1.7%p 미달.<br>
+            원가절감 방안 미확보 시 현대자동차와 납품가 재협의 필요. 고객사 가격 수용 범위 선행 확인 권고.
+          </div>
+        </div>
+
+        <!-- 개발팀 -->
+        <div class="review-card">
+          <div class="review-card-header">
+            <span class="review-card-dept">개발팀</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="review-card-by">최개발 선임 · 2026-01-05</span>
+              <span class="badge badge-prog" style="font-size:10px">검토 중</span>
+            </div>
+          </div>
+          <div class="review-card-body">
+            Al 6061 → Al 5052 일부 전환 검토 중 (Bracket L·R 대상). Al 5052 소재단가 약 3,200원/kg으로
+            절감 효과 약 440원/개 기대.<br>
+            강도·성형성 기준 충족 여부 분석 중. 결과 확정 후 설계 변경 검토 요청 예정.
+          </div>
+        </div>
+
+      </div><!-- /review-grid -->
+    </div>
+
+  </div><!-- /content-scroll -->
+</div><!-- /page-wrap -->
+
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

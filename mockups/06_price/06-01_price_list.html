@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>확정단가 목록 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column; padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--status-ok);  } .st-ok::before   { background:var(--status-ok); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+
+  .pt { display:inline-block; font-size:11px; padding:0 7px; height:18px; line-height:18px;
+        border-radius:2px; border:1px solid; white-space:nowrap; }
+  .pt-prov   { border-color:var(--status-warn); color:var(--status-warn); }
+  .pt-final  { border-color:var(--blue);        color:var(--blue); }
+  .pt-supply { border-color:var(--status-ok);   color:var(--status-ok); }
+
+  .diff-over  { color:var(--status-bad); font-weight:600; }
+  .diff-under { color:var(--blue);       font-weight:600; }
+</style>
+</head>
+
+<body data-menu="06-01">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">확정단가 목록</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-primary" onclick="location.href='06-02_price_detail.html'">
+        <i data-lucide="plus"></i>단가 등록
+      </button>
+    </div>
+  </div>
+
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-filter" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-status" onclick="toggleStatusPanel()">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to" value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+  </div>
+
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">단가종류</span>
+      <select class="search-input" id="f-type" style="width:120px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="가단가">가단가</option>
+        <option value="정단가">정단가</option>
+        <option value="사급단가">사급단가</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">협력사</span>
+      <select class="search-input" id="f-supplier" style="width:100px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="A사">A사</option>
+        <option value="B사">B사</option>
+        <option value="C사">C사</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="status-strip" id="status-strip">
+    <button class="ss-btn active" onclick="setStatus('')">전체 <span class="ss-cnt" id="cnt-all">0</span></button>
+    <button class="ss-btn" onclick="setStatus('확정')">확정 <span class="ss-cnt" id="cnt-ok">0</span></button>
+    <button class="ss-btn" onclick="setStatus('진행')">진행 <span class="ss-cnt" id="cnt-prog">0</span></button>
+    <button class="ss-btn" onclick="setStatus('대기')">대기 <span class="ss-cnt" id="cnt-wait">0</span></button>
+    <button class="ss-btn" onclick="setStatus('만료')">만료 <span class="ss-cnt" id="cnt-exp">0</span></button>
+  </div>
+
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="tbl" style="border:1px solid var(--border);border-radius:4px">
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox"></th>
+            <th style="width:120px">품번</th>
+            <th>품명</th>
+            <th style="width:80px">단가종류</th>
+            <th style="width:110px">확정단가(원)</th>
+            <th style="width:108px">적용 시작일</th>
+            <th style="width:108px">적용 종료일</th>
+            <th style="width:80px">협력사</th>
+            <th style="width:130px">목표가 대비</th>
+            <th style="width:80px">상태</th>
+            <th style="width:108px">등록일</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DATA = [
+  { part:'H1110-T100', name:"Frame Sub Ass'y",     type:'정단가', price:14500, start:'2026-04-01', end:'2030-09-30', sup:'A사', target:12100, st:'확정', reg:'2026-04-01' },
+  { part:'H1110-T101', name:'Bracket Assy Upper',  type:'가단가', price:8200,  start:'2026-03-01', end:'2026-09-30', sup:'B사', target:7800,  st:'진행', reg:'2026-03-01' },
+  { part:'H1110-T102', name:'Cover Plate',         type:'정단가', price:5600,  start:'2026-04-01', end:'2030-09-30', sup:'A사', target:5800,  st:'확정', reg:'2026-04-05' },
+  { part:'H1110-T103', name:'Rubber Seal',         type:'사급단가',price:1200, start:'2026-05-01', end:'2030-09-30', sup:'C사', target:1100,  st:'진행', reg:'2026-05-10' },
+  { part:'H1110-T104', name:'Pipe Connector',      type:'가단가', price:3100,  start:'2026-02-01', end:'2026-07-31', sup:'B사', target:3000,  st:'대기', reg:'2026-02-01' },
+  { part:'H1110-T105', name:'Hose Assembly',       type:'정단가', price:9800,  start:'2025-10-01', end:'2026-03-31', sup:'A사', target:9500,  st:'만료', reg:'2025-10-01' },
+];
+
+const ST_CLS   = { '확정':'st-ok', '진행':'st-prog', '대기':'st-wait', '만료':'st-bad' };
+const TYPE_CLS = { '가단가':'pt-prov', '정단가':'pt-final', '사급단가':'pt-supply' };
+let currentSt = '';
+
+function applyFilter() {
+  const q    = document.getElementById('f-search').value.trim().toLowerCase();
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+  const type = document.getElementById('f-type')?.value || '';
+  const sup  = document.getElementById('f-supplier')?.value || '';
+
+  const rows = DATA.filter(d => {
+    if (currentSt && d.st !== currentSt) return false;
+    if (q && !d.part.toLowerCase().includes(q) && !d.name.toLowerCase().includes(q)) return false;
+    if (from && d.start < from) return false;
+    if (to   && d.start > to)   return false;
+    if (type && d.type !== type) return false;
+    if (sup  && d.sup  !== sup)  return false;
+    return true;
+  });
+  renderRows(rows);
+  updateCounts();
+}
+
+function fmt(n) { return n.toLocaleString(); }
+
+function renderRows(rows) {
+  document.getElementById('tbody').innerHTML = rows.map(d => {
+    const diff = d.price - d.target;
+    const pct  = ((diff / d.target) * 100).toFixed(1);
+    const sign = diff >= 0 ? '+' : '';
+    const cls  = diff > 0 ? 'diff-over' : 'diff-under';
+    return `<tr onclick="location.href='06-02_price_detail.html'">
+      <td class="c" onclick="event.stopPropagation()"><input type="checkbox"></td>
+      <td class="c"><a class="td-link" href="06-02_price_detail.html">${d.part}</a></td>
+      <td style="padding-left:12px">${d.name}</td>
+      <td class="c"><span class="pt ${TYPE_CLS[d.type]}">${d.type}</span></td>
+      <td class="r" style="padding-right:12px;font-variant-numeric:tabular-nums">${fmt(d.price)}</td>
+      <td class="c muted">${d.start}</td>
+      <td class="c muted">${d.end}</td>
+      <td class="c">${d.sup}</td>
+      <td class="c ${cls}">${sign}${fmt(diff)} (${sign}${pct}%)</td>
+      <td class="c"><span class="st ${ST_CLS[d.st]}">${d.st}</span></td>
+      <td class="c muted">${d.reg}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateCounts() {
+  document.getElementById('cnt-all').textContent  = DATA.length;
+  document.getElementById('cnt-ok').textContent   = DATA.filter(d => d.st === '확정').length;
+  document.getElementById('cnt-prog').textContent = DATA.filter(d => d.st === '진행').length;
+  document.getElementById('cnt-wait').textContent = DATA.filter(d => d.st === '대기').length;
+  document.getElementById('cnt-exp').textContent  = DATA.filter(d => d.st === '만료').length;
+}
+
+function setStatus(st) {
+  currentSt = st;
+  document.querySelectorAll('.ss-btn').forEach(b => b.classList.remove('active'));
+  ['', '확정', '진행', '대기', '만료'].forEach((s, i) => {
+    if (s === st) document.querySelectorAll('.ss-btn')[i]?.classList.add('active');
+  });
+  applyFilter();
+}
+
+function toggleFilter() { document.getElementById('filter-panel').classList.toggle('open'); }
+function toggleStatusPanel() {
+  const el = document.getElementById('status-strip');
+  el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+
+renderRows(DATA);
+updateCounts();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

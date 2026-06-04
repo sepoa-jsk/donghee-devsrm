@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>EO 접수 현황 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* search-wrap · btn-filter · btn-status · date-range · status-strip → tokens.css */
+
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column; padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--text);       } .st-ok::before   { background:var(--navy); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+
+  .eo-type {
+    display:inline-block; font-size:11px; padding:0 7px; height:18px; line-height:18px;
+    border-radius:2px; border:1px solid var(--border); color:var(--text-sub); white-space:nowrap;
+  }
+  .eo-type.initial { border-color:var(--navy); color:var(--navy); }
+  .eo-type.change  { border-color:var(--text-sub); color:var(--text-sub); }
+</style>
+</head>
+
+<body data-menu="05-05">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">EO 접수 현황</span>
+  </div>
+
+  <!-- 검색 바 (03-01 패턴 동일) -->
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-filter" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-status" onclick="toggleStatusPanel()">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to" value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+    <div class="ml-auto">
+      <button class="btn btn-primary" onclick="openModal()">
+        <i data-lucide="plus"></i>EO 등록
+      </button>
+    </div>
+  </div>
+
+  <!-- 필터 패널 -->
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">유형</span>
+      <select class="search-input" id="f-type" style="width:110px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="초도 EO">초도 EO</option>
+        <option value="설변 EO">설변 EO</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">품번</span>
+      <input type="text" class="search-input" id="f-part" placeholder="품번" style="width:110px" oninput="applyFilter()">
+    </div>
+  </div>
+
+  <!-- 상태 스트립 -->
+  <div class="status-strip" id="status-strip">
+    <button class="ss-btn active" onclick="setStatus('')">전체 <span class="ss-cnt" id="cnt-all">8</span></button>
+    <button class="ss-btn" onclick="setStatus('접수')">접수 <span class="ss-cnt" id="cnt-wait">3</span></button>
+    <button class="ss-btn" onclick="setStatus('처리중')">처리중 <span class="ss-cnt" id="cnt-prog">3</span></button>
+    <button class="ss-btn" onclick="setStatus('완료')">완료 <span class="ss-cnt" id="cnt-ok">2</span></button>
+  </div>
+
+  <!-- 그리드 -->
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="eo-table" style="border:1px solid var(--border);border-radius:4px">
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox"></th>
+            <th style="width:130px">EO번호</th>
+            <th style="width:80px">유형</th>
+            <th style="width:108px">발행일</th>
+            <th style="width:110px">품번</th>
+            <th>품명</th>
+            <th style="width:108px">적용 시점</th>
+            <th style="width:110px">협력사 통보일</th>
+            <th style="width:90px">처리 상태</th>
+            <th style="width:80px">담당자</th>
+          </tr>
+        </thead>
+        <tbody id="eo-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- EO 등록 모달 -->
+<div class="modal-backdrop" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-header">
+      <span class="modal-title">EO 등록</span>
+      <button class="modal-close" onclick="closeModal()"><i data-lucide="x" style="width:16px;height:16px"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row form-row-2">
+        <div class="form-field">
+          <label class="form-label">EO번호 <span class="req">*</span></label>
+          <input class="form-input" value="EO-2026-0117" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">유형 <span class="req">*</span></label>
+          <select class="form-select">
+            <option>초도 EO</option>
+            <option>설변 EO</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-field">
+          <label class="form-label">발행일 <span class="req">*</span></label>
+          <input type="date" class="form-input" value="2026-06-04">
+        </div>
+        <div class="form-field">
+          <label class="form-label">적용 시점 <span class="req">*</span></label>
+          <input type="date" class="form-input" value="2026-08-01">
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-field">
+          <label class="form-label">품번 <span class="req">*</span></label>
+          <input class="form-input" placeholder="예: H1110-T100" value="H1110-T100">
+        </div>
+        <div class="form-field">
+          <label class="form-label">품명</label>
+          <input class="form-input" value="Frame Sub Ass'y" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-field">
+          <label class="form-label">협력사 통보일</label>
+          <input type="date" class="form-input">
+        </div>
+        <div class="form-field">
+          <label class="form-label">담당자 <span class="req">*</span></label>
+          <select class="form-select">
+            <option>이품질</option>
+            <option>박품질</option>
+            <option>정설계</option>
+            <option>김구매</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row form-row-full">
+        <div class="form-field">
+          <label class="form-label">변경 내용 / 비고</label>
+          <textarea class="form-textarea" placeholder="설계 변경 사유 또는 초도 EO 상세 내용을 입력하세요."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveEO()"><i data-lucide="save" style="width:14px;height:14px"></i>등록</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = [
+  { eo:'EO-2026-0041', type:'초도 EO', date:'2026-01-10', part:'H1110-T100', name:"Frame Sub Ass'y",     apply:'2026-03-01', notify:'2026-01-12', st:'완료',  mgr:'이품질' },
+  { eo:'EO-2026-0052', type:'초도 EO', date:'2026-01-15', part:'H1110-T101', name:'Bracket Assy Upper',   apply:'2026-03-01', notify:'2026-01-17', st:'완료',  mgr:'이품질' },
+  { eo:'EO-2026-0078', type:'설변 EO', date:'2026-03-08', part:'H1110-T100', name:"Frame Sub Ass'y",     apply:'2026-04-01', notify:'2026-03-10', st:'처리중', mgr:'정설계' },
+  { eo:'EO-2026-0079', type:'설변 EO', date:'2026-03-10', part:'H1110-T102', name:'Cover Plate',         apply:'2026-04-01', notify:'2026-03-12', st:'처리중', mgr:'정설계' },
+  { eo:'EO-2026-0103', type:'설변 EO', date:'2026-04-22', part:'H1110-T100', name:"Frame Sub Ass'y",     apply:'2026-06-01', notify:'—',          st:'접수',  mgr:'이품질' },
+  { eo:'EO-2026-0104', type:'설변 EO', date:'2026-04-25', part:'H1110-T101', name:'Bracket Assy Upper',   apply:'2026-06-01', notify:'—',          st:'접수',  mgr:'이품질' },
+  { eo:'EO-2026-0115', type:'설변 EO', date:'2026-05-30', part:'H1110-T105', name:'Pipe Connector',       apply:'2026-07-01', notify:'—',          st:'접수',  mgr:'정설계' },
+  { eo:'EO-2026-0116', type:'초도 EO', date:'2026-06-01', part:'H1110-T103', name:'Rubber Seal',          apply:'2026-07-15', notify:'—',          st:'처리중', mgr:'이품질' },
+];
+
+const ST_CLS = { '완료':'st-ok', '처리중':'st-prog', '접수':'st-wait' };
+const TYPE_CLS = { '초도 EO':'initial', '설변 EO':'change' };
+let currentSt = '';
+
+function applyFilter() {
+  const q    = document.getElementById('f-search').value.trim().toLowerCase();
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+  const type = document.getElementById('f-type')?.value || '';
+  const part = document.getElementById('f-part')?.value.trim().toLowerCase() || '';
+
+  const rows = DATA.filter(d => {
+    if (currentSt && d.st !== currentSt) return false;
+    if (q && !d.eo.toLowerCase().includes(q) && !d.part.toLowerCase().includes(q) && !d.name.toLowerCase().includes(q)) return false;
+    if (from && d.date < from) return false;
+    if (to   && d.date > to)   return false;
+    if (type && d.type !== type) return false;
+    if (part && !d.part.toLowerCase().includes(part)) return false;
+    return true;
+  });
+
+  renderRows(rows);
+  updateCounts();
+}
+
+function renderRows(rows) {
+  document.getElementById('eo-tbody').innerHTML = rows.map(d => `
+    <tr>
+      <td class="c"><input type="checkbox"></td>
+      <td class="c"><a class="td-link" href="#">${d.eo}</a></td>
+      <td class="c"><span class="eo-type ${TYPE_CLS[d.type]}">${d.type}</span></td>
+      <td class="c muted">${d.date}</td>
+      <td class="c"><a class="td-link" href="#">${d.part}</a></td>
+      <td style="padding-left:12px">${d.name}</td>
+      <td class="c muted">${d.apply}</td>
+      <td class="c muted">${d.notify}</td>
+      <td class="c"><span class="st ${ST_CLS[d.st]}">${d.st}</span></td>
+      <td class="c muted">${d.mgr}</td>
+    </tr>`).join('');
+}
+
+function updateCounts() {
+  document.getElementById('cnt-all').textContent  = DATA.length;
+  document.getElementById('cnt-wait').textContent = DATA.filter(d => d.st === '접수').length;
+  document.getElementById('cnt-prog').textContent = DATA.filter(d => d.st === '처리중').length;
+  document.getElementById('cnt-ok').textContent   = DATA.filter(d => d.st === '완료').length;
+}
+
+function setStatus(st) {
+  currentSt = st;
+  document.querySelectorAll('.ss-btn').forEach(b => b.classList.remove('active'));
+  const idx = ['', '접수', '처리중', '완료'].indexOf(st);
+  document.querySelectorAll('.ss-btn')[idx]?.classList.add('active');
+  applyFilter();
+}
+
+function toggleFilter() {
+  document.getElementById('filter-panel').classList.toggle('open');
+}
+
+function toggleStatusPanel() {
+  document.getElementById('status-strip').style.display =
+    document.getElementById('status-strip').style.display === 'none' ? 'flex' : 'none';
+}
+
+function openModal() {
+  document.getElementById('modal').classList.add('open');
+  lucide.createIcons();
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+function saveEO() {
+  closeModal();
+}
+
+/* 초기 렌더 */
+renderRows(DATA);
+updateCounts();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

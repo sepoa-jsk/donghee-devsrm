@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>현상원가 차이 분석 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .search-wrap { flex:1; position:relative; max-width:560px; }
+  .search-wrap input {
+    width:100%; height:32px; border:1px solid var(--border); border-radius:4px;
+    padding:0 34px 0 12px; font-size:13px; font-family:'Pretendard',sans-serif;
+    color:var(--text); background:var(--surface); outline:none; transition:border-color .15s;
+  }
+  .search-wrap input:focus { border-color:var(--blue); box-shadow:0 0 0 2px rgba(26,86,170,.12); }
+  .search-wrap input::placeholder { color:var(--text-mute); }
+  .search-wrap .s-icon { position:absolute; right:9px; top:50%; transform:translateY(-50%); color:#dc2626; pointer-events:none; }
+  .btn-ctrl {
+    height:32px; padding:0 12px; border-radius:4px;
+    font-size:13px; font-family:'Pretendard',sans-serif; font-weight:500;
+    display:inline-flex; align-items:center; gap:5px;
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    cursor:pointer; white-space:nowrap; transition:background .12s;
+  }
+  .btn-ctrl:hover { background:var(--bg); }
+  .date-range {
+    height:32px; display:flex; align-items:center; gap:4px;
+    border:1px solid var(--border); border-radius:4px;
+    padding:0 10px; background:var(--surface); font-size:12px;
+  }
+  .date-range input[type="date"] {
+    border:none; outline:none; font-size:12px;
+    font-family:'Pretendard',sans-serif; color:var(--text);
+    background:transparent; width:108px; cursor:pointer;
+  }
+  .date-range input[type="date"]::-webkit-calendar-picker-indicator { display:none; }
+  .date-range .dr-sep { color:var(--text-mute); }
+  .status-strip {
+    height:36px; background:var(--surface);
+    display:flex; align-items:center; padding:0 24px; gap:24px; flex-shrink:0;
+  }
+  .ss-btn {
+    background:none; border:none; cursor:pointer;
+    font-size:12px; color:var(--text-sub); font-family:'Pretendard',sans-serif;
+    display:flex; align-items:center; gap:5px; padding:0; transition:color .1s;
+  }
+  .ss-btn:hover { color:var(--text); }
+  .ss-btn.active { color:var(--blue); font-weight:600; }
+  .ss-cnt { font-weight:700; font-variant-numeric:tabular-nums; }
+  .ss-btn.active .ss-cnt { color:var(--blue); }
+  .filter-panel {
+    background:var(--bg); border-bottom:1px solid var(--border);
+    padding:10px 24px; display:none; flex-shrink:0;
+    gap:16px; align-items:center; flex-wrap:wrap;
+  }
+  .filter-panel.open { display:flex; }
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column;
+    padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--text);       } .st-ok::before   { background:var(--navy); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+
+  /* ── 모달 내 KPI ── */
+  .gap-kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+  .gap-kpi { background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:10px 14px; }
+  .gap-kpi-label { font-size:11px; color:var(--text-mute); margin-bottom:4px; }
+  .gap-kpi-val { font-size:18px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; line-height:1.2; }
+  .gap-kpi-sub { font-size:11px; color:var(--text-mute); margin-top:2px; }
+  .gap-kpi.over  { border-left:3px solid var(--status-bad); }
+  .gap-kpi.under { border-left:3px solid var(--navy); }
+
+  /* ── 항목별 차이 테이블 ── */
+  table.gap-table { width:100%; border-collapse:collapse; font-size:12px; }
+  table.gap-table thead th {
+    background:var(--grid-head); padding:0 10px; height:30px;
+    font-size:11px; font-weight:600; color:var(--text-sub);
+    text-align:center; border-bottom:1px solid var(--border);
+    border-right:1px solid var(--border); white-space:nowrap;
+  }
+  table.gap-table thead th:last-child { border-right:none; }
+  table.gap-table tbody td {
+    padding:0 10px; height:34px;
+    border-bottom:1px solid var(--border); border-right:1px solid var(--border);
+    vertical-align:middle; font-variant-numeric:tabular-nums;
+  }
+  table.gap-table tbody td:last-child { border-right:none; }
+  table.gap-table tbody tr:last-child td { border-bottom:none; }
+  table.gap-table td.label { font-weight:600; color:var(--text); text-align:left; padding-left:10px; }
+  table.gap-table td.num   { text-align:right; }
+  table.gap-table td.over  { text-align:right; color:var(--status-bad); font-weight:600; }
+  table.gap-table td.under { text-align:right; color:var(--navy);       font-weight:600; }
+  table.gap-table td.zero  { text-align:right; color:var(--text-mute); }
+  table.gap-table tr.total-row td { background:var(--grid-head); font-weight:700; border-top:1px solid var(--border-strong); }
+  table.gap-table tr.improved-row td { background:#f8f9fb; }
+
+  /* 차이율 셀 */
+  .rate-over  { color:var(--status-bad); font-weight:600; }
+  .rate-under { color:var(--navy);       font-weight:600; }
+</style>
+</head>
+
+<body data-menu="03-11">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">현상원가 차이 분석</span>
+  </div>
+
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-ctrl" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-ctrl" onclick="toggleStatusPanel()">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to"   value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+    <div class="ml-auto">
+      <button class="btn btn-primary" onclick="openModal(0)">
+        <i data-lucide="plus"></i>분석 등록
+      </button>
+    </div>
+  </div>
+
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">프로젝트</span>
+      <input type="text" class="search-input" id="f-proj" placeholder="코드/명" style="width:150px" oninput="applyFilter()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">품번</span>
+      <input type="text" class="search-input" id="f-code" placeholder="품번" style="width:110px" oninput="applyFilter()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">차이 구분</span>
+      <select class="search-select" id="f-gap" onchange="applyFilter()" style="width:90px">
+        <option value="">전체</option>
+        <option value="over">초과</option>
+        <option value="under">달성</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="status-strip" id="status-strip">
+    <button class="ss-btn active" data-s="" onclick="setStatus(this,'')">
+      전체 <span class="ss-cnt" id="cnt-all">0</span>
+    </button>
+    <button class="ss-btn" data-s="분석중" onclick="setStatus(this,'분석중')">
+      분석중 <span class="ss-cnt" id="cnt-a">0</span>
+    </button>
+    <button class="ss-btn" data-s="조치계획수립" onclick="setStatus(this,'조치계획수립')">
+      조치계획수립 <span class="ss-cnt" id="cnt-b">0</span>
+    </button>
+    <button class="ss-btn" data-s="완료" onclick="setStatus(this,'완료')">
+      완료 <span class="ss-cnt" id="cnt-c">0</span>
+    </button>
+    <button class="ss-btn" data-s="지연" onclick="setStatus(this,'지연')">
+      지연 <span class="ss-cnt" id="cnt-d">0</span>
+    </button>
+  </div>
+
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="main-table">
+        <thead>
+          <tr>
+            <th style="width:36px">
+              <input type="checkbox" id="chk-all" onclick="toggleAll(this)"
+                style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer">
+            </th>
+            <th style="width:36px">No</th>
+            <th style="width:160px">프로젝트</th>
+            <th style="width:110px">품번</th>
+            <th>품명</th>
+            <th style="width:96px">분석 기준일</th>
+            <th class="r" style="width:110px">현상원가(원)</th>
+            <th class="r" style="width:110px">목표원가(원)</th>
+            <th class="r" style="width:110px">차이금액(원)</th>
+            <th class="r" style="width:72px">차이율</th>
+            <th style="width:130px">주요 차이 원인</th>
+            <th class="r" style="width:116px">개선 후 예상(원)</th>
+            <th style="width:86px">상태</th>
+            <th style="width:56px">분석</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- 상세 분석 모달 -->
+<div class="modal-backdrop" id="modal-detail">
+  <div class="modal-box" style="max-width:800px">
+    <div class="modal-header">
+      <span class="modal-title" id="m-title">현상원가 차이 분석 상세</span>
+      <button class="modal-close" onclick="closeModal()">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- KPI -->
+      <div class="gap-kpi-row" id="m-kpi"></div>
+
+      <!-- 항목별 차이 테이블 -->
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">항목별 원가 차이</div>
+        <div style="border:1px solid var(--border);border-radius:4px;overflow:hidden">
+          <table class="gap-table" id="m-gap-table"></table>
+        </div>
+      </div>
+
+      <!-- 조치 계획 -->
+      <div class="form-row form-row-2" style="gap:16px">
+        <div class="form-field">
+          <label class="form-label">차이 원인 요약</label>
+          <textarea class="form-textarea" id="m-cause" rows="3"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">조치 계획</label>
+          <textarea class="form-textarea" id="m-action" rows="3"></textarea>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">닫기</button>
+      <button class="btn btn-primary" onclick="closeModal();showToast('저장되었습니다.','ok')">
+        <i data-lucide="save"></i>저장
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+const ROWS = [
+  {
+    no:1, proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',
+    code:'H1110-T100', name:"Frame Sub Ass'y", date:'2026-04-25',
+    actual:14500, target:12100,
+    items:[
+      { label:'재료비',  actual:8200,  target:6800,  cause:'LME 상승 + 환율 변동', action:'LME 연동 단가 재설정 협상' },
+      { label:'가공비',  actual:3800,  target:3200,  cause:'공정 수율 저하',       action:'공법 최적화 설계 검토' },
+      { label:'물류비',  actual:1200,  target:1100,  cause:'연료비 상승',           action:'납품 경로 최적화' },
+      { label:'관리비',  actual:900,   target:800,   cause:'간접비 증가',           action:'거래 물량 증대 협의' },
+      { label:'이윤',    actual:400,   target:200,   cause:'협력사 마진 상향 요구', action:'협상 라운드 2차 진행' },
+    ],
+    cause:'재료비(Al LME +8.8%) 및 가공비 초과가 주요 원인. 협력사 재협상 필요.',
+    action:'1) LME 연동 단가 조건 협의  2) 가공 공정 VE 검토  3) 2차 협상 일정 수립',
+    improved:13200, status:'조치계획수립'
+  },
+  {
+    no:2, proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',
+    code:'H1110-T101', name:'Bracket Assy Upper', date:'2026-04-25',
+    actual:2050, target:2200,
+    items:[
+      { label:'재료비',  actual:820,  target:880,  cause:'소재 단가 개선',   action:'-' },
+      { label:'가공비',  actual:750,  target:780,  cause:'공정 효율화',      action:'-' },
+      { label:'물류비',  actual:280,  target:310,  cause:'경로 최적화 달성', action:'-' },
+      { label:'관리비',  actual:160,  target:180,  cause:'물량 확대 효과',   action:'-' },
+      { label:'이윤',    actual:40,   target:50,   cause:'마진 조정',        action:'-' },
+    ],
+    cause:'전 항목 목표원가 달성. 소재 단가 인하 효과.',
+    action:'현재 단가 확정 진행',
+    improved:2050, status:'완료'
+  },
+  {
+    no:3, proj:'PJT-SANTA-RB-2026', projName:'싼타페 2027 후면범퍼',
+    code:'H2210-R200', name:'Rear Bumper Assy', date:'2026-05-10',
+    actual:19800, target:18500,
+    items:[
+      { label:'재료비',  actual:6200,  target:6000,  cause:'PP-GF30 단가 상승', action:'분석 중' },
+      { label:'가공비',  actual:8100,  target:7200,  cause:'사출 사이클 타임 초과', action:'금형 최적화 검토' },
+      { label:'물류비',  actual:2400,  target:2300,  cause:'포장 규격 변경',    action:'분석 중' },
+      { label:'관리비',  actual:2100,  target:2000,  cause:'초기 투자 반영',    action:'분석 중' },
+      { label:'이윤',    actual:1000,  target:1000,  cause:'-',                action:'-' },
+    ],
+    cause:'가공비(사출 성형 사이클 타임) 초과가 주 원인. 금형 최적화 필요.',
+    action:'분석 진행 중',
+    improved:18900, status:'분석중'
+  },
+  {
+    no:4, proj:'PJT-ION9-BM-2026', projName:'아이오닉9 배터리마운트',
+    code:'H3310-B150', name:'Battery Mount Assy', date:'2026-05-20',
+    actual:22100, target:21500,
+    items:[
+      { label:'재료비',  actual:9800,  target:9800,  cause:'-',              action:'-' },
+      { label:'가공비',  actual:7200,  target:7000,  cause:'단조 압력 보강', action:'공정 파라미터 조정' },
+      { label:'물류비',  actual:2400,  target:2200,  cause:'특수 포장 추가', action:'포장 기준 재협의' },
+      { label:'관리비',  actual:2200,  target:2000,  cause:'금형 관리비 포함', action:'분리 계상 협의' },
+      { label:'이윤',    actual:500,   target:500,   cause:'-',              action:'-' },
+    ],
+    cause:'가공비·물류비·관리비 소폭 초과. 총 +600원 수준.',
+    action:'1) 단조 공정 최적화  2) 포장 기준 재협의',
+    improved:21500, status:'분석중'
+  },
+];
+
+let activeStatus = '';
+
+function fmt(n) { return (n !== null && n !== undefined) ? n.toLocaleString() : '-'; }
+
+function gapCell(d) {
+  if (d === 0) return `<span class="zero">${fmt(0)}</span>`;
+  const sign = d > 0 ? '+' : '';
+  if (d > 0) return `<span style="color:var(--status-bad);font-weight:600;font-variant-numeric:tabular-nums">${sign}${fmt(d)}</span>`;
+  return `<span style="color:var(--navy);font-weight:600;font-variant-numeric:tabular-nums">${fmt(d)}</span>`;
+}
+
+function rateCell(actual, target) {
+  if (!target) return '-';
+  const r = ((actual - target) / target * 100);
+  const sign = r > 0 ? '+' : '';
+  if (r > 0) return `<span class="rate-over">${sign}${r.toFixed(1)}%</span>`;
+  if (r < 0) return `<span class="rate-under">${r.toFixed(1)}%</span>`;
+  return '<span style="color:var(--text-mute)">0.0%</span>';
+}
+
+function stText(s) {
+  const map = { '완료':'st-ok', '분석중':'st-prog', '조치계획수립':'st-prog', '지연':'st-bad' };
+  return `<span class="st ${map[s] || 'st-wait'}">${s}</span>`;
+}
+
+function updateStrip(rows) {
+  document.getElementById('cnt-all').textContent = rows.length;
+  document.getElementById('cnt-a').textContent   = rows.filter(r => r.status === '분석중').length;
+  document.getElementById('cnt-b').textContent   = rows.filter(r => r.status === '조치계획수립').length;
+  document.getElementById('cnt-c').textContent   = rows.filter(r => r.status === '완료').length;
+  document.getElementById('cnt-d').textContent   = rows.filter(r => r.status === '지연').length;
+}
+
+function renderRows(rows) {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    const gap = r.actual - r.target;
+    const isOver = gap > 0;
+    tr.innerHTML = `
+      <td style="text-align:center">
+        <input type="checkbox" class="row-chk"
+          style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer"
+          onchange="onRowCheck()">
+      </td>
+      <td style="text-align:center;color:var(--text-mute)">${r.no}</td>
+      <td style="padding-left:10px">
+        <div style="font-weight:500;color:var(--text)">${r.projName}</div>
+        <div style="font-size:11px;color:var(--text-mute)">${r.proj}</div>
+      </td>
+      <td style="text-align:center">
+        <a href="#" class="td-link" onclick="event.stopPropagation();return false">${r.code}</a>
+      </td>
+      <td style="padding-left:10px;color:var(--text-sub)">${r.name}</td>
+      <td style="text-align:center;color:var(--text-sub);font-size:11px;font-variant-numeric:tabular-nums">${r.date}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${fmt(r.actual)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--text-sub)">${fmt(r.target)}</td>
+      <td style="text-align:right">${gapCell(gap)}</td>
+      <td style="text-align:right">${rateCell(r.actual, r.target)}</td>
+      <td style="padding-left:10px;font-size:11px;color:var(--text-sub);white-space:normal">${r.items.filter(i=>i.cause!=='-').map(i=>i.label).join(' / ')}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--text-sub)">${fmt(r.improved)}</td>
+      <td style="text-align:center">${stText(r.status)}</td>
+      <td style="text-align:center">
+        <button class="btn btn-ghost btn-sm btn-grid"
+          onclick="event.stopPropagation();openModal(${ROWS.indexOf(r)})">
+          <i data-lucide="zoom-in"></i>
+        </button>
+      </td>
+    `;
+    tr.addEventListener('click', e => {
+      if (e.target.tagName === 'INPUT' || e.target.closest('button') || e.target.tagName === 'A') return;
+      const chk = tr.querySelector('.row-chk');
+      chk.checked = !chk.checked;
+      tr.classList.toggle('selected', chk.checked);
+      onRowCheck();
+    });
+    tbody.appendChild(tr);
+  });
+  lucide.createIcons();
+}
+
+function getBaseFiltered() {
+  const q    = document.getElementById('f-search').value.trim().toLowerCase();
+  const proj = (document.getElementById('f-proj') || {}).value?.trim().toLowerCase() || '';
+  const code = (document.getElementById('f-code') || {}).value?.trim().toLowerCase() || '';
+  const gap  = (document.getElementById('f-gap')  || {}).value || '';
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+
+  return ROWS.filter(r => {
+    if (q    && !r.proj.toLowerCase().includes(q) && !r.projName.toLowerCase().includes(q)
+              && !r.code.toLowerCase().includes(q)) return false;
+    if (proj && !r.proj.toLowerCase().includes(proj) && !r.projName.toLowerCase().includes(proj)) return false;
+    if (code && !r.code.toLowerCase().includes(code)) return false;
+    if (gap === 'over'  && r.actual <= r.target) return false;
+    if (gap === 'under' && r.actual >  r.target) return false;
+    if (from && r.date < from) return false;
+    if (to   && r.date > to)   return false;
+    return true;
+  });
+}
+
+function applyFilter() {
+  const base = getBaseFiltered();
+  const rows = activeStatus ? base.filter(r => r.status === activeStatus) : base;
+  renderRows(rows);
+  updateStrip(base);
+  resetChecks();
+}
+
+function setStatus(btn, s) {
+  activeStatus = s;
+  document.querySelectorAll('.ss-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+
+function toggleFilter() { document.getElementById('filter-panel').classList.toggle('open'); }
+function toggleStatusPanel() {
+  const s = document.getElementById('status-strip');
+  s.style.display = s.style.display === 'none' ? 'flex' : 'none';
+}
+function toggleAll(m) {
+  document.querySelectorAll('.row-chk').forEach(c => {
+    c.checked = m.checked;
+    c.closest('tr').classList.toggle('selected', m.checked);
+  });
+}
+function onRowCheck() {
+  const all = document.querySelectorAll('.row-chk');
+  const chk = document.querySelectorAll('.row-chk:checked');
+  const m   = document.getElementById('chk-all');
+  m.indeterminate = chk.length > 0 && chk.length < all.length;
+  m.checked = all.length > 0 && chk.length === all.length;
+}
+function resetChecks() {
+  document.getElementById('chk-all').checked = false;
+  document.getElementById('chk-all').indeterminate = false;
+}
+
+/* ── 상세 모달 ── */
+function openModal(idx) {
+  const r = ROWS[idx];
+  const totalGap = r.actual - r.target;
+  const gapRate  = ((r.actual - r.target) / r.target * 100).toFixed(1);
+  const isOver   = totalGap > 0;
+
+  document.getElementById('m-title').textContent = `현상원가 차이 분석 — ${r.code} (${r.date})`;
+
+  /* KPI */
+  document.getElementById('m-kpi').innerHTML = `
+    <div class="gap-kpi">
+      <div class="gap-kpi-label">현상원가</div>
+      <div class="gap-kpi-val">${fmt(r.actual)}원</div>
+      <div class="gap-kpi-sub">협력사 견적 기준</div>
+    </div>
+    <div class="gap-kpi">
+      <div class="gap-kpi-label">목표원가</div>
+      <div class="gap-kpi-val">${fmt(r.target)}원</div>
+      <div class="gap-kpi-sub">내부 목표 구매단가</div>
+    </div>
+    <div class="gap-kpi ${isOver ? 'over' : 'under'}">
+      <div class="gap-kpi-label">차이금액</div>
+      <div class="gap-kpi-val" style="${isOver ? 'color:var(--status-bad)' : 'color:var(--navy)'}">
+        ${isOver ? '+' : ''}${fmt(totalGap)}원
+      </div>
+      <div class="gap-kpi-sub">${isOver ? '목표 초과' : '목표 달성'}</div>
+    </div>
+    <div class="gap-kpi ${isOver ? 'over' : 'under'}">
+      <div class="gap-kpi-label">개선 후 예상</div>
+      <div class="gap-kpi-val">${fmt(r.improved)}원</div>
+      <div class="gap-kpi-sub">조치 후 예상원가</div>
+    </div>
+  `;
+
+  /* 항목별 차이 */
+  let html = `<thead><tr>
+    <th style="text-align:left;padding-left:10px;width:80px">항목</th>
+    <th style="width:110px">현상원가(원)</th>
+    <th style="width:110px">목표원가(원)</th>
+    <th style="width:110px">차이금액(원)</th>
+    <th style="width:72px">차이율</th>
+    <th>차이 원인</th>
+    <th>조치 계획</th>
+  </tr></thead><tbody>`;
+
+  let sumActual = 0, sumTarget = 0;
+  r.items.forEach(it => {
+    const d = it.actual - it.target;
+    sumActual += it.actual;
+    sumTarget += it.target;
+    html += `<tr>
+      <td class="label">${it.label}</td>
+      <td class="num">${fmt(it.actual)}</td>
+      <td class="num" style="color:var(--text-sub)">${fmt(it.target)}</td>
+      <td>${d === 0 ? '<span style="color:var(--text-mute);text-align:right;display:block">-</span>' : gapCell(d)}</td>
+      <td>${rateCell(it.actual, it.target)}</td>
+      <td style="padding-left:10px;font-size:11px;color:var(--text-sub)">${it.cause}</td>
+      <td style="padding-left:10px;font-size:11px;color:var(--text-sub)">${it.action}</td>
+    </tr>`;
+  });
+
+  const sumGap = sumActual - sumTarget;
+  html += `<tr class="total-row">
+    <td class="label">합계</td>
+    <td class="num">${fmt(sumActual)}</td>
+    <td class="num">${fmt(sumTarget)}</td>
+    <td>${gapCell(sumGap)}</td>
+    <td>${rateCell(sumActual, sumTarget)}</td>
+    <td></td><td></td>
+  </tr>`;
+
+  /* 개선 후 */
+  const impGap = r.improved - r.target;
+  html += `<tr class="improved-row">
+    <td class="label" style="color:var(--text-mute)">개선 후</td>
+    <td class="num" style="color:var(--text-sub)">${fmt(r.improved)}</td>
+    <td class="num" style="color:var(--text-sub)">${fmt(r.target)}</td>
+    <td>${gapCell(impGap)}</td>
+    <td>${rateCell(r.improved, r.target)}</td>
+    <td colspan="2" style="padding-left:10px;font-size:11px;color:var(--text-mute)">조치 계획 반영 후 예상원가</td>
+  </tr>`;
+
+  html += '</tbody>';
+  document.getElementById('m-gap-table').innerHTML = html;
+  document.getElementById('m-cause').value  = r.cause;
+  document.getElementById('m-action').value = r.action;
+  document.getElementById('modal-detail').classList.add('open');
+  lucide.createIcons();
+}
+
+function closeModal() { document.getElementById('modal-detail').classList.remove('open'); }
+
+let _tt;
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  const color = type === 'ok' ? '#16a34a' : '#dc2626';
+  const icon  = type === 'ok' ? 'check-circle' : 'alert-circle';
+  t.innerHTML = `<i data-lucide="${icon}" style="width:16px;height:16px;color:${color}"></i>${msg}`;
+  t.style.display = 'flex';
+  lucide.createIcons();
+  clearTimeout(_tt);
+  _tt = setTimeout(() => { t.style.display = 'none'; }, 2400);
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+updateStrip(ROWS);
+renderRows(ROWS);
+</script>
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>RFQ 생성/발송 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 섹션 소제목 ── */
+  .section-group { border-top: 1px solid var(--border); margin: 4px 0 12px; padding-top: 12px; }
+  .section-group:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+  .section-group-title {
+    font-size: 11px; font-weight: 700; color: var(--text-mute);
+    letter-spacing: 0.4px; text-transform: uppercase;
+    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+  }
+  .section-group-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── 구비서류 토글 ── */
+  .doc-toggle-btn {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500; color: var(--blue);
+    background: none; border: 1px solid var(--border);
+    border-radius: 3px; padding: 4px 10px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .doc-toggle-btn:hover { background: var(--blue-light); }
+  .doc-toggle-btn i { transition: transform 0.2s; }
+  .doc-toggle-btn.open i { transform: rotate(180deg); }
+  .doc-panel { display: none; border-top: 1px solid var(--border); padding: 12px 0 4px; }
+  .doc-panel.open { display: block; }
+  .doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .doc-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 12px;
+  }
+  .doc-item:nth-child(odd)    { border-right: 1px solid var(--border); }
+  .doc-item:last-child        { border-bottom: none; }
+  .doc-item:nth-last-child(2) { border-bottom: none; }
+  .doc-item input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--blue); flex-shrink: 0; margin-top: 1px; cursor: pointer; }
+  .doc-item-label { color: var(--text); line-height: 1.4; cursor: pointer; }
+  .doc-item-desc  { font-size: 11px; color: var(--text-mute); margin-top: 2px; }
+  .doc-badge-req { font-size: 10px; font-weight: 700; color: var(--status-bad); background: #fef2f2; border-radius: 2px; padding: 1px 5px; margin-left: 4px; }
+  .doc-badge-opt { font-size: 10px; font-weight: 600; color: var(--text-mute); background: var(--grid-head); border-radius: 2px; padding: 1px 5px; margin-left: 4px; }
+
+  /* ── 공용 그리드 테이블 ── */
+  table.srm-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.srm-table thead th {
+    background: var(--grid-head); padding: 0 10px; height: 34px;
+    font-weight: 600; color: var(--text); text-align: left;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  table.srm-table thead th.c { text-align: center; }
+  table.srm-table thead th.r { text-align: right; }
+  table.srm-table tbody td {
+    padding: 0 10px; height: 38px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text); vertical-align: middle;
+  }
+  table.srm-table tbody tr:nth-child(even) td { background: var(--grid-row-alt); }
+  table.srm-table tbody tr:hover td { background: var(--grid-hover); }
+  table.srm-table tbody tr.selected td { background: var(--grid-select); }
+  table.srm-table tbody td.c { text-align: center; }
+  table.srm-table tbody td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  table.srm-table tbody td.muted { color: var(--text-mute); font-size: 11px; }
+
+  /* 인라인 입력 (행추가 시 편집 셀) */
+  .cell-input {
+    width: 100%; height: 26px; border: 1px solid var(--border);
+    border-radius: 3px; padding: 0 6px; font-size: 12px;
+    font-family: 'Pretendard', sans-serif;
+    background: var(--surface); color: var(--text); box-sizing: border-box;
+  }
+  .cell-input:focus { border-color: var(--blue); outline: none; box-shadow: 0 0 0 2px rgba(26,86,170,0.15); }
+
+  /* 세부단가 버튼 */
+  .btn-breakdown {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 500; color: var(--blue);
+    background: var(--blue-light); border: 1px solid #b3d1f5;
+    border-radius: 3px; padding: 3px 8px; cursor: pointer;
+    transition: background 0.15s; white-space: nowrap;
+  }
+  .btn-breakdown:hover { background: #d0e5fb; }
+
+  /* ── 세부단가 팝업 테이블 ── */
+  table.breakdown-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.breakdown-table thead th {
+    background: var(--grid-head); padding: 0 12px; height: 32px;
+    font-weight: 600; color: var(--text); text-align: left;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  table.breakdown-table thead th.c { text-align: center; }
+  table.breakdown-table tbody td {
+    padding: 0 12px; height: 34px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text); vertical-align: middle;
+  }
+  table.breakdown-table tbody tr:nth-child(even) td { background: var(--grid-row-alt); }
+  table.breakdown-table tbody td.c   { text-align: center; color: var(--text-sub); }
+  table.breakdown-table tbody td.ref { text-align: center; font-weight: 600; color: var(--blue); font-variant-numeric: tabular-nums; }
+  table.breakdown-table tbody td.note{ font-size: 11px; color: var(--text-mute); }
+  table.breakdown-table tbody tr.divider-row td {
+    background: #eef0f3; font-size: 11px; font-weight: 700; color: var(--text-sub);
+    height: 26px; letter-spacing: 0.3px; border-top: 1px solid var(--border-strong);
+  }
+  table.breakdown-table tbody tr.total-row td {
+    background: #e8edf5; font-weight: 700;
+    border-top: 2px solid var(--border-strong); border-bottom: none;
+  }
+  .calc-badge {
+    display: inline-block; font-size: 10px; font-weight: 600; color: var(--text-mute);
+    background: var(--grid-head); border-radius: 2px; padding: 1px 5px; margin-left: 5px;
+  }
+
+  /* ── 미리보기 ── */
+  .preview-content { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 16px; font-size: 12px; line-height: 1.8; max-height: 340px; overflow-y: auto; }
+  .preview-section { margin-bottom: 14px; }
+  .preview-section-title { font-size: 11px; font-weight: 700; color: var(--text-mute); letter-spacing: 0.5px; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 8px; }
+  .preview-row { display: flex; gap: 8px; margin-bottom: 2px; }
+  .preview-key { width: 150px; flex-shrink: 0; color: var(--text-mute); }
+  .preview-val { color: var(--text); font-weight: 500; }
+
+  /* ── 발송 확인 모달 ── */
+  .confirm-list { list-style: none; display: flex; flex-direction: column; gap: 7px; margin: 12px 0; }
+  .confirm-list li { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-sub); }
+  .confirm-list li i { flex-shrink: 0; }
+</style>
+</head>
+
+<body data-menu="04-03">
+<div class="page-wrap">
+
+  <!-- ── 타이틀 바 ── -->
+  <div class="page-title-bar">
+    <span class="page-title">RFQ 생성/발송</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="showToast('임시저장이 완료되었습니다.', 'ok')">
+        <i data-lucide="save"></i>임시저장
+      </button>
+      <button class="btn btn-secondary" onclick="openPreview()">
+        <i data-lucide="eye"></i>미리보기
+      </button>
+      <button class="btn btn-primary" id="btn-send" onclick="openSendConfirm()">
+        <i data-lucide="send"></i>RFQ 발송
+      </button>
+    </div>
+  </div>
+
+  <div class="content-scroll">
+
+    <!-- ── 1. RFQ 기본 정보 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">RFQ 기본 정보</span>
+        <span style="font-size:11px;color:var(--text-mute)">RFQ-2026-0045 · 자동 생성</span>
+      </div>
+
+      <div class="section-group">
+        <div class="section-group-title">품번 / 프로젝트 정보</div>
+        <div class="form-row form-row-4">
+          <div class="form-field">
+            <label class="form-label">프로젝트</label>
+            <input type="text" class="form-input" value="PJT-520PHEV-FT-2026" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">품번</label>
+            <input type="text" class="form-input" value="H1110-T100" readonly style="background:var(--grid-head);color:var(--blue);font-weight:600">
+          </div>
+          <div class="form-field">
+            <label class="form-label">품명</label>
+            <input type="text" class="form-input" value="Frame Sub Ass'y" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">재질</label>
+            <input type="text" class="form-input" value="Aluminum 6061" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+        </div>
+        <div class="form-row form-row-4">
+          <div class="form-field">
+            <label class="form-label">도면 리비전</label>
+            <input type="text" class="form-input" value="Rev.B" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">연간수량</label>
+            <input type="text" class="form-input" value="100,000개" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">SOP</label>
+            <input type="text" class="form-input" value="2026-10-01" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">프로젝트명</label>
+            <input type="text" class="form-input" value="520 PHEV Fuel Tank Module 개발" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-group">
+        <div class="section-group-title">RFQ 발송 정보</div>
+        <div class="form-row form-row-4">
+          <div class="form-field">
+            <label class="form-label">발송 기준일 <span class="form-req">*</span></label>
+            <input type="date" class="form-input" value="2026-01-10">
+          </div>
+          <div class="form-field">
+            <label class="form-label">견적 제출 마감일 <span class="form-req">*</span></label>
+            <input type="date" class="form-input" id="deadline" value="2026-01-31">
+          </div>
+          <div class="form-field">
+            <label class="form-label">견적 유효기간 요청</label>
+            <select class="form-select">
+              <option selected>발송일로부터 60일</option>
+              <option>발송일로부터 30일</option>
+              <option>발송일로부터 90일</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">담당 구매자</label>
+            <input type="text" class="form-input" value="김개발 (개발구매팀)" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+        </div>
+        <div class="form-row form-row-4">
+          <div class="form-field">
+            <label class="form-label">희망 샘플 납기</label>
+            <input type="date" class="form-input" value="2026-04-30">
+          </div>
+          <div class="form-field">
+            <label class="form-label">금형비 포함 여부</label>
+            <select class="form-select">
+              <option selected>포함 (별도 명기)</option>
+              <option>제외 (추후 협의)</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">견적 통화</label>
+            <select class="form-select">
+              <option selected>KRW (원)</option>
+              <option>USD (달러)</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">LME 기준 문서</label>
+            <input type="text" class="form-input" value="LME-2026-0012 (자동 포함)" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+        </div>
+        <div class="form-row" style="gap:16px">
+          <div class="form-field" style="flex:1">
+            <label class="form-label">제출 요청 내용</label>
+            <textarea class="form-textarea" rows="3">당사 520 PHEV Fuel Tank Module 개발 프로젝트 관련 Frame Sub Ass'y (H1110-T100) 견적을 요청합니다. Breakdown 양식에 따라 항목별로 상세 금액을 기재하여 제출해 주시기 바랍니다. 견적 제출 마감일: 2026-01-31</textarea>
+          </div>
+          <div class="form-field" style="flex:1">
+            <label class="form-label">특이사항</label>
+            <textarea class="form-textarea" rows="3">LME 기준정보 및 환율은 당사 기준값이 자동으로 포함됩니다. 협력사는 당사 기준값을 그대로 사용하거나, 차이가 있는 경우 사유와 함께 대안 값을 비고란에 기재하여 주십시오.</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 2. 구비서류 (토글) ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">구비서류</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:12px;color:var(--text-mute)">필수 6건 · 선택 4건</span>
+          <button class="doc-toggle-btn" id="doc-toggle-btn" onclick="toggleDocPanel()">
+            <span id="doc-toggle-label">목록 보기</span>
+            <i data-lucide="chevron-down" style="width:14px;height:14px"></i>
+          </button>
+        </div>
+      </div>
+      <div class="doc-panel" id="doc-panel">
+        <div class="doc-grid" id="doc-list"></div>
+      </div>
+    </div>
+
+    <!-- ── 3. 품목 단가 입력 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">하위 품목 단가 입력 <span style="font-size:12px;font-weight:400;color:var(--text-mute)">— H1110-T100 Frame Sub Ass'y 구성품</span></span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="btn btn-secondary btn-sm" onclick="addPartRow()">
+            <i data-lucide="plus" style="width:13px;height:13px"></i>행추가
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="deletePartRows()">
+            <i data-lucide="minus" style="width:13px;height:13px"></i>행삭제
+          </button>
+        </div>
+      </div>
+      <div class="table-wrap" style="border-top:none">
+        <table class="srm-table">
+          <thead>
+            <tr>
+              <th class="c" style="width:44px">
+                <input type="checkbox" id="chk-part-all" style="accent-color:var(--blue);cursor:pointer"
+                       onchange="toggleAllParts(this.checked)">
+              </th>
+              <th class="c" style="width:48px">No.</th>
+              <th style="width:140px">품목코드</th>
+              <th style="width:200px">품목명</th>
+              <th style="width:130px">재질</th>
+              <th class="c" style="width:80px">도면 Rev.</th>
+              <th class="c" style="width:60px">단위</th>
+              <th class="r" style="width:110px">연간수량</th>
+              <th class="c" style="width:110px">세부 단가 항목</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody id="part-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── 4. 대상 협력사 선택 ── -->
+    <div class="section-box" style="margin-bottom:0">
+      <div class="section-box-header">
+        <span class="section-box-title">대상 협력사 선택</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="vendor-count-text" style="font-size:12px;color:var(--text-sub)">전체 4개사 · 선택 3개사</span>
+          <button class="btn btn-secondary btn-sm" onclick="addVendorRow()">
+            <i data-lucide="plus" style="width:13px;height:13px"></i>행추가
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="deleteVendorRows()">
+            <i data-lucide="minus" style="width:13px;height:13px"></i>행삭제
+          </button>
+        </div>
+      </div>
+      <div class="table-wrap" style="border-top:none">
+        <table class="srm-table">
+          <thead>
+            <tr>
+              <th class="c" style="width:44px">
+                <input type="checkbox" id="chk-vendor-all" style="accent-color:var(--blue);cursor:pointer"
+                       onchange="toggleAllVendors(this.checked)">
+              </th>
+              <th class="c" style="width:48px">No.</th>
+              <th style="width:130px">협력사 코드</th>
+              <th style="width:160px">협력사명</th>
+              <th class="c" style="width:90px">담당자</th>
+              <th style="width:200px">이메일</th>
+              <th style="width:120px">연락처</th>
+              <th class="c" style="width:80px">품질평가</th>
+              <th class="c" style="width:100px">거래 구분</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody id="vendor-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ── 세부 단가 항목 팝업 ── -->
+<div id="modal-breakdown" class="modal-backdrop">
+  <div class="modal-box" style="width:680px">
+    <div class="modal-header">
+      <span class="modal-title" id="breakdown-title">세부 단가 항목</span>
+      <button class="modal-close" onclick="toggleModal('modal-breakdown', false)">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <table class="breakdown-table">
+        <thead>
+          <tr>
+            <th class="c" style="width:44px">No.</th>
+            <th style="width:180px">항목</th>
+            <th class="c" style="width:120px">단위</th>
+            <th class="c" style="width:140px">기준값 (내부 참고)</th>
+            <th>비고</th>
+          </tr>
+        </thead>
+        <tbody id="breakdown-tbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="toggleModal('modal-breakdown', false)">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 미리보기 모달 ── -->
+<div id="modal-preview" class="modal-backdrop">
+  <div class="modal-box" style="width:640px">
+    <div class="modal-header">
+      <span class="modal-title">RFQ 발송 미리보기</span>
+      <button class="modal-close" onclick="toggleModal('modal-preview', false)">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text-mute);margin-bottom:10px">협력사에 전달되는 RFQ 내용 미리보기입니다. 목표 구매단가는 포함되지 않습니다.</p>
+      <div class="preview-content">
+        <div class="preview-section">
+          <div class="preview-section-title">RFQ 기본 정보</div>
+          <div class="preview-row"><span class="preview-key">RFQ 번호</span><span class="preview-val">RFQ-2026-0045</span></div>
+          <div class="preview-row"><span class="preview-key">발송 기준일</span><span class="preview-val">2026-01-10</span></div>
+          <div class="preview-row"><span class="preview-key">제출 마감일</span><span class="preview-val">2026-01-31</span></div>
+          <div class="preview-row"><span class="preview-key">견적 유효기간</span><span class="preview-val">발송일로부터 60일</span></div>
+          <div class="preview-row"><span class="preview-key">담당 구매자</span><span class="preview-val">김개발 (개발구매팀)</span></div>
+        </div>
+        <div class="preview-section">
+          <div class="preview-section-title">품번 정보</div>
+          <div class="preview-row"><span class="preview-key">품번</span><span class="preview-val">H1110-T100</span></div>
+          <div class="preview-row"><span class="preview-key">품명</span><span class="preview-val">Frame Sub Ass'y</span></div>
+          <div class="preview-row"><span class="preview-key">재질</span><span class="preview-val">Aluminum 6061 · Rev.A</span></div>
+          <div class="preview-row"><span class="preview-key">연간수량</span><span class="preview-val">100,000개</span></div>
+          <div class="preview-row"><span class="preview-key">SOP</span><span class="preview-val">2026-10-01</span></div>
+        </div>
+        <div class="preview-section">
+          <div class="preview-section-title">발송 대상 협력사 (3개사)</div>
+          <div class="preview-row"><span class="preview-key">1</span><span class="preview-val">A사 (동희부품) — 박동희 · ph-bid@dongheeparts.co.kr</span></div>
+          <div class="preview-row"><span class="preview-key">2</span><span class="preview-val">B사 (한국알미늄) — 이한국 · lee@koralum.co.kr</span></div>
+          <div class="preview-row"><span class="preview-key">3</span><span class="preview-val">C사 (신흥정공) — 최신흥 · bid@shinheung.co.kr</span></div>
+        </div>
+        <div class="preview-section" style="margin-bottom:0">
+          <div class="preview-section-title">목표 구매단가 공개 여부</div>
+          <div style="color:var(--status-warn);font-size:12px;font-weight:600">목표 구매단가는 이 RFQ 문서에 포함되지 않습니다.</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="toggleModal('modal-preview', false)">닫기</button>
+      <button class="btn btn-primary" onclick="toggleModal('modal-preview', false); openSendConfirm()">
+        <i data-lucide="send"></i>발송 진행
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 발송 확인 모달 ── -->
+<div id="modal-send-confirm" class="modal-backdrop">
+  <div class="modal-box" style="width:480px">
+    <div class="modal-header">
+      <span class="modal-title">RFQ 발송 확인</span>
+      <button class="modal-close" onclick="toggleModal('modal-send-confirm', false)">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-sub);line-height:1.7;margin-bottom:4px">선택된 협력사에 RFQ를 발송합니다. 발송 후 내용 수정이 제한됩니다.</p>
+      <ul class="confirm-list">
+        <li><i data-lucide="check-circle" style="width:14px;height:14px;color:var(--status-ok)"></i>RFQ-2026-0045 · H1110-T100 Frame Sub Ass'y</li>
+        <li><i data-lucide="check-circle" style="width:14px;height:14px;color:var(--status-ok)"></i>LME 기준정보 LME-2026-0012 자동 포함</li>
+        <li><i data-lucide="check-circle" style="width:14px;height:14px;color:var(--status-ok)"></i>구비서류 요건 10건 포함</li>
+        <li><i data-lucide="check-circle" style="width:14px;height:14px;color:var(--status-ok)"></i>발송 대상: A사, B사, C사 (3개사) · 제출 마감 2026-01-31</li>
+        <li><i data-lucide="alert-circle" style="width:14px;height:14px;color:var(--status-warn)"></i><span style="color:var(--status-warn);font-weight:500">목표 구매단가는 협력사에 공개되지 않습니다.</span></li>
+      </ul>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="toggleModal('modal-send-confirm', false)">취소</button>
+      <button class="btn btn-primary" onclick="doSend()"><i data-lucide="send"></i>발송 확인</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  /* ══ 데이터 ══ */
+
+  var DOCS = [
+    { id: 'd1',  label: '견적 Breakdown 양식',  desc: '당사 제공 Excel 양식 사용',           req: true,  checked: true  },
+    { id: 'd2',  label: 'LME 기준가 적용 근거', desc: '소재 구매처 인보이스 또는 공식 시세',  req: true,  checked: true  },
+    { id: 'd3',  label: '사업자등록증 사본',      desc: '최근 3개월 이내 발급본',              req: true,  checked: true  },
+    { id: 'd4',  label: '품질인증서',             desc: 'ISO 9001 또는 IATF 16949',           req: true,  checked: true  },
+    { id: 'd5',  label: '주요 설비 목록',         desc: '가공 설비 기종·수량·연식',             req: true,  checked: true  },
+    { id: 'd6',  label: '최근 3년 납품 실적',     desc: '유사 품목 기준 (자동차 부품 우선)',    req: true,  checked: true  },
+    { id: 'd7',  label: '공장 현황서 및 약도',    desc: '신규 업체 한정',                      req: false, checked: false },
+    { id: 'd8',  label: '금형 설계 능력 확인서',  desc: '금형 자체 제작 가능 시 첨부',          req: false, checked: false },
+    { id: 'd9',  label: '원자재 구매처 현황',     desc: 'Aluminum 소재 구매 경로',              req: false, checked: false },
+    { id: 'd10', label: '스크랩 처리 확인서',     desc: '잔재 회수·처리 증빙',                  req: false, checked: false },
+  ];
+
+  var PARTS = [
+    { code: 'H1110-T101', name: 'Bracket Assy Upper', mat: 'SPCC',          rev: 'Rev.A', unit: '개',  qty: '100,000', note: '프레스 가공 조립',  isNew: false, checked: true },
+    { code: 'H1110-T102', name: 'Cover Plate',        mat: 'Aluminum 6061', rev: 'Rev.A', unit: '개',  qty: '100,000', note: '프레스 + 트리밍',   isNew: false, checked: true },
+    { code: 'H1110-T103', name: 'Rubber Seal',        mat: 'NBR70',         rev: 'Rev.A', unit: '개',  qty: '200,000', note: '사급 (지급소재)',    isNew: false, checked: true },
+    { code: 'H1110-T104', name: 'Pipe Connector',     mat: 'Aluminum 6061', rev: 'Rev.A', unit: '개',  qty: '100,000', note: '절삭 가공',         isNew: false, checked: true },
+    { code: 'H1110-T105', name: 'Hose Assembly',      mat: 'EPDM',          rev: 'Rev.A', unit: 'SET', qty: '100,000', note: '고무 압출 + 조립',   isNew: false, checked: true },
+  ];
+
+  var BREAKDOWN_ROWS = [
+    { isDivider: true, label: '재료비 구성' },
+    { label: 'LME 기준가',     unit: 'USD/MT',    ref: '$2,780',  note: '2026-01 기준 (LME-2026-0012)' },
+    { label: '적용 환율',      unit: 'KRW/USD',   ref: '1,320',   note: '' },
+    { label: '프리미엄',        unit: 'KRW/kg',    ref: '+180',    note: '' },
+    { label: '부대비',         unit: 'KRW/kg',    ref: '+45',     note: '통관·운송 포함' },
+    { label: '소재단가',       unit: 'KRW/kg',    ref: '3,847',   note: 'LME×환율/1,000 + 프리미엄 + 부대비', isCalc: true },
+    { label: '투입중량',       unit: 'kg/개',     ref: '',        note: '협력사 기재' },
+    { label: '스크랩중량',     unit: 'kg/개',     ref: '',        note: '협력사 기재' },
+    { label: '스크랩 회수단가', unit: 'KRW/kg',   ref: '',        note: '협력사 기재' },
+    { label: '재료비 합계',    unit: '원/개',     ref: '',        note: '(투입−스크랩)×소재단가', isCalc: true },
+    { isDivider: true, label: '가공 / 물류 / 관리' },
+    { label: '가공비',         unit: '원/개',     ref: '',        note: '공정별 세분 또는 합계' },
+    { label: '물류비',         unit: '원/개',     ref: '',        note: '인천/평택 입고 기준' },
+    { label: '관리비/이윤',    unit: '원/개',     ref: '',        note: '비율 및 금액 병기' },
+    { label: '금형비',         unit: '원 (별도)', ref: '',        note: '분할 납부 조건 명기' },
+    { label: '견적 단가 합계', unit: '원/개',     ref: '',        note: '', isTotal: true },
+  ];
+
+  var VENDORS = [
+    { code: 'VND-0012', name: 'A사 (동희부품)',   contact: '박동희', email: 'ph-bid@dongheeparts.co.kr', phone: '031-XXX-XXXX', score: 91, type: '기존거래사', note: '주거래 협력사 · 3년 평가이력', checked: true,  isNew: false },
+    { code: 'VND-0028', name: 'B사 (한국알미늄)', contact: '이한국', email: 'lee@koralum.co.kr',         phone: '032-XXX-XXXX', score: 87, type: '기존거래사', note: '알루미늄 전문 협력사',          checked: true,  isNew: false },
+    { code: 'VND-0041', name: 'C사 (신흥정공)',   contact: '최신흥', email: 'bid@shinheung.co.kr',        phone: '031-XXX-XXXX', score: 83, type: '신규후보사', note: '단가 경쟁력 우수',               checked: true,  isNew: false },
+    { code: 'VND-0055', name: 'D사 (대원금속)',   contact: '정대원', email: 'jdw@daewon-m.co.kr',         phone: '041-XXX-XXXX', score: 76, type: '신규후보사', note: '신규 등록 (품질평가 완료)',       checked: false, isNew: false },
+  ];
+
+  /* ══ 구비서류 ══ */
+  (function() {
+    var wrap = document.getElementById('doc-list');
+    DOCS.forEach(function(d) {
+      var div = document.createElement('div');
+      div.className = 'doc-item';
+      var badge = d.req
+        ? '<span class="doc-badge-req">필수</span>'
+        : '<span class="doc-badge-opt">선택</span>';
+      div.innerHTML =
+        '<input type="checkbox" id="' + d.id + '"' + (d.checked ? ' checked' : '') + '>' +
+        '<label for="' + d.id + '">' +
+          '<div class="doc-item-label">' + d.label + badge + '</div>' +
+          '<div class="doc-item-desc">' + d.desc + '</div>' +
+        '</label>';
+      wrap.appendChild(div);
+    });
+  })();
+
+  function toggleDocPanel() {
+    var panel  = document.getElementById('doc-panel');
+    var btn    = document.getElementById('doc-toggle-btn');
+    var label  = document.getElementById('doc-toggle-label');
+    var isOpen = panel.classList.toggle('open');
+    btn.classList.toggle('open', isOpen);
+    label.textContent = isOpen ? '목록 닫기' : '목록 보기';
+    if (window.lucide) window.lucide.createIcons({ nodes: [btn] });
+  }
+
+  /* ══ 품목 테이블 ══ */
+  function renderParts() {
+    var tbody = document.getElementById('part-tbody');
+    tbody.innerHTML = '';
+    PARTS.forEach(function(p, i) {
+      var tr = document.createElement('tr');
+      if (p.checked) tr.classList.add('selected');
+
+      if (p.isNew) {
+        tr.innerHTML =
+          '<td class="c"><input type="checkbox"' + (p.checked ? ' checked' : '') +
+            ' style="accent-color:var(--blue);cursor:pointer" onchange="togglePart(' + i + ',this.checked)"></td>' +
+          '<td class="c muted">' + (i + 1) + '</td>' +
+          '<td><input class="cell-input" placeholder="품목코드" oninput="PARTS[' + i + '].code=this.value"></td>' +
+          '<td><input class="cell-input" placeholder="품목명" oninput="PARTS[' + i + '].name=this.value"></td>' +
+          '<td><input class="cell-input" placeholder="재질" oninput="PARTS[' + i + '].mat=this.value"></td>' +
+          '<td class="c"><input class="cell-input" style="text-align:center" placeholder="Rev." oninput="PARTS[' + i + '].rev=this.value"></td>' +
+          '<td class="c"><input class="cell-input" style="text-align:center;width:48px" placeholder="단위" oninput="PARTS[' + i + '].unit=this.value"></td>' +
+          '<td class="r"><input class="cell-input" style="text-align:right" placeholder="0" oninput="PARTS[' + i + '].qty=this.value"></td>' +
+          '<td class="c"><span style="font-size:11px;color:var(--text-mute)">저장 후 설정</span></td>' +
+          '<td><input class="cell-input" placeholder="비고" oninput="PARTS[' + i + '].note=this.value"></td>';
+      } else {
+        tr.innerHTML =
+          '<td class="c"><input type="checkbox"' + (p.checked ? ' checked' : '') +
+            ' style="accent-color:var(--blue);cursor:pointer" onchange="togglePart(' + i + ',this.checked)"></td>' +
+          '<td class="c muted">' + (i + 1) + '</td>' +
+          '<td style="font-weight:600;color:var(--blue)">' + p.code + '</td>' +
+          '<td>' + p.name + '</td>' +
+          '<td class="muted">' + p.mat + '</td>' +
+          '<td class="c muted">' + p.rev + '</td>' +
+          '<td class="c muted">' + p.unit + '</td>' +
+          '<td class="r">' + p.qty + '</td>' +
+          '<td class="c">' +
+            '<button class="btn-breakdown" onclick="openBreakdown(' + i + ')">' +
+              '<i data-lucide="list" style="width:12px;height:12px"></i>세부항목' +
+            '</button>' +
+          '</td>' +
+          '<td class="muted">' + (p.note || '—') + '</td>';
+      }
+      tbody.appendChild(tr);
+    });
+
+    var allChk = document.getElementById('chk-part-all');
+    var sel = PARTS.filter(function(p) { return p.checked; }).length;
+    allChk.checked       = sel === PARTS.length && PARTS.length > 0;
+    allChk.indeterminate = sel > 0 && sel < PARTS.length;
+    if (window.lucide) window.lucide.createIcons({ nodes: [tbody] });
+  }
+
+  function togglePart(idx, val) { PARTS[idx].checked = val; renderParts(); }
+
+  function toggleAllParts(val) {
+    PARTS.forEach(function(p) { p.checked = val; });
+    renderParts();
+  }
+
+  function addPartRow() {
+    PARTS.push({ code: '', name: '', mat: '', rev: '', unit: '개', qty: '', note: '', isNew: true, checked: false });
+    renderParts();
+  }
+
+  function deletePartRows() {
+    var sel = PARTS.filter(function(p) { return p.checked; }).length;
+    if (sel === 0) { showToast('삭제할 행을 선택해 주세요.', 'bad'); return; }
+    PARTS = PARTS.filter(function(p) { return !p.checked; });
+    renderParts();
+  }
+
+  /* ══ 세부 단가 팝업 ══ */
+  function openBreakdown(idx) {
+    var p = PARTS[idx];
+    document.getElementById('breakdown-title').textContent =
+      '세부 단가 항목 — ' + p.code + ' ' + p.name;
+
+    var tbody = document.getElementById('breakdown-tbody');
+    tbody.innerHTML = '';
+    var rowNum = 0;
+    BREAKDOWN_ROWS.forEach(function(row) {
+      var tr = document.createElement('tr');
+      if (row.isDivider) {
+        tr.className = 'divider-row';
+        var td = document.createElement('td');
+        td.colSpan = 5;
+        td.textContent = row.label;
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      if (row.isTotal) tr.className = 'total-row';
+      rowNum++;
+      var calcBadge = row.isCalc ? '<span class="calc-badge">자동계산</span>' : '';
+      var refHtml   = row.ref ? row.ref : '<span style="color:var(--text-mute);font-weight:400">—</span>';
+      tr.innerHTML =
+        '<td class="c">' + rowNum + '</td>' +
+        '<td style="font-weight:500">' + row.label + calcBadge + '</td>' +
+        '<td class="c" style="color:var(--text-sub)">' + row.unit + '</td>' +
+        '<td class="ref">' + refHtml + '</td>' +
+        '<td class="note">' + row.note + '</td>';
+      tbody.appendChild(tr);
+    });
+
+    toggleModal('modal-breakdown', true);
+  }
+
+  /* ══ 협력사 테이블 ══ */
+  function renderVendors() {
+    var tbody = document.getElementById('vendor-tbody');
+    tbody.innerHTML = '';
+    var selCount = 0;
+    VENDORS.forEach(function(v, i) {
+      if (v.checked) selCount++;
+      var scoreColor = v.score >= 90 ? 'var(--status-ok)'
+                     : v.score >= 80 ? 'var(--status-prog)'
+                     : v.score  > 0  ? 'var(--status-warn)'
+                     : 'var(--text-mute)';
+      var typeBadge = v.type === '기존거래사'
+        ? '<span class="badge badge-prog">기존거래사</span>'
+        : v.type === '신규후보사'
+        ? '<span class="badge badge-wait">신규후보사</span>'
+        : '';
+
+      var tr = document.createElement('tr');
+      if (v.checked) tr.classList.add('selected');
+
+      if (v.isNew) {
+        tr.innerHTML =
+          '<td class="c"><input type="checkbox"' + (v.checked ? ' checked' : '') +
+            ' style="accent-color:var(--blue);cursor:pointer" onchange="toggleVendor(' + i + ',this.checked)"></td>' +
+          '<td class="c muted">' + (i + 1) + '</td>' +
+          '<td><input class="cell-input" placeholder="협력사코드" oninput="VENDORS[' + i + '].code=this.value"></td>' +
+          '<td><input class="cell-input" placeholder="협력사명" oninput="VENDORS[' + i + '].name=this.value"></td>' +
+          '<td class="c"><input class="cell-input" style="text-align:center" placeholder="담당자" oninput="VENDORS[' + i + '].contact=this.value"></td>' +
+          '<td><input class="cell-input" placeholder="이메일" oninput="VENDORS[' + i + '].email=this.value"></td>' +
+          '<td><input class="cell-input" placeholder="연락처" oninput="VENDORS[' + i + '].phone=this.value"></td>' +
+          '<td class="c muted">—</td>' +
+          '<td class="c"><select class="cell-input" style="height:26px" onchange="VENDORS[' + i + '].type=this.value"><option value="기존거래사">기존거래사</option><option value="신규후보사">신규후보사</option></select></td>' +
+          '<td><input class="cell-input" placeholder="비고" oninput="VENDORS[' + i + '].note=this.value"></td>';
+      } else {
+        tr.innerHTML =
+          '<td class="c"><input type="checkbox"' + (v.checked ? ' checked' : '') +
+            ' style="accent-color:var(--blue);cursor:pointer" onchange="toggleVendor(' + i + ',this.checked)"></td>' +
+          '<td class="c muted">' + (i + 1) + '</td>' +
+          '<td style="font-size:11px;color:var(--text-mute);font-family:monospace">' + v.code + '</td>' +
+          '<td style="font-weight:600">' + v.name + '</td>' +
+          '<td class="c">' + v.contact + '</td>' +
+          '<td style="font-size:11px;color:var(--blue)">' + v.email + '</td>' +
+          '<td style="font-size:11px;color:var(--text-sub)">' + v.phone + '</td>' +
+          '<td class="c" style="font-weight:700;color:' + scoreColor + '">' + (v.score || '—') + (v.score ? '점' : '') + '</td>' +
+          '<td class="c">' + typeBadge + '</td>' +
+          '<td style="font-size:11px;color:var(--text-mute)">' + v.note + '</td>';
+      }
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('vendor-count-text').textContent =
+      '전체 ' + VENDORS.length + '개사 · 선택 ' + selCount + '개사';
+    var allChk = document.getElementById('chk-vendor-all');
+    allChk.checked       = selCount === VENDORS.length && VENDORS.length > 0;
+    allChk.indeterminate = selCount > 0 && selCount < VENDORS.length;
+  }
+
+  function toggleVendor(idx, val) { VENDORS[idx].checked = val; renderVendors(); }
+
+  function toggleAllVendors(val) {
+    VENDORS.forEach(function(v) { v.checked = val; });
+    renderVendors();
+  }
+
+  function addVendorRow() {
+    VENDORS.push({ code: '', name: '', contact: '', email: '', phone: '', score: 0, type: '신규후보사', note: '', checked: false, isNew: true });
+    renderVendors();
+  }
+
+  function deleteVendorRows() {
+    var sel = VENDORS.filter(function(v) { return v.checked; }).length;
+    if (sel === 0) { showToast('삭제할 행을 선택해 주세요.', 'bad'); return; }
+    VENDORS = VENDORS.filter(function(v) { return !v.checked; });
+    renderVendors();
+  }
+
+  renderParts();
+  renderVendors();
+
+  /* ══ 발송 액션 ══ */
+  function openPreview() { toggleModal('modal-preview', true); }
+
+  function openSendConfirm() {
+    if (!VENDORS.some(function(v) { return v.checked; })) {
+      showToast('발송할 협력사를 1개 이상 선택해 주세요.', 'bad'); return;
+    }
+    if (!document.getElementById('deadline').value) {
+      showToast('견적 제출 마감일을 입력해 주세요.', 'bad'); return;
+    }
+    toggleModal('modal-send-confirm', true);
+  }
+
+  function doSend() {
+    toggleModal('modal-send-confirm', false);
+    var selCount = VENDORS.filter(function(v) { return v.checked; }).length;
+    showToast('RFQ-2026-0045 발송 완료 — ' + selCount + '개 협력사에 발송되었습니다.', 'ok', 3200);
+    var btn = document.getElementById('btn-send');
+    btn.disabled = true; btn.style.opacity = '0.6';
+    btn.innerHTML = '<i data-lucide="check"></i>발송 완료';
+    if (window.lucide) window.lucide.createIcons({ nodes: [btn] });
+  }
+
+  /* ══ 공통 유틸 ══ */
+  function showToast(msg, type, ms) {
+    var bg = type === 'ok' ? '#16a34a' : type === 'bad' ? '#dc2626' : '#1f2937';
+    var el = document.createElement('div');
+    el.className = 'toast'; el.style.background = bg;
+    el.innerHTML =
+      '<i data-lucide="' + (type === 'bad' ? 'alert-circle' : 'check-circle') + '"' +
+      ' style="width:14px;height:14px;flex-shrink:0"></i><span>' + msg + '</span>';
+    document.body.appendChild(el);
+    if (window.lucide) window.lucide.createIcons({ nodes: [el] });
+    setTimeout(function() {
+      el.style.opacity = '0'; el.style.transition = 'opacity 0.2s';
+      setTimeout(function() { el.remove(); }, 220);
+    }, ms || 2400);
+  }
+
+  function toggleModal(id, open) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('open', open === undefined ? !el.classList.contains('open') : open);
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape')
+      document.querySelectorAll('.modal-backdrop.open').forEach(function(m) { m.classList.remove('open'); });
+    if (e.ctrlKey && e.key === 's') { e.preventDefault(); showToast('임시저장이 완료되었습니다.', 'ok'); }
+  });
+</script>
+
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

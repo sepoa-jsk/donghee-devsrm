@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>재료비 산출 목록 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .search-wrap { flex:1; position:relative; max-width:560px; }
+  .search-wrap input {
+    width:100%; height:32px; border:1px solid var(--border); border-radius:4px;
+    padding:0 34px 0 12px; font-size:13px; font-family:'Pretendard',sans-serif;
+    color:var(--text); background:var(--surface); outline:none; transition:border-color .15s;
+  }
+  .search-wrap input:focus { border-color:var(--blue); box-shadow:0 0 0 2px rgba(26,86,170,.12); }
+  .search-wrap input::placeholder { color:var(--text-mute); }
+  .search-wrap .s-icon { position:absolute; right:9px; top:50%; transform:translateY(-50%); color:#dc2626; pointer-events:none; }
+
+  .btn-ctrl {
+    height:32px; padding:0 12px; border-radius:4px;
+    font-size:13px; font-family:'Pretendard',sans-serif; font-weight:500;
+    display:inline-flex; align-items:center; gap:5px;
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    cursor:pointer; white-space:nowrap; transition:background .12s;
+  }
+  .btn-ctrl:hover { background:var(--bg); }
+
+  .date-range {
+    height:32px; display:flex; align-items:center; gap:4px;
+    border:1px solid var(--border); border-radius:4px;
+    padding:0 10px; background:var(--surface); font-size:12px;
+  }
+  .date-range input[type="date"] {
+    border:none; outline:none; font-size:12px;
+    font-family:'Pretendard',sans-serif; color:var(--text);
+    background:transparent; width:108px; cursor:pointer;
+  }
+  .date-range input[type="date"]::-webkit-calendar-picker-indicator { display:none; }
+  .date-range .dr-sep { color:var(--text-mute); }
+
+  .status-strip {
+    height:36px; background:var(--surface);
+    display:flex; align-items:center; padding:0 24px; gap:24px; flex-shrink:0;
+  }
+  .ss-btn {
+    background:none; border:none; cursor:pointer;
+    font-size:12px; color:var(--text-sub); font-family:'Pretendard',sans-serif;
+    display:flex; align-items:center; gap:5px; padding:0; transition:color .1s;
+  }
+  .ss-btn:hover { color:var(--text); }
+  .ss-btn.active { color:var(--blue); font-weight:600; }
+  .ss-cnt { font-weight:700; font-variant-numeric:tabular-nums; }
+  .ss-btn.active .ss-cnt { color:var(--blue); }
+
+  .filter-panel {
+    background:var(--bg); border-bottom:1px solid var(--border);
+    padding:10px 24px; display:none; flex-shrink:0;
+    gap:16px; align-items:center; flex-wrap:wrap;
+  }
+  .filter-panel.open { display:flex; }
+
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column;
+    padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--text);       } .st-ok::before   { background:var(--navy); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+</style>
+</head>
+
+<body data-menu="03-06">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">재료비 산출 목록</span>
+  </div>
+
+  <!-- 검색 바 -->
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-ctrl" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-ctrl" onclick="toggleStatusPanel()">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to"   value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+    <div class="ml-auto">
+      <button class="btn btn-primary" onclick="location.href='03-07_material_cost.html'">
+        <i data-lucide="plus"></i>재료비 등록
+      </button>
+    </div>
+  </div>
+
+  <!-- 필터 패널 -->
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">프로젝트</span>
+      <input type="text" class="search-input" id="f-proj" placeholder="코드/명" style="width:150px" oninput="applyFilter()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">품번</span>
+      <input type="text" class="search-input" id="f-code" placeholder="품번" style="width:110px" oninput="applyFilter()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">공법</span>
+      <select class="search-select" id="f-method" onchange="applyFilter()" style="width:130px">
+        <option value="">전체</option>
+        <option>PRESS</option>
+        <option>절삭가공</option>
+        <option>냉간단조</option>
+        <option>열간단조</option>
+        <option>PLASTIC INJECTION</option>
+        <option>다이캐스팅</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">소재</span>
+      <input type="text" class="search-input" id="f-mat" placeholder="소재명" style="width:110px" oninput="applyFilter()">
+    </div>
+  </div>
+
+  <!-- 상태 스트립 -->
+  <div class="status-strip" id="status-strip">
+    <button class="ss-btn active" data-s="" onclick="setStatus(this,'')">
+      전체 <span class="ss-cnt" id="cnt-all">0</span>
+    </button>
+    <button class="ss-btn" data-s="작성중" onclick="setStatus(this,'작성중')">
+      작성중 <span class="ss-cnt" id="cnt-draft">0</span>
+    </button>
+    <button class="ss-btn" data-s="검토중" onclick="setStatus(this,'검토중')">
+      검토중 <span class="ss-cnt" id="cnt-review">0</span>
+    </button>
+    <button class="ss-btn" data-s="확정" onclick="setStatus(this,'확정')">
+      확정 <span class="ss-cnt" id="cnt-confirmed">0</span>
+    </button>
+    <button class="ss-btn" data-s="반려" onclick="setStatus(this,'반려')">
+      반려 <span class="ss-cnt" id="cnt-rejected">0</span>
+    </button>
+  </div>
+
+  <!-- 그리드 -->
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="main-table">
+        <thead>
+          <tr>
+            <th style="width:36px">
+              <input type="checkbox" id="chk-all" onclick="toggleAll(this)"
+                style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer">
+            </th>
+            <th style="width:36px">No</th>
+            <th style="width:170px">프로젝트</th>
+            <th style="width:110px">품번</th>
+            <th>품명</th>
+            <th style="width:68px">도면 Rev</th>
+            <th style="width:110px">공법</th>
+            <th style="width:100px">소재</th>
+            <th class="r" style="width:88px">투입중량(kg)</th>
+            <th class="r" style="width:80px">스크랩(kg)</th>
+            <th class="r" style="width:100px">재료비(원/개)</th>
+            <th style="width:80px">LME 기준월</th>
+            <th style="width:96px">기준일</th>
+            <th style="width:70px">상태</th>
+            <th style="width:56px">상세</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const ROWS = [
+  { no:1, proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',         code:'H1110-T100', name:"Frame Sub Ass'y",    rev:'Rev.B', method:'PRESS',            mat:'Al 6061', weight:2.85, scrap:0.28, cost:11168, lme:'2026-06', date:'2026-01-15', status:'확정'  },
+  { no:2, proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',         code:'H1110-T101', name:'Bracket Assy Upper', rev:'Rev.A', method:'PRESS',            mat:'SPCC',    weight:0.42, scrap:0.04, cost:1680,  lme:'2026-06', date:'2026-01-15', status:'확정'  },
+  { no:3, proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',         code:'H1110-T102', name:'Cover Plate',        rev:'Rev.A', method:'절삭가공',          mat:'Al 6061', weight:0.38, scrap:0.06, cost:1490,  lme:'2026-06', date:'2026-01-20', status:'검토중' },
+  { no:4, proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',         code:'H1110-T103', name:'Rubber Seal',        rev:'Rev.A', method:'-',                mat:'NBR70',   weight:0.08, scrap:0.00, cost:320,   lme:'-',       date:'2026-01-20', status:'작성중' },
+  { no:5, proj:'PJT-SANTA-RB-2026',   projName:'싼타페 2027 후면범퍼', code:'H2210-R200', name:'Rear Bumper Assy',  rev:'Rev.A', method:'PLASTIC INJECTION', mat:'PP-GF30', weight:1.82, scrap:0.15, cost:3640,  lme:'2026-06', date:'2026-02-20', status:'확정'  },
+  { no:6, proj:'PJT-SANTA-RB-2026',   projName:'싼타페 2027 후면범퍼', code:'H2210-R201', name:'Bracket Side L/H',  rev:'Rev.A', method:'PRESS',            mat:'SPCC',    weight:0.56, scrap:0.05, cost:2240,  lme:'2026-06', date:'2026-02-20', status:'확정'  },
+  { no:7, proj:'PJT-ION9-BM-2026',    projName:'아이오닉9 배터리마운트', code:'H3310-B150', name:'Battery Mount Assy', rev:'Rev.A', method:'냉간단조',         mat:'Al 6061', weight:3.20, scrap:0.32, cost:13600, lme:'2026-06', date:'2026-03-05', status:'검토중' },
+  { no:8, proj:'PJT-ION9-BM-2026',    projName:'아이오닉9 배터리마운트', code:'H3310-B151', name:'Mount Bracket Upper', rev:'Rev.A', method:'PRESS',          mat:'SPCC',    weight:0.74, scrap:0.07, cost:2960,  lme:'2026-06', date:'2026-03-05', status:'작성중' },
+];
+
+let activeStatus = '';
+
+function fmt(n, dec) {
+  if (n === null || n === undefined) return '-';
+  if (typeof n === 'string') return n;
+  return dec ? n.toFixed(dec) : n.toLocaleString();
+}
+
+function stText(s) {
+  const map = { '확정':'st-ok', '검토중':'st-prog', '작성중':'st-wait', '반려':'st-bad' };
+  return `<span class="st ${map[s] || 'st-wait'}">${s}</span>`;
+}
+
+function updateStrip(rows) {
+  document.getElementById('cnt-all').textContent      = rows.length;
+  document.getElementById('cnt-draft').textContent    = rows.filter(r => r.status === '작성중').length;
+  document.getElementById('cnt-review').textContent   = rows.filter(r => r.status === '검토중').length;
+  document.getElementById('cnt-confirmed').textContent= rows.filter(r => r.status === '확정').length;
+  document.getElementById('cnt-rejected').textContent = rows.filter(r => r.status === '반려').length;
+}
+
+function renderRows(rows) {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.innerHTML = `
+      <td style="text-align:center">
+        <input type="checkbox" class="row-chk"
+          style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer"
+          onchange="onRowCheck()">
+      </td>
+      <td style="text-align:center;color:var(--text-mute)">${r.no}</td>
+      <td style="padding-left:10px">
+        <div style="font-weight:500;color:var(--text)">${r.projName}</div>
+        <div style="font-size:11px;color:var(--text-mute)">${r.proj}</div>
+      </td>
+      <td style="text-align:center">
+        <a href="03-07_material_cost.html" class="td-link" onclick="event.stopPropagation()">${r.code}</a>
+      </td>
+      <td style="padding-left:10px;color:var(--text-sub)">${r.name}</td>
+      <td style="text-align:center;color:var(--text-sub)">${r.rev}</td>
+      <td style="text-align:center;color:var(--text-sub);font-size:11px">${r.method}</td>
+      <td style="text-align:center;color:var(--text-sub)">${r.mat}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${fmt(r.weight, 2)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--text-mute)">${fmt(r.scrap, 2)}</td>
+      <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${fmt(r.cost)}</td>
+      <td style="text-align:center;color:var(--text-sub);font-size:11px">${r.lme}</td>
+      <td style="text-align:center;color:var(--text-sub);font-size:11px;font-variant-numeric:tabular-nums">${r.date}</td>
+      <td style="text-align:center">${stText(r.status)}</td>
+      <td style="text-align:center">
+        <button class="btn btn-ghost btn-sm btn-grid"
+          onclick="event.stopPropagation();location.href='03-07_material_cost.html'">
+          <i data-lucide="chevron-right"></i>
+        </button>
+      </td>
+    `;
+    tr.addEventListener('click', e => {
+      if (e.target.tagName === 'INPUT' || e.target.closest('button') || e.target.tagName === 'A') return;
+      const chk = tr.querySelector('.row-chk');
+      chk.checked = !chk.checked;
+      tr.classList.toggle('selected', chk.checked);
+      onRowCheck();
+    });
+    tbody.appendChild(tr);
+  });
+  lucide.createIcons();
+}
+
+function getBaseFiltered() {
+  const q      = document.getElementById('f-search').value.trim().toLowerCase();
+  const proj   = (document.getElementById('f-proj')   || {}).value?.trim().toLowerCase() || '';
+  const code   = (document.getElementById('f-code')   || {}).value?.trim().toLowerCase() || '';
+  const method = (document.getElementById('f-method') || {}).value || '';
+  const mat    = (document.getElementById('f-mat')    || {}).value?.trim().toLowerCase() || '';
+  const from   = document.getElementById('f-from').value;
+  const to     = document.getElementById('f-to').value;
+
+  return ROWS.filter(r => {
+    if (q      && !r.proj.toLowerCase().includes(q) && !r.projName.toLowerCase().includes(q)
+                && !r.code.toLowerCase().includes(q) && !r.name.toLowerCase().includes(q)) return false;
+    if (proj   && !r.proj.toLowerCase().includes(proj) && !r.projName.toLowerCase().includes(proj)) return false;
+    if (code   && !r.code.toLowerCase().includes(code)) return false;
+    if (method && r.method !== method) return false;
+    if (mat    && !r.mat.toLowerCase().includes(mat)) return false;
+    if (from   && r.date < from) return false;
+    if (to     && r.date > to)   return false;
+    return true;
+  });
+}
+
+function applyFilter() {
+  const base = getBaseFiltered();
+  const rows = activeStatus ? base.filter(r => r.status === activeStatus) : base;
+  renderRows(rows);
+  updateStrip(base);
+  resetChecks();
+}
+
+function setStatus(btn, s) {
+  activeStatus = s;
+  document.querySelectorAll('.ss-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+
+function toggleFilter() { document.getElementById('filter-panel').classList.toggle('open'); }
+function toggleStatusPanel() {
+  const s = document.getElementById('status-strip');
+  s.style.display = s.style.display === 'none' ? 'flex' : 'none';
+}
+
+function toggleAll(master) {
+  document.querySelectorAll('.row-chk').forEach(c => {
+    c.checked = master.checked;
+    c.closest('tr').classList.toggle('selected', master.checked);
+  });
+  onRowCheck();
+}
+
+function onRowCheck() {
+  const all     = document.querySelectorAll('.row-chk');
+  const checked = document.querySelectorAll('.row-chk:checked');
+  const master  = document.getElementById('chk-all');
+  master.indeterminate = checked.length > 0 && checked.length < all.length;
+  master.checked       = all.length > 0 && checked.length === all.length;
+}
+
+function resetChecks() {
+  document.getElementById('chk-all').checked       = false;
+  document.getElementById('chk-all').indeterminate = false;
+}
+
+updateStrip(ROWS);
+renderRows(ROWS);
+</script>
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

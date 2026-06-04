@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>RFQ 목록 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column; padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--status-ok);  } .st-ok::before   { background:var(--status-ok); }
+  .st-prog { color:var(--status-prog);} .st-prog::before { background:var(--status-prog); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+</style>
+</head>
+
+<body data-menu="04-02">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">RFQ 목록</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-primary" onclick="location.href='04-03_rfq_create.html'">
+        <i data-lucide="plus"></i>RFQ 생성
+      </button>
+    </div>
+  </div>
+
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-filter" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-status" onclick="toggleStatusPanel()">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to" value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+  </div>
+
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">상태</span>
+      <select class="search-input" id="f-status" style="width:120px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="작성중">작성중</option>
+        <option value="발송완료">발송완료</option>
+        <option value="접수중">접수중</option>
+        <option value="마감">마감</option>
+        <option value="선정완료">선정완료</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">차종</span>
+      <select class="search-input" id="f-car" style="width:120px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="520 PHEV">520 PHEV</option>
+        <option value="기타">기타</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="status-strip" id="status-strip">
+    <button class="ss-btn active" onclick="setStatus('')">전체 <span class="ss-cnt" id="cnt-all">0</span></button>
+    <button class="ss-btn" onclick="setStatus('작성중')">작성중 <span class="ss-cnt" id="cnt-draft">0</span></button>
+    <button class="ss-btn" onclick="setStatus('발송완료')">발송완료 <span class="ss-cnt" id="cnt-sent">0</span></button>
+    <button class="ss-btn" onclick="setStatus('접수중')">접수중 <span class="ss-cnt" id="cnt-recv">0</span></button>
+    <button class="ss-btn" onclick="setStatus('마감')">마감 <span class="ss-cnt" id="cnt-closed">0</span></button>
+    <button class="ss-btn" onclick="setStatus('선정완료')">선정완료 <span class="ss-cnt" id="cnt-done">0</span></button>
+  </div>
+
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="tbl" style="border:1px solid var(--border);border-radius:4px">
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox"></th>
+            <th style="width:130px">RFQ번호</th>
+            <th style="width:110px">품번</th>
+            <th>품명</th>
+            <th style="width:90px">대상협력사수</th>
+            <th style="width:108px">발송일</th>
+            <th style="width:108px">마감일</th>
+            <th style="width:80px">회신현황</th>
+            <th style="width:90px">상태</th>
+            <th style="width:80px">담당자</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DATA = [
+  { rfq:'RFQ-2026-0012', part:'H1110-T100', name:"Frame Sub Ass'y",     cnt:3, send:'2026-02-10', due:'2026-02-28', reply:'1/3', st:'접수중',   mgr:'김구매' },
+  { rfq:'RFQ-2026-0013', part:'H1110-T101', name:'Bracket Assy Upper',  cnt:3, send:'2026-02-10', due:'2026-02-28', reply:'3/3', st:'선정완료', mgr:'김구매' },
+  { rfq:'RFQ-2026-0014', part:'H1110-T102', name:'Cover Plate',         cnt:2, send:'2026-02-15', due:'2026-03-05', reply:'2/2', st:'마감',     mgr:'이구매' },
+  { rfq:'RFQ-2026-0018', part:'H1110-T103', name:'Rubber Seal',         cnt:2, send:'2026-03-02', due:'2026-03-20', reply:'0/2', st:'발송완료', mgr:'이구매' },
+  { rfq:'RFQ-2026-0021', part:'H1110-T105', name:'Hose Assembly',       cnt:4, send:'—',          due:'2026-04-10', reply:'0/4', st:'작성중',   mgr:'김구매' },
+];
+
+const ST_CLS = { '선정완료':'st-ok', '접수중':'st-prog', '발송완료':'st-prog', '작성중':'st-wait', '마감':'st-bad' };
+let currentSt = '';
+
+function applyFilter() {
+  const q      = document.getElementById('f-search').value.trim().toLowerCase();
+  const from   = document.getElementById('f-from').value;
+  const to     = document.getElementById('f-to').value;
+  const fSt    = document.getElementById('f-status')?.value || '';
+  const fCar   = document.getElementById('f-car')?.value || '';
+
+  const rows = DATA.filter(d => {
+    if (currentSt && d.st !== currentSt) return false;
+    if (q && !d.rfq.toLowerCase().includes(q) && !d.part.toLowerCase().includes(q) && !d.name.toLowerCase().includes(q)) return false;
+    if (d.send !== '—') {
+      if (from && d.send < from) return false;
+      if (to   && d.send > to)   return false;
+    }
+    if (fSt  && d.st !== fSt) return false;
+    if (fCar && fCar !== '520 PHEV') return false;
+    return true;
+  });
+  renderRows(rows);
+  updateCounts();
+}
+
+function renderRows(rows) {
+  document.getElementById('tbody').innerHTML = rows.map(d => {
+    return `<tr onclick="location.href='04-04_rfq_detail.html'">
+      <td class="c" onclick="event.stopPropagation()"><input type="checkbox"></td>
+      <td class="c"><a class="td-link" href="04-04_rfq_detail.html">${d.rfq}</a></td>
+      <td style="padding-left:12px">${d.part}</td>
+      <td style="padding-left:12px">${d.name}</td>
+      <td class="c">${d.cnt}</td>
+      <td class="c muted">${d.send}</td>
+      <td class="c muted">${d.due}</td>
+      <td class="c">${d.reply}</td>
+      <td class="c"><span class="st ${ST_CLS[d.st]}">${d.st}</span></td>
+      <td class="c">${d.mgr}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateCounts() {
+  document.getElementById('cnt-all').textContent    = DATA.length;
+  document.getElementById('cnt-draft').textContent  = DATA.filter(d => d.st === '작성중').length;
+  document.getElementById('cnt-sent').textContent   = DATA.filter(d => d.st === '발송완료').length;
+  document.getElementById('cnt-recv').textContent   = DATA.filter(d => d.st === '접수중').length;
+  document.getElementById('cnt-closed').textContent = DATA.filter(d => d.st === '마감').length;
+  document.getElementById('cnt-done').textContent   = DATA.filter(d => d.st === '선정완료').length;
+}
+
+function setStatus(st) {
+  currentSt = st;
+  document.querySelectorAll('.ss-btn').forEach(b => b.classList.remove('active'));
+  ['', '작성중', '발송완료', '접수중', '마감', '선정완료'].forEach((s, i) => {
+    if (s === st) document.querySelectorAll('.ss-btn')[i]?.classList.add('active');
+  });
+  applyFilter();
+}
+
+function toggleFilter() { document.getElementById('filter-panel').classList.toggle('open'); }
+function toggleStatusPanel() {
+  const el = document.getElementById('status-strip');
+  el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+
+renderRows(DATA);
+updateCounts();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

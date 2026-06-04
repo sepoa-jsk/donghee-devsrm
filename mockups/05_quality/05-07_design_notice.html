@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>설계 변경 통보 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 좌우 분할 ── */
+  .main-split { flex:1; overflow:hidden; display:flex; }
+
+  /* ── 좌: 목록 패널 ── */
+  .left-panel {
+    width:300px; flex-shrink:0;
+    border-right:1px solid var(--border);
+    display:flex; flex-direction:column; background:var(--surface);
+  }
+  .left-hdr {
+    height:36px; padding:0 14px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid var(--border);
+    background:var(--grid-head); flex-shrink:0;
+  }
+  .left-hdr-title { font-size:11px; font-weight:700; color:var(--text-sub); }
+  .left-hdr-cnt   { font-size:11px; color:var(--text-mute); font-variant-numeric:tabular-nums; }
+  .left-body { flex:1; overflow-y:auto; }
+  .left-body::-webkit-scrollbar { width:4px; }
+  .left-body::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:2px; }
+
+  .left-item {
+    padding:10px 14px; border-bottom:1px solid var(--border);
+    cursor:pointer; transition:background .1s; border-left:3px solid transparent;
+  }
+  .left-item:hover { background:var(--grid-hover); }
+  .left-item.active { background:var(--blue-light); border-left-color:var(--blue); }
+  .li-top   { display:flex; align-items:center; justify-content:space-between; margin-bottom:3px; }
+  .li-code  { font-size:13px; font-weight:700; color:var(--navy); }
+  .left-item.active .li-code { color:var(--blue); }
+  .li-name  { font-size:12px; color:var(--text-sub); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .li-meta  { font-size:11px; color:var(--text-mute); }
+  .stt { display:inline-flex; align-items:center; gap:4px; font-size:11px; white-space:nowrap; }
+  .stt::before { content:''; width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+  .stt-ok   { color:var(--text-sub);   } .stt-ok::before   { background:var(--navy); }
+  .stt-prog { color:var(--text-sub);   } .stt-prog::before { background:var(--text-sub); }
+  .stt-wait { color:var(--text-mute);  } .stt-wait::before { background:var(--border-strong); }
+
+  /* ── 우: 상세 패널 ── */
+  .right-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); }
+  .right-scroll { flex:1; overflow-y:auto; padding:16px 20px 24px; }
+  .right-scroll::-webkit-scrollbar { width:6px; }
+  .right-scroll::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  /* ── 변경 비교 테이블 ── */
+  table.chg-table { width:100%; border-collapse:collapse; font-size:12px; }
+  table.chg-table thead th {
+    background:var(--grid-head); padding:0 12px; height:32px;
+    font-weight:600; color:var(--text); text-align:center;
+    border-bottom:1px solid var(--border); border-right:1px solid var(--border); white-space:nowrap;
+  }
+  table.chg-table thead th:last-child { border-right:none; }
+  table.chg-table tbody td {
+    padding:0 12px; height:34px; border-bottom:1px solid var(--border);
+    border-right:1px solid var(--border); vertical-align:middle; color:var(--text);
+  }
+  table.chg-table tbody td:last-child { border-right:none; }
+  table.chg-table tbody tr:last-child td { border-bottom:none; }
+  table.chg-table tbody td.before { color:var(--text-sub); }
+  table.chg-table tbody td.after  { font-weight:600; color:var(--navy); }
+  table.chg-table tbody td.changed { font-weight:600; color:var(--blue); }
+  table.chg-table tbody td.warn   { font-weight:600; color:var(--status-bad); }
+
+  /* ── 협력사 선택 체크 테이블 ── */
+  table.sup-table { width:100%; border-collapse:collapse; font-size:12px; }
+  table.sup-table thead th {
+    background:var(--grid-head); padding:0 10px; height:30px;
+    font-weight:600; color:var(--text); text-align:center;
+    border-bottom:1px solid var(--border); border-right:1px solid var(--border);
+  }
+  table.sup-table thead th:last-child { border-right:none; }
+  table.sup-table tbody td {
+    padding:0 10px; height:30px; border-bottom:1px solid var(--border);
+    border-right:1px solid var(--border); vertical-align:middle; color:var(--text);
+  }
+  table.sup-table tbody td:last-child { border-right:none; }
+  table.sup-table tbody tr:last-child td { border-bottom:none; }
+  table.sup-table tbody tr:hover td { background:var(--grid-hover); }
+  table.sup-table tbody tr.checked td { background:var(--blue-light); }
+
+  /* ── 발송 이력 ── */
+  table.hist-table { width:100%; border-collapse:collapse; font-size:12px; }
+  table.hist-table thead th {
+    background:var(--grid-head); padding:0 10px; height:30px;
+    font-weight:600; color:var(--text); text-align:center;
+    border-bottom:1px solid var(--border); border-right:1px solid var(--border); white-space:nowrap;
+  }
+  table.hist-table thead th:last-child { border-right:none; }
+  table.hist-table tbody td {
+    padding:0 10px; height:30px; border-bottom:1px solid var(--border);
+    border-right:1px solid var(--border); color:var(--text); vertical-align:middle; white-space:nowrap;
+  }
+  table.hist-table tbody td:last-child { border-right:none; }
+  table.hist-table tbody tr:last-child td { border-bottom:none; }
+
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--text);       } .st-ok::before   { background:var(--navy); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+
+  /* 2열 레이아웃 (협력사 + 발송이력) */
+  .two-col { display:flex; gap:14px; align-items:flex-start; }
+  .two-col .col-left  { flex:0 0 340px; }
+  .two-col .col-right { flex:1; }
+</style>
+</head>
+
+<body data-menu="05-07">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">설계 변경 통보</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-primary" onclick="openNewModal()">
+        <i data-lucide="plus"></i>신규 작성
+      </button>
+    </div>
+  </div>
+
+  <!-- 검색 바 -->
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="renderList()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-filter" onclick="document.getElementById('filter-panel').classList.toggle('open')">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-status">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+    <div class="date-range">
+      <input type="date" value="2026-01-01">
+      <span class="dr-sep">~</span>
+      <input type="date" value="2026-12-31">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+  </div>
+
+  <!-- 필터 패널 -->
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">품번</span>
+      <input type="text" class="search-input" placeholder="품번" style="width:110px" oninput="renderList()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">상태</span>
+      <select class="search-input" style="height:28px;padding:0 8px;width:100px;cursor:pointer">
+        <option>전체</option>
+        <option>발송 완료</option>
+        <option>발송 대기</option>
+        <option>작성 중</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 메인 분할 -->
+  <div class="main-split">
+
+    <!-- 좌: 목록 -->
+    <div class="left-panel">
+      <div class="left-hdr">
+        <span class="left-hdr-title">변경 통보 목록</span>
+        <span class="left-hdr-cnt" id="list-cnt">3건</span>
+      </div>
+      <div class="left-body" id="left-body"></div>
+    </div>
+
+    <!-- 우: 상세 -->
+    <div class="right-panel" id="right-panel"></div>
+
+  </div>
+
+</div>
+
+<!-- 신규 작성 모달 -->
+<div class="modal-backdrop" id="new-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title">설계 변경 통보 신규 작성</span>
+      <button class="modal-close" onclick="closeModal()"><i data-lucide="x" style="width:16px;height:16px"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row form-row-2">
+        <div class="form-field">
+          <label class="form-label">통보번호</label>
+          <input class="form-input" value="DCN-2026-0044" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">발행일 <span class="req">*</span></label>
+          <input type="date" class="form-input" value="2026-06-04">
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-field">
+          <label class="form-label">품번 <span class="req">*</span></label>
+          <input class="form-input" placeholder="예: H1110-T100">
+        </div>
+        <div class="form-field">
+          <label class="form-label">변경 유형 <span class="req">*</span></label>
+          <select class="form-select">
+            <option>리비전 변경</option>
+            <option>소재 변경</option>
+            <option>형상 변경</option>
+            <option>공차 변경</option>
+            <option>기타</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row form-row-full">
+        <div class="form-field">
+          <label class="form-label">변경 개요</label>
+          <textarea class="form-textarea" placeholder="변경 내용을 간략히 입력하세요."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="closeModal()">
+        <i data-lucide="file-plus" style="width:14px;height:14px"></i>작성 시작
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const NOTICES = [
+  {
+    id: 'DCN-2026-0041',
+    partCode: 'H1110-T100', partName: "Frame Sub Ass'y",
+    changeType: '리비전 변경', summary: 'Rev.A → Rev.B (하부 두께 2.0→2.3mm)',
+    issueDate: '2026-03-08', status: '발송 완료',
+    eoRef: 'EO-2026-0078',
+    before: { rev:'Rev.A', drawNo:'H1110-T100-A', thickness:'2.0 mm', inputW:'2.70 kg', scrap:'0.22 kg', matCost:'10,483원' },
+    after:  { rev:'Rev.B', drawNo:'H1110-T100-B', thickness:'2.3 mm', inputW:'2.85 kg', scrap:'0.25 kg', matCost:'11,168원' },
+    changeNote: '하부 브래킷 두께 강화(강성 보강) — 내구 시험 결과 반영. 투입중량·스크랩 변경으로 재료비 재산출 필요.',
+    suppliers: [
+      { id:'A', name:'A사', part:'H1110-T100 (Frame Sub Ass\'y)', contact:'김담당', selected:true,  notified:'2026-03-10', confirmed:true  },
+      { id:'A2', name:'A사', part:'H1110-T101 (Bracket Assy Upper)', contact:'박대리', selected:true,  notified:'2026-03-10', confirmed:false },
+      { id:'B', name:'B사', part:'H1110-T103 (Rubber Seal)',   contact:'이담당', selected:false, notified:'—',          confirmed:false },
+    ],
+    history: [
+      { dt:'2026-03-10 14:30', supplier:'A사', contact:'김담당', method:'이메일', confirmed:true  },
+      { dt:'2026-03-10 14:31', supplier:'A사', contact:'박대리', method:'이메일', confirmed:false },
+    ]
+  },
+  {
+    id: 'DCN-2026-0042',
+    partCode: 'H1110-T102', partName: 'Cover Plate',
+    changeType: '형상 변경', summary: 'Rev.A → Rev.A2 (홀 위치 +1.5mm 이동)',
+    issueDate: '2026-03-10', status: '발송 완료',
+    eoRef: 'EO-2026-0079',
+    before: { rev:'Rev.A',  drawNo:'H1110-T102-A',  thickness:'1.5 mm', inputW:'0.38 kg', scrap:'0.06 kg', matCost:'1,542원' },
+    after:  { rev:'Rev.A2', drawNo:'H1110-T102-A2', thickness:'1.5 mm', inputW:'0.38 kg', scrap:'0.06 kg', matCost:'1,542원' },
+    changeNote: '조립 간섭 해소를 위해 φ8 홀 위치를 X+1.5mm 이동. 중량·재료비 변경 없음.',
+    suppliers: [
+      { id:'A', name:'A사', part:'H1110-T102 (Cover Plate)', contact:'김담당', selected:true, notified:'2026-03-12', confirmed:true },
+    ],
+    history: [
+      { dt:'2026-03-12 09:15', supplier:'A사', contact:'김담당', method:'이메일', confirmed:true },
+    ]
+  },
+  {
+    id: 'DCN-2026-0043',
+    partCode: 'H1110-T105', partName: 'Pipe Connector',
+    changeType: '리비전 변경', summary: '신규 도면 Rev.A 발행 (초도 EO)',
+    issueDate: '2026-06-01', status: '발송 대기',
+    eoRef: 'EO-2026-0115',
+    before: { rev:'—',     drawNo:'—',               thickness:'—',      inputW:'—',       scrap:'—',      matCost:'—' },
+    after:  { rev:'Rev.A', drawNo:'H1110-T105-A',     thickness:'3.0 mm', inputW:'0.18 kg', scrap:'0.03 kg', matCost:'730원' },
+    changeNote: '신규 품번 초도 도면 발행. A사에 최초 통보 예정.',
+    suppliers: [
+      { id:'A', name:'A사', part:'H1110-T105 (Pipe Connector)', contact:'김담당', selected:true, notified:'—', confirmed:false },
+    ],
+    history: []
+  }
+];
+
+const ST_CLS  = { '발송 완료':'stt-ok', '발송 대기':'stt-wait', '작성 중':'stt-prog' };
+let selectedId = 'DCN-2026-0041';
+
+function renderList() {
+  const q = document.getElementById('f-search').value.trim().toLowerCase();
+  const filtered = NOTICES.filter(n =>
+    !q || n.id.toLowerCase().includes(q) || n.partCode.toLowerCase().includes(q) || n.partName.toLowerCase().includes(q)
+  );
+  document.getElementById('list-cnt').textContent = filtered.length + '건';
+  document.getElementById('left-body').innerHTML = filtered.map(n => `
+    <div class="left-item${n.id === selectedId ? ' active' : ''}" onclick="selectNotice('${n.id}')">
+      <div class="li-top">
+        <span class="li-code">${n.id}</span>
+        <span class="stt ${ST_CLS[n.status]}">${n.status}</span>
+      </div>
+      <div class="li-name">${n.partCode} · ${n.partName}</div>
+      <div class="li-meta" style="margin-bottom:3px">${n.changeType} · ${n.issueDate}</div>
+      <div class="li-meta">${n.summary}</div>
+    </div>`).join('');
+}
+
+function selectNotice(id) {
+  selectedId = id;
+  renderList();
+  renderRight();
+}
+
+function renderRight() {
+  const n = NOTICES.find(x => x.id === selectedId);
+  if (!n) return;
+
+  const chgRows = [
+    { item:'도면번호',   before:n.before.drawNo,  after:n.after.drawNo,  note:n.before.drawNo !== n.after.drawNo ? '변경' : '—' },
+    { item:'리비전',     before:n.before.rev,     after:n.after.rev,     note:n.before.rev !== n.after.rev ? '변경' : '—' },
+    { item:'두께',       before:n.before.thickness, after:n.after.thickness, note:n.before.thickness !== n.after.thickness ? '변경' : '—' },
+    { item:'투입중량',   before:n.before.inputW,  after:n.after.inputW,  note:n.before.inputW !== n.after.inputW ? '재산출' : '—' },
+    { item:'스크랩중량', before:n.before.scrap,   after:n.after.scrap,   note:n.before.scrap !== n.after.scrap ? '재산출' : '—' },
+    { item:'재료비 영향', before:n.before.matCost, after:n.after.matCost, note:n.before.matCost !== n.after.matCost ? '재산출 필요' : '—' },
+  ];
+
+  const chgHtml = chgRows.map(r => {
+    const changed = r.before !== r.after && r.before !== '—';
+    return `<tr>
+      <td>${r.item}</td>
+      <td class="c before">${r.before}</td>
+      <td class="c after">${r.after}</td>
+      <td class="c ${changed ? 'changed' : 'sub'}">${r.note}</td>
+    </tr>`;
+  }).join('');
+
+  const supHtml = n.suppliers.map(s => `
+    <tr class="${s.selected ? 'checked' : ''}">
+      <td class="c"><input type="checkbox" ${s.selected ? 'checked' : ''}></td>
+      <td class="c" style="font-weight:600">${s.name}</td>
+      <td style="padding-left:10px;font-size:11px;color:var(--text-sub)">${s.part}</td>
+      <td class="c" style="color:var(--text-sub)">${s.contact}</td>
+      <td class="c" style="color:var(--text-mute);font-size:11px">${s.notified}</td>
+      <td class="c"><span class="st ${s.confirmed ? 'st-ok' : 'st-wait'}">${s.confirmed ? '확인' : '미확인'}</span></td>
+    </tr>`).join('');
+
+  const histHtml = n.history.length
+    ? n.history.map(h => `
+      <tr>
+        <td class="c" style="color:var(--text-mute);font-size:11px">${h.dt}</td>
+        <td class="c">${h.supplier}</td>
+        <td class="c" style="color:var(--text-sub)">${h.contact}</td>
+        <td class="c" style="color:var(--text-sub)">${h.method}</td>
+        <td class="c"><span class="st ${h.confirmed ? 'st-ok' : 'st-wait'}">${h.confirmed ? '확인' : '미확인'}</span></td>
+      </tr>`).join('')
+    : `<tr><td colspan="5" class="c" style="color:var(--text-mute);padding:14px">발송 이력 없음</td></tr>`;
+
+  document.getElementById('right-panel').innerHTML = `
+    <div class="right-scroll">
+
+      <!-- 기본 정보 -->
+      <div class="section-box" style="margin-bottom:14px">
+        <div class="section-box-header">
+          <span class="section-box-title">${n.id}</span>
+          <span class="badge ${n.status === '발송 완료' ? 'badge-ok' : n.status === '발송 대기' ? 'badge-warn' : 'badge-wait'}" style="font-size:10px;margin-left:8px">${n.status}</span>
+        </div>
+        <div class="form-row form-row-4" style="margin-bottom:12px">
+          <div class="form-field">
+            <label class="form-label">품번</label>
+            <div class="form-display">${n.partCode} · ${n.partName}</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">변경 유형</label>
+            <div class="form-display">${n.changeType}</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">발행일</label>
+            <div class="form-display">${n.issueDate}</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">관련 EO</label>
+            <div class="form-display">${n.eoRef}</div>
+          </div>
+        </div>
+        <div class="form-row form-row-full" style="margin-bottom:0">
+          <div class="form-field">
+            <label class="form-label">변경 개요</label>
+            <textarea class="form-textarea" style="min-height:56px">${n.changeNote}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- 변경 전/후 비교 -->
+      <div class="section-box" style="margin-bottom:14px">
+        <div class="section-box-header"><span class="section-box-title">변경 전/후 비교</span></div>
+        <table class="chg-table" style="border:1px solid var(--border);border-radius:4px">
+          <thead>
+            <tr>
+              <th style="width:110px;text-align:left;padding-left:12px">항목</th>
+              <th style="width:160px">변경 전</th>
+              <th style="width:160px">변경 후</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody>${chgHtml}</tbody>
+        </table>
+      </div>
+
+      <!-- 통보 대상 협력사 + 발송 이력 -->
+      <div class="two-col">
+
+        <!-- 협력사 선택 -->
+        <div class="col-left">
+          <div class="section-box" style="margin-bottom:0">
+            <div class="section-box-header" style="margin-bottom:10px">
+              <span class="section-box-title">통보 대상 협력사</span>
+            </div>
+            <table class="sup-table" style="border:1px solid var(--border);border-radius:4px;margin-bottom:10px">
+              <thead>
+                <tr>
+                  <th style="width:36px"><input type="checkbox"></th>
+                  <th style="width:60px">협력사</th>
+                  <th>대상 품번</th>
+                  <th style="width:60px">담당자</th>
+                  <th style="width:82px">통보일</th>
+                  <th style="width:64px">확인</th>
+                </tr>
+              </thead>
+              <tbody>${supHtml}</tbody>
+            </table>
+            <div style="display:flex;justify-content:flex-end;gap:8px">
+              <button class="btn btn-secondary" style="font-size:12px;height:32px;padding:0 12px">
+                <i data-lucide="mail" style="width:14px;height:14px"></i>이메일 발송
+              </button>
+              <button class="btn btn-primary" style="font-size:12px;height:32px;padding:0 12px"
+                      onclick="handleSend()">
+                <i data-lucide="send" style="width:14px;height:14px"></i>발송
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 발송 이력 -->
+        <div class="col-right">
+          <div class="section-box" style="margin-bottom:0">
+            <div class="section-box-header" style="margin-bottom:10px">
+              <span class="section-box-title">발송 이력</span>
+            </div>
+            <table class="hist-table" style="border:1px solid var(--border);border-radius:4px">
+              <thead>
+                <tr>
+                  <th style="width:150px">발송 일시</th>
+                  <th style="width:70px">협력사</th>
+                  <th style="width:70px">수신자</th>
+                  <th style="width:80px">발송 방법</th>
+                  <th style="width:70px">확인</th>
+                </tr>
+              </thead>
+              <tbody>${histHtml}</tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /two-col -->
+    </div>`;
+
+  lucide.createIcons();
+}
+
+function handleSend() {
+  alert('선택된 협력사에 발송되었습니다.');
+}
+function openNewModal() {
+  document.getElementById('new-modal').classList.add('open');
+  lucide.createIcons();
+}
+function closeModal() {
+  document.getElementById('new-modal').classList.remove('open');
+}
+
+renderList();
+renderRight();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

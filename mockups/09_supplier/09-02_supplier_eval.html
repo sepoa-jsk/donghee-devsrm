@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>협력사 사후 평가 (Q-5스타) | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── type-tabs ── */
+  .type-tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:16px; }
+  .type-tab { padding:0 20px; height:36px; font-size:13px; font-weight:500; cursor:pointer; border:none; background:transparent; color:var(--text-sub); border-bottom:2px solid transparent; margin-bottom:-2px; }
+  .type-tab.active { color:var(--blue); border-bottom-color:var(--blue); font-weight:600; }
+
+  /* ── eval-table ── */
+  .eval-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .eval-table th {
+    background:var(--grid-head); padding:0 12px; height:32px; font-weight:600;
+    color:var(--text); text-align:center; border:1px solid var(--border); white-space:nowrap;
+  }
+  .eval-table td {
+    padding:0 10px; height:34px; border:1px solid var(--border);
+    color:var(--text); text-align:center; vertical-align:middle;
+  }
+  .eval-table td.lbl { text-align:left; font-weight:500; background:#fafbfc; }
+  .eval-table .cell-in {
+    width:56px; height:26px; border:1px solid var(--border); border-radius:3px;
+    text-align:center; font-size:12px; font-family:'Pretendard',sans-serif;
+  }
+  .eval-table .cell-in:focus {
+    border-color:var(--blue); outline:none;
+    box-shadow:0 0 0 2px rgba(26,86,170,0.15);
+  }
+  .eval-table td.avg { font-weight:700; font-variant-numeric:tabular-nums; }
+
+  /* ── status dot ── */
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; justify-content:center; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--status-ok);  } .st-ok::before   { background:var(--status-ok); }
+  .st-prog { color:var(--status-prog);} .st-prog::before { background:var(--status-prog); }
+  .st-warn { color:var(--status-warn);} .st-warn::before { background:var(--status-warn); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+
+  /* ── context / legend bar ── */
+  .ctx-bar {
+    padding:7px 24px;
+    background:#f9fafb;
+    border-bottom:1px solid var(--border);
+    font-size:12px;
+    color:var(--text-sub);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-shrink:0;
+  }
+  .grade-legend { display:flex; align-items:center; gap:14px; }
+  .gl-item { display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--text-sub); }
+  .gl-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+  /* ── distribution summary bar ── */
+  .dist-bar {
+    display:flex;
+    align-items:center;
+    gap:4px;
+    padding:10px 20px;
+    background:#f9fafb;
+    border:1px solid var(--border);
+    border-radius:4px;
+    margin-top:12px;
+    font-size:12px;
+    color:var(--text-sub);
+  }
+  .dist-bar strong { font-weight:700; font-variant-numeric:tabular-nums; color:var(--text); }
+  .dist-sep { color:var(--border-strong); margin:0 6px; }
+
+  /* ── toast ── */
+  .toast { position:fixed; bottom:24px; right:24px; color:#fff; padding:10px 16px; border-radius:4px; font-size:13px; z-index:500; display:flex; align-items:center; gap:8px; box-shadow:0 4px 16px rgba(0,0,0,.18); }
+</style>
+</head>
+
+<body data-menu="09-02">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">협력사 사후 평가 (Q-5스타)</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-primary" onclick="showToast('분기 평가가 저장되었습니다.','ok')">
+        <i data-lucide="save"></i>평가 저장
+      </button>
+    </div>
+  </div>
+
+  <!-- 평가 기준 안내 바 -->
+  <div class="ctx-bar">
+    <span>평가 항목: 품질(Q) &middot; 납기(D) &middot; 가격(P) &middot; 기술(T) &middot; 시스템(S) &mdash; 각 1~5점</span>
+    <div class="grade-legend">
+      <span class="gl-item"><span class="gl-dot" style="background:var(--status-ok)"></span>S &nbsp;4.5+</span>
+      <span class="gl-item"><span class="gl-dot" style="background:var(--status-ok)"></span>A &nbsp;3.5+</span>
+      <span class="gl-item"><span class="gl-dot" style="background:var(--status-prog)"></span>B &nbsp;2.5+</span>
+      <span class="gl-item"><span class="gl-dot" style="background:var(--status-warn)"></span>C &nbsp;1.5+</span>
+      <span class="gl-item"><span class="gl-dot" style="background:var(--status-bad)"></span>D &nbsp;미만</span>
+    </div>
+  </div>
+
+  <!-- 컨텐츠 스크롤 -->
+  <div class="content-scroll">
+
+    <!-- 분기 선택 탭 -->
+    <div class="type-tabs">
+      <button class="type-tab" onclick="switchQuarter(this)">2026 1Q</button>
+      <button class="type-tab" onclick="switchQuarter(this)">2Q</button>
+      <button class="type-tab active" onclick="switchQuarter(this)">3Q</button>
+      <button class="type-tab" onclick="switchQuarter(this)">4Q</button>
+    </div>
+
+    <!-- 평가 그리드 -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">협력사별 Q-5스타 평가</span>
+        <span style="font-size:11px;color:var(--text-mute);margin-left:8px">점수를 수정하면 평균·등급·조치사항이 자동 갱신됩니다.</span>
+      </div>
+      <table class="eval-table">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding-left:12px;width:180px">협력사</th>
+            <th style="width:80px">품질(Q)</th>
+            <th style="width:80px">납기(D)</th>
+            <th style="width:80px">가격(P)</th>
+            <th style="width:80px">기술(T)</th>
+            <th style="width:80px">시스템(S)</th>
+            <th style="width:72px">평균</th>
+            <th style="width:100px">등급</th>
+            <th>조치사항</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- A사 -->
+          <tr>
+            <td class="lbl">A사 (동희부품)</td>
+            <td><input id="a-q" type="number" class="cell-in" value="4.8" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="a-d" type="number" class="cell-in" value="4.7" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="a-p" type="number" class="cell-in" value="4.3" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="a-t" type="number" class="cell-in" value="4.6" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="a-s" type="number" class="cell-in" value="4.7" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td class="avg" id="a-avg">—</td>
+            <td><span class="st" id="a-grade">—</span></td>
+            <td id="a-action" style="text-align:left;padding-left:12px">—</td>
+          </tr>
+          <!-- B사 -->
+          <tr>
+            <td class="lbl">B사 (한국알미늄)</td>
+            <td><input id="b-q" type="number" class="cell-in" value="4.2" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="b-d" type="number" class="cell-in" value="4.0" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="b-p" type="number" class="cell-in" value="4.4" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="b-t" type="number" class="cell-in" value="3.8" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="b-s" type="number" class="cell-in" value="4.1" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td class="avg" id="b-avg">—</td>
+            <td><span class="st" id="b-grade">—</span></td>
+            <td id="b-action" style="text-align:left;padding-left:12px">—</td>
+          </tr>
+          <!-- C사 -->
+          <tr>
+            <td class="lbl">C사 (신흥정공)</td>
+            <td><input id="c-q" type="number" class="cell-in" value="3.5" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="c-d" type="number" class="cell-in" value="3.8" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="c-p" type="number" class="cell-in" value="4.0" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="c-t" type="number" class="cell-in" value="3.4" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="c-s" type="number" class="cell-in" value="3.6" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td class="avg" id="c-avg">—</td>
+            <td><span class="st" id="c-grade">—</span></td>
+            <td id="c-action" style="text-align:left;padding-left:12px">—</td>
+          </tr>
+          <!-- D사 -->
+          <tr>
+            <td class="lbl">D사 (대원금속)</td>
+            <td><input id="d-q" type="number" class="cell-in" value="2.8" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="d-d" type="number" class="cell-in" value="3.0" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="d-p" type="number" class="cell-in" value="3.5" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="d-t" type="number" class="cell-in" value="2.6" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td><input id="d-s" type="number" class="cell-in" value="2.9" step="0.1" min="1" max="5" oninput="calcGrades()"></td>
+            <td class="avg" id="d-avg">—</td>
+            <td><span class="st" id="d-grade">—</span></td>
+            <td id="d-action" style="text-align:left;padding-left:12px">—</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 등급 분포 요약 -->
+      <div class="dist-bar">
+        <span>등급 분포 &nbsp;&mdash;</span>
+        <span class="gl-dot" style="background:var(--status-ok);margin-left:6px"></span>
+        <span>S: <strong><span id="dist-s">0</span></strong>개사</span>
+        <span class="dist-sep">&middot;</span>
+        <span class="gl-dot" style="background:var(--status-ok)"></span>
+        <span>A: <strong><span id="dist-a">0</span></strong>개사</span>
+        <span class="dist-sep">&middot;</span>
+        <span class="gl-dot" style="background:var(--status-prog)"></span>
+        <span>B: <strong><span id="dist-b">0</span></strong>개사</span>
+        <span class="dist-sep">&middot;</span>
+        <span class="gl-dot" style="background:var(--status-warn)"></span>
+        <span>C: <strong><span id="dist-c">0</span></strong>개사</span>
+        <span class="dist-sep">&middot;</span>
+        <span class="gl-dot" style="background:var(--status-bad)"></span>
+        <span>D: <strong><span id="dist-d">0</span></strong>개사</span>
+      </div>
+    </div>
+
+  </div><!-- /content-scroll -->
+</div><!-- /page-wrap -->
+
+<script>
+function num(id){ return parseFloat(document.getElementById(id).value) || 0; }
+function gradeOf(avg){ return avg>=4.5?'S':avg>=3.5?'A':avg>=2.5?'B':avg>=1.5?'C':'D'; }
+var ACTION = { S:'우선 발주', A:'우선 발주 후보', B:'정상 거래', C:'경고·개선 계획', D:'거래 중단 검토' };
+var GRADE_CLS = { S:'st-ok', A:'st-ok', B:'st-prog', C:'st-warn', D:'st-bad' };
+function calcGrades() {
+  var firms = ['a','b','c','d'];
+  var dist = { S:0, A:0, B:0, C:0, D:0 };
+  firms.forEach(function(f){
+    var avg = (num(f+'-q')+num(f+'-d')+num(f+'-p')+num(f+'-t')+num(f+'-s'))/5;
+    var g = gradeOf(avg);
+    dist[g]++;
+    document.getElementById(f+'-avg').textContent = avg.toFixed(2);
+    var gc = document.getElementById(f+'-grade');
+    gc.className = 'st ' + GRADE_CLS[g];
+    gc.textContent = g + '등급';
+    document.getElementById(f+'-action').textContent = ACTION[g];
+  });
+  document.getElementById('dist-s').textContent = dist.S;
+  document.getElementById('dist-a').textContent = dist.A;
+  document.getElementById('dist-b').textContent = dist.B;
+  document.getElementById('dist-c').textContent = dist.C;
+  document.getElementById('dist-d').textContent = dist.D;
+}
+function switchQuarter(el){ document.querySelectorAll('.type-tab').forEach(function(t){t.classList.remove('active');}); el.classList.add('active'); }
+
+function showToast(msg, type, ms) {
+  var bg = type === 'ok' ? '#16a34a' : type === 'bad' ? '#dc2626' : '#1f2937';
+  var el = document.createElement('div'); el.className='toast'; el.style.background=bg;
+  el.innerHTML = '<i data-lucide="'+(type==='bad'?'alert-circle':'check-circle')+'" style="width:14px;height:14px;flex-shrink:0"></i><span>'+msg+'</span>';
+  document.body.appendChild(el);
+  if (window.lucide) window.lucide.createIcons({ nodes:[el] });
+  setTimeout(function(){ el.style.opacity='0'; el.style.transition='opacity .2s'; setTimeout(function(){ el.remove(); },220); }, ms||2400);
+}
+
+calcGrades();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

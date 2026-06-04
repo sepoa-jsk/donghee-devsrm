@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>협력사 사전 등록·평가 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column; padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--status-ok);  } .st-ok::before   { background:var(--status-ok); }
+  .st-prog { color:var(--status-prog);} .st-prog::before { background:var(--status-prog); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+</style>
+</head>
+
+<body data-menu="09-01">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">협력사 사전 등록·평가</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-primary" onclick="location.href='09-01_supplier_register_detail.html'">
+        <i data-lucide="plus"></i>협력사 등록
+      </button>
+    </div>
+  </div>
+
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-filter" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-status" onclick="toggleStatusPanel()">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to" value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+  </div>
+
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">품목군</span>
+      <select class="search-input" id="f-group" style="width:140px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="알루미늄 가공">알루미늄 가공</option>
+        <option value="프레스">프레스</option>
+        <option value="플라스틱">플라스틱</option>
+        <option value="표면처리">표면처리</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">등록상태</span>
+      <select class="search-input" id="f-status" style="width:100px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="신청">신청</option>
+        <option value="심사중">심사중</option>
+        <option value="승인">승인</option>
+        <option value="반려">반려</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="status-strip" id="status-strip">
+    <button class="ss-btn active" onclick="setStatus('')">전체 <span class="ss-cnt" id="cnt-all">0</span></button>
+    <button class="ss-btn" onclick="setStatus('신청')">신청 <span class="ss-cnt" id="cnt-apply">0</span></button>
+    <button class="ss-btn" onclick="setStatus('심사중')">심사중 <span class="ss-cnt" id="cnt-review">0</span></button>
+    <button class="ss-btn" onclick="setStatus('승인')">승인 <span class="ss-cnt" id="cnt-ok">0</span></button>
+    <button class="ss-btn" onclick="setStatus('반려')">반려 <span class="ss-cnt" id="cnt-reject">0</span></button>
+  </div>
+
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="tbl" style="border:1px solid var(--border);border-radius:4px">
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox"></th>
+            <th style="width:110px">업체코드</th>
+            <th style="width:160px">업체명</th>
+            <th style="width:120px">품목군</th>
+            <th style="width:108px">신청일</th>
+            <th style="width:100px;text-align:center">사전평가 점수</th>
+            <th style="width:90px">등록상태</th>
+            <th style="width:80px">담당자</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DATA = [
+  { code:'VND-0064', name:'I사 (금강정밀)',   group:'알루미늄 가공', apply:'2026-05-20', score:0,  st:'심사중', mgr:'이구매' },
+  { code:'VND-0061', name:'E사 (정밀단조)',   group:'프레스',       apply:'2026-05-25', score:0,  st:'신청',   mgr:'이구매' },
+  { code:'VND-0058', name:'F사 (한길표면)',   group:'표면처리',     apply:'2026-05-10', score:84, st:'승인',   mgr:'김구매' },
+  { code:'VND-0049', name:'G사 (대한플라텍)', group:'플라스틱',     apply:'2026-04-28', score:72, st:'반려',   mgr:'김구매' },
+  { code:'VND-0063', name:'H사 (신성정공)',   group:'프레스',       apply:'2026-06-01', score:0,  st:'신청',   mgr:'이구매' },
+];
+
+const ST_CLS = { '승인':'st-ok', '심사중':'st-prog', '신청':'st-wait', '반려':'st-bad' };
+let currentSt = '';
+
+function applyFilter() {
+  const q      = document.getElementById('f-search').value.trim().toLowerCase();
+  const from   = document.getElementById('f-from').value;
+  const to     = document.getElementById('f-to').value;
+  const group  = document.getElementById('f-group')?.value || '';
+  const status = document.getElementById('f-status')?.value || '';
+
+  const rows = DATA.filter(d => {
+    if (currentSt && d.st !== currentSt) return false;
+    if (q && !d.code.toLowerCase().includes(q) && !d.name.toLowerCase().includes(q)) return false;
+    if (from && d.apply < from) return false;
+    if (to   && d.apply > to)   return false;
+    if (group  && d.group !== group)  return false;
+    if (status && d.st    !== status) return false;
+    return true;
+  });
+  renderRows(rows);
+  updateCounts();
+}
+
+function renderRows(rows) {
+  document.getElementById('tbody').innerHTML = rows.map(d => {
+    const scoreCell = d.score
+      ? `<td class="r" style="padding-right:12px;font-variant-numeric:tabular-nums">${d.score}점</td>`
+      : `<td class="r" style="padding-right:12px"><span class="muted">—</span></td>`;
+    return `<tr onclick="location.href='09-01_supplier_register_detail.html'">
+      <td class="c" onclick="event.stopPropagation()"><input type="checkbox"></td>
+      <td class="c"><a class="td-link" href="09-01_supplier_register_detail.html">${d.code}</a></td>
+      <td style="padding-left:12px">${d.name}</td>
+      <td style="padding-left:12px">${d.group}</td>
+      <td class="c muted">${d.apply}</td>
+      ${scoreCell}
+      <td class="c"><span class="st ${ST_CLS[d.st]}">${d.st}</span></td>
+      <td class="c">${d.mgr}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateCounts() {
+  document.getElementById('cnt-all').textContent    = DATA.length;
+  document.getElementById('cnt-apply').textContent  = DATA.filter(d => d.st === '신청').length;
+  document.getElementById('cnt-review').textContent = DATA.filter(d => d.st === '심사중').length;
+  document.getElementById('cnt-ok').textContent     = DATA.filter(d => d.st === '승인').length;
+  document.getElementById('cnt-reject').textContent = DATA.filter(d => d.st === '반려').length;
+}
+
+function setStatus(st) {
+  currentSt = st;
+  document.querySelectorAll('.ss-btn').forEach(b => b.classList.remove('active'));
+  ['', '신청', '심사중', '승인', '반려'].forEach((s, i) => {
+    if (s === st) document.querySelectorAll('.ss-btn')[i]?.classList.add('active');
+  });
+  applyFilter();
+}
+
+function toggleFilter() { document.getElementById('filter-panel').classList.toggle('open'); }
+function toggleStatusPanel() {
+  const el = document.getElementById('status-strip');
+  el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+
+renderRows(DATA);
+updateCounts();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

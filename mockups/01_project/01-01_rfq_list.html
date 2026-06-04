@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>고객 RFQ 목록 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column; padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--status-ok);  } .st-ok::before   { background:var(--status-ok); }
+  .st-prog { color:var(--status-prog);} .st-prog::before { background:var(--status-prog); }
+  .st-warn { color:var(--status-warn);} .st-warn::before { background:var(--status-warn); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+</style>
+</head>
+
+<body data-menu="01-01">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">고객 RFQ 목록</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-primary" onclick="location.href='01-02_rfq_register.html'">
+        <i data-lucide="plus"></i>RFQ 등록
+      </button>
+    </div>
+  </div>
+
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-filter" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-status" onclick="toggleStatusPanel()">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to" value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+  </div>
+
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">고객사</span>
+      <select class="search-input" id="f-customer" style="width:130px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="현대자동차">현대자동차</option>
+        <option value="기아">기아</option>
+        <option value="현대모비스">현대모비스</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">차종</span>
+      <select class="search-input" id="f-car" style="width:110px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="520 PHEV">520 PHEV</option>
+        <option value="NX5">NX5</option>
+        <option value="MQ4">MQ4</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">상태</span>
+      <select class="search-input" id="f-status" style="width:150px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="RFQ등록">RFQ등록</option>
+        <option value="프로젝트전환대기">프로젝트전환대기</option>
+        <option value="검토요청">검토요청</option>
+        <option value="프로젝트생성완료">프로젝트생성완료</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="status-strip" id="status-strip">
+    <button class="ss-btn active" onclick="setStatus('')">전체 <span class="ss-cnt" id="cnt-all">0</span></button>
+    <button class="ss-btn" onclick="setStatus('RFQ등록')">RFQ등록 <span class="ss-cnt" id="cnt-reg">0</span></button>
+    <button class="ss-btn" onclick="setStatus('프로젝트전환대기')">프로젝트전환대기 <span class="ss-cnt" id="cnt-wait">0</span></button>
+    <button class="ss-btn" onclick="setStatus('검토요청')">검토요청 <span class="ss-cnt" id="cnt-review">0</span></button>
+    <button class="ss-btn" onclick="setStatus('프로젝트생성완료')">프로젝트생성완료 <span class="ss-cnt" id="cnt-done">0</span></button>
+  </div>
+
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="tbl" style="border:1px solid var(--border);border-radius:4px">
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox"></th>
+            <th style="width:130px">RFQ번호</th>
+            <th style="width:100px">고객사</th>
+            <th style="width:90px">차종</th>
+            <th>품목</th>
+            <th style="width:100px">고객목표가(원)</th>
+            <th style="width:90px">연간수량</th>
+            <th style="width:100px">SOP</th>
+            <th style="width:100px">등록일</th>
+            <th style="width:130px">상태</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DATA = [
+  { rfq:'CRFQ-2026-0007', cust:'현대자동차', car:'520 PHEV', item:'Fuel Tank Module',    target:16000, qty:100000, sop:'2026-10-01', reg:'2026-01-05', st:'프로젝트생성완료' },
+  { rfq:'CRFQ-2026-0012', cust:'기아',       car:'NX5',      item:'Cooling Module',      target:22000, qty:80000,  sop:'2026-12-01', reg:'2026-02-10', st:'검토요청' },
+  { rfq:'CRFQ-2026-0015', cust:'현대모비스', car:'MQ4',      item:'Bracket Assy',        target:9500,  qty:150000, sop:'2027-01-15', reg:'2026-03-02', st:'프로젝트전환대기' },
+  { rfq:'CRFQ-2026-0019', cust:'현대자동차', car:'520 PHEV', item:'Reinforcement Panel', target:7200,  qty:100000, sop:'2026-11-01', reg:'2026-03-20', st:'RFQ등록' },
+  { rfq:'CRFQ-2026-0023', cust:'기아',       car:'NX5',      item:'Heat Protector',      target:4800,  qty:80000,  sop:'2026-12-01', reg:'2026-04-08', st:'RFQ등록' },
+];
+
+const ST_CLS = {
+  '프로젝트생성완료':'st-ok',
+  '프로젝트전환대기':'st-prog',
+  '검토요청':'st-warn',
+  'RFQ등록':'st-wait'
+};
+
+let currentSt = '';
+
+function applyFilter() {
+  const q    = document.getElementById('f-search').value.trim().toLowerCase();
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+  const cust = document.getElementById('f-customer')?.value || '';
+  const car  = document.getElementById('f-car')?.value || '';
+  const stat = document.getElementById('f-status')?.value || '';
+
+  const rows = DATA.filter(d => {
+    if (currentSt && d.st !== currentSt) return false;
+    if (q && !d.rfq.toLowerCase().includes(q) && !d.cust.toLowerCase().includes(q) && !d.item.toLowerCase().includes(q)) return false;
+    if (from && d.reg < from) return false;
+    if (to   && d.reg > to)   return false;
+    if (cust && d.cust !== cust) return false;
+    if (car  && d.car  !== car)  return false;
+    if (stat && d.st   !== stat) return false;
+    return true;
+  });
+  renderRows(rows);
+  updateCounts();
+}
+
+function fmt(n) { return n.toLocaleString(); }
+
+function renderRows(rows) {
+  document.getElementById('tbody').innerHTML = rows.map(d => {
+    return `<tr onclick="location.href='01-02_rfq_register.html'">
+      <td class="c" onclick="event.stopPropagation()"><input type="checkbox"></td>
+      <td class="c"><a class="td-link" href="01-02_rfq_register.html">${d.rfq}</a></td>
+      <td style="padding-left:12px">${d.cust}</td>
+      <td class="c">${d.car}</td>
+      <td style="padding-left:12px">${d.item}</td>
+      <td class="r" style="padding-right:12px;font-variant-numeric:tabular-nums">${fmt(d.target)}</td>
+      <td class="r" style="padding-right:12px;font-variant-numeric:tabular-nums">${fmt(d.qty)}</td>
+      <td class="c muted">${d.sop}</td>
+      <td class="c muted">${d.reg}</td>
+      <td class="c"><span class="st ${ST_CLS[d.st]}">${d.st}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function updateCounts() {
+  document.getElementById('cnt-all').textContent    = DATA.length;
+  document.getElementById('cnt-reg').textContent    = DATA.filter(d => d.st === 'RFQ등록').length;
+  document.getElementById('cnt-wait').textContent   = DATA.filter(d => d.st === '프로젝트전환대기').length;
+  document.getElementById('cnt-review').textContent = DATA.filter(d => d.st === '검토요청').length;
+  document.getElementById('cnt-done').textContent   = DATA.filter(d => d.st === '프로젝트생성완료').length;
+}
+
+function setStatus(st) {
+  currentSt = st;
+  document.querySelectorAll('.ss-btn').forEach(b => b.classList.remove('active'));
+  ['', 'RFQ등록', '프로젝트전환대기', '검토요청', '프로젝트생성완료'].forEach((s, i) => {
+    if (s === st) document.querySelectorAll('.ss-btn')[i]?.classList.add('active');
+  });
+  applyFilter();
+}
+
+function toggleFilter() { document.getElementById('filter-panel').classList.toggle('open'); }
+function toggleStatusPanel() {
+  const el = document.getElementById('status-strip');
+  el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+
+renderRows(DATA);
+updateCounts();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

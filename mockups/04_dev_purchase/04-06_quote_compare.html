@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>견적 Breakdown 비교 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 섹션 소제목 (04-03 공통) ── */
+  .section-group { border-top: 1px solid var(--border); margin: 4px 0 12px; padding-top: 12px; }
+  .section-group:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+  .section-group-title {
+    font-size: 11px; font-weight: 700; color: var(--text-mute);
+    letter-spacing: 0.4px; text-transform: uppercase;
+    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+  }
+  .section-group-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── 공용 그리드 테이블 ── */
+  table.srm-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.srm-table thead th {
+    background: var(--grid-head); padding: 0 10px; height: 34px;
+    font-weight: 600; color: var(--text); text-align: left;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  table.srm-table thead th.c { text-align: center; }
+  table.srm-table thead th.r { text-align: right; }
+  table.srm-table tbody td {
+    padding: 0 10px; height: 38px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text); vertical-align: middle;
+  }
+  table.srm-table tbody tr:nth-child(even) td { background: var(--grid-row-alt); }
+  table.srm-table tbody tr:hover:not(.total-row) td { background: var(--grid-hover); cursor: pointer; }
+  table.srm-table tbody tr.selected td { background: var(--grid-select); }
+  table.srm-table tbody tr.total-row td {
+    background: #e4ecf7; font-weight: 700;
+    border-top: 2px solid var(--border-strong); border-bottom: none; height: 42px;
+  }
+  table.srm-table tbody td.c { text-align: center; }
+  table.srm-table tbody td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  table.srm-table tbody td.muted { color: var(--text-mute); font-size: 11px; }
+
+  /* ── 점수 셀 ── */
+  .score-cell { display: flex; align-items: center; gap: 7px; justify-content: center; }
+  .score-bar  { height: 4px; width: 52px; border-radius: 2px; background: var(--border); overflow: hidden; flex-shrink: 0; }
+  .score-fill { height: 100%; border-radius: 2px; }
+  .score-fill.ok   { background: var(--status-ok); }
+  .score-fill.warn { background: var(--status-warn); }
+
+  /* ── 상세 버튼 ── */
+  .btn-detail {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 500; color: var(--blue);
+    background: var(--blue-light); border: 1px solid #b3d1f5;
+    border-radius: 3px; padding: 3px 9px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-detail:hover { background: #d0e5fb; }
+
+  /* ── 상세 팝업 테이블 ── */
+  table.detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.detail-table thead th {
+    background: var(--grid-head); padding: 0 12px; height: 30px;
+    font-weight: 600; color: var(--text); text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  table.detail-table thead th.r { text-align: right; }
+  table.detail-table thead th.c { text-align: center; }
+  table.detail-table tbody td {
+    padding: 0 12px; height: 34px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text); vertical-align: middle;
+  }
+  table.detail-table tbody td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  table.detail-table tbody td.c { text-align: center; color: var(--text-sub); }
+  table.detail-table tbody td.muted { color: var(--text-mute); font-size: 11px; }
+  table.detail-table tbody tr:nth-child(even) td { background: var(--grid-row-alt); }
+  table.detail-table tbody tr.dt-section td {
+    background: #eef0f3; font-size: 11px; font-weight: 700;
+    color: var(--text-sub); height: 26px; border-top: 1px solid var(--border-strong);
+    letter-spacing: 0.3px; text-transform: uppercase;
+  }
+  table.detail-table tbody tr.dt-calc td { background: var(--grid-row-alt); color: var(--text-sub); }
+  table.detail-table tbody tr.dt-total td {
+    background: #e4ecf7; font-weight: 700;
+    border-top: 2px solid var(--border-strong); border-bottom: none; height: 40px;
+  }
+  .calc-tag {
+    font-size: 10px; font-weight: 600; color: var(--text-mute);
+    background: var(--grid-head); border-radius: 2px;
+    padding: 1px 5px; margin-left: 5px; vertical-align: middle;
+  }
+</style>
+</head>
+
+<body data-menu="04-06">
+<div class="page-wrap">
+
+  <!-- ── 타이틀 바 ── -->
+  <div class="page-title-bar">
+    <span class="page-title">견적 Breakdown 비교</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="showToast('협상 이력 등록 화면으로 이동합니다.', 'ok')">
+        <i data-lucide="git-merge"></i>협상 이력 등록
+      </button>
+      <button class="btn btn-primary" onclick="openSelectModal()">
+        <i data-lucide="check-circle"></i>업체 선정 진행
+      </button>
+    </div>
+  </div>
+
+  <div class="content-scroll">
+
+    <!-- ── 1. 기본 정보 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">RFQ 기본 정보</span>
+        <span style="font-size:11px;color:var(--text-mute)">RFQ-2026-0045 · 비교 기준일 2026-02-05</span>
+      </div>
+
+      <div class="section-group">
+        <div class="section-group-title">품번 / 프로젝트 정보</div>
+        <div class="form-row form-row-4">
+          <div class="form-field">
+            <label class="form-label">프로젝트</label>
+            <input type="text" class="form-input" value="PJT-520PHEV-FT-2026" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">품번</label>
+            <input type="text" class="form-input" value="H1110-T100" readonly style="background:var(--grid-head);color:var(--blue);font-weight:700">
+          </div>
+          <div class="form-field">
+            <label class="form-label">품명</label>
+            <input type="text" class="form-input" value="Frame Sub Ass'y" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">재질</label>
+            <input type="text" class="form-input" value="Aluminum 6061" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+        </div>
+        <div class="form-row form-row-4">
+          <div class="form-field">
+            <label class="form-label">도면 리비전</label>
+            <input type="text" class="form-input" value="Rev.A" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">연간수량</label>
+            <input type="text" class="form-input" value="100,000개" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">SOP</label>
+            <input type="text" class="form-input" value="2026-10-01" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">프로젝트명</label>
+            <input type="text" class="form-input" value="520 PHEV Fuel Tank Module 개발" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-group">
+        <div class="section-group-title">RFQ 발송 정보</div>
+        <div class="form-row form-row-4">
+          <div class="form-field">
+            <label class="form-label">RFQ 번호</label>
+            <input type="text" class="form-input" value="RFQ-2026-0045" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">발송 기준일</label>
+            <input type="text" class="form-input" value="2026-01-10" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">견적 제출 마감일</label>
+            <input type="text" class="form-input" value="2026-01-31" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">담당 구매자</label>
+            <input type="text" class="form-input" value="김개발 (개발구매팀)" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+        </div>
+        <div class="form-row form-row-4">
+          <div class="form-field">
+            <label class="form-label">LME 기준문서</label>
+            <input type="text" class="form-input" value="LME-2026-0012 (2026-01 확정)" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">내부 소재단가</label>
+            <input type="text" class="form-input" value="3,640원/kg (Al 6061)" readonly style="background:var(--grid-head);font-weight:600;color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">발송 업체 수</label>
+            <input type="text" class="form-input" value="3개사 발송 · 3개사 제출 완료" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+          <div class="form-field">
+            <label class="form-label">하위 품목 수</label>
+            <input type="text" class="form-input" value="5개 품목 (H1111-T100 외 4개)" readonly style="background:var(--grid-head);color:var(--text-sub)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 2. 업체별 조회 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">업체별 견적 조회</span>
+        <span style="font-size:12px;color:var(--text-mute)">업체를 선택하면 하단에 품목별 세부 단가가 표시됩니다</span>
+      </div>
+      <div class="table-wrap" style="border-top:none">
+        <table class="srm-table" id="vendor-table">
+          <thead>
+            <tr>
+              <th class="c" style="width:44px">No.</th>
+              <th style="width:130px">업체코드</th>
+              <th style="width:160px">업체명</th>
+              <th class="c" style="width:90px">거래구분</th>
+              <th class="r" style="width:130px">견적금액 합계</th>
+              <th style="width:130px">품질점수</th>
+              <th class="c" style="width:90px">샘플납기</th>
+              <th class="r" style="width:120px">금형비 (별도)</th>
+              <th class="c" style="width:90px">제출상태</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody id="vendor-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── 3. 품목별 세부 단가 ── -->
+    <div class="section-box" style="margin-bottom:0">
+      <div class="section-box-header">
+        <span class="section-box-title" id="item-section-title">A사 (동희부품) — 품목별 세부 단가</span>
+        <span style="font-size:11px;color:var(--status-warn);font-weight:600">
+          <i data-lucide="shield" style="width:12px;height:12px;vertical-align:middle;margin-right:3px"></i>
+          목표 구매단가는 협력사에 공개되지 않았습니다
+        </span>
+      </div>
+      <div class="table-wrap" style="border-top:none">
+        <table class="srm-table" id="item-table">
+          <thead>
+            <tr>
+              <th class="c" style="width:44px">No.</th>
+              <th style="width:130px">품목코드</th>
+              <th style="width:180px">품목명</th>
+              <th style="width:120px">재질</th>
+              <th class="r" style="width:110px">재료비 (원)</th>
+              <th class="r" style="width:110px">가공비 (원)</th>
+              <th class="r" style="width:110px">물류비 (원)</th>
+              <th class="r" style="width:110px">관리비/이윤 (원)</th>
+              <th class="r" style="width:120px">견적금액 (원/개)</th>
+              <th class="c" style="width:70px">상세</th>
+            </tr>
+          </thead>
+          <tbody id="item-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ── Breakdown 상세 팝업 ── -->
+<div id="modal-detail" class="modal-backdrop">
+  <div class="modal-box" style="width:600px;max-width:96vw">
+    <div class="modal-header">
+      <span class="modal-title" id="detail-title">견적 Breakdown 상세</span>
+      <button class="modal-close" onclick="toggleModal('modal-detail', false)">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <table class="detail-table" id="detail-table"></table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="toggleModal('modal-detail', false)">닫기</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── 업체 선정 진행 모달 ── -->
+<div id="modal-select" class="modal-backdrop">
+  <div class="modal-box" style="width:480px">
+    <div class="modal-header">
+      <span class="modal-title">업체 선정 진행</span>
+      <button class="modal-close" onclick="toggleModal('modal-select', false)">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-sub);line-height:1.7;margin-bottom:12px">
+        아래 내용으로 업체 선정 품의를 생성합니다. 품의 생성 후 결재 흐름이 시작됩니다.
+      </p>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:14px 16px;font-size:12px;line-height:2.2">
+        <div style="display:flex;gap:8px"><span style="width:110px;color:var(--text-sub)">품번</span><strong style="color:var(--blue)">H1110-T100 Frame Sub Ass'y</strong></div>
+        <div style="display:flex;gap:8px"><span style="width:110px;color:var(--text-sub)">선정 업체</span><strong>A사 (동희부품, VND-0012)</strong></div>
+        <div style="display:flex;gap:8px"><span style="width:110px;color:var(--text-sub)">협상 확정단가</span><strong style="color:var(--status-warn)">14,500원/개</strong></div>
+        <div style="display:flex;gap:8px"><span style="width:110px;color:var(--text-sub)">목표 대비</span><strong style="color:var(--status-bad)">+2,400원 초과 (+19.8%)</strong></div>
+        <div style="display:flex;gap:8px"><span style="width:110px;color:var(--text-sub)">필요 조치</span><span style="color:var(--status-warn)">고객가 재협상 또는 원가절감 계획 첨부 필요</span></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="toggleModal('modal-select', false)">취소</button>
+      <button class="btn btn-primary" onclick="doSelect()"><i data-lucide="check-circle"></i>품의 생성</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  /* ══ 마스터 데이터 ══ */
+
+  var VENDORS = [
+    { code: 'VND-0012', name: 'A사 (동희부품)',   score: 91, deadline: '2026-04', type: '기존거래사', mold: '8,000,000', note: '주거래 협력사 · 협상 후 14,500원' },
+    { code: 'VND-0028', name: 'B사 (한국알미늄)', score: 87, deadline: '2026-05', type: '기존거래사', mold: '7,500,000', note: '알루미늄 전문 · 가공비 최고' },
+    { code: 'VND-0041', name: 'C사 (신흥정공)',   score: 83, deadline: '2026-06', type: '신규후보사', mold: '9,200,000', note: '최저가 · 신규업체 리스크' },
+  ];
+
+  var PARTS = [
+    { code: 'H1111-T100', name: 'Upper Frame Body',    mat: 'Aluminum 6061', isAl: true  },
+    { code: 'H1112-T100', name: 'Lower Frame Body',    mat: 'Aluminum 6061', isAl: true  },
+    { code: 'H1113-T100', name: 'Hinge Bracket',       mat: 'SPHC 2.0t',     isAl: false },
+    { code: 'H1114-T100', name: 'Reinforcement Plate', mat: 'Aluminum 6061', isAl: true  },
+    { code: 'H1115-T100', name: 'Fastener Kit',        mat: 'SUS304',        isAl: false },
+  ];
+
+  var QUOTES = {
+    'VND-0012': {
+      'H1111-T100': { total:6500, mat:4200, proc:1800, logi:250,  mgmt:250,  lme:'$2,650', fx:'1,320', prem:'160', misc:'45', matpx:'3,703', inWt:'1.20', scWt:'0.20', scPx:'1,200' },
+      'H1112-T100': { total:4800, mat:2780, proc:1400, logi:300,  mgmt:320,  lme:'$2,650', fx:'1,320', prem:'160', misc:'45', matpx:'3,703', inWt:'0.80', scWt:'0.15', scPx:'1,200' },
+      'H1113-T100': { total:1200, mat:480,  proc:480,  logi:100,  mgmt:140 },
+      'H1114-T100': { total:2500, mat:1570, proc:620,  logi:160,  mgmt:150,  lme:'$2,650', fx:'1,320', prem:'160', misc:'45', matpx:'3,703', inWt:'0.45', scWt:'0.08', scPx:'1,200' },
+      'H1115-T100': { total:800,  mat:420,  proc:250,  logi:50,   mgmt:80  },
+    },
+    'VND-0028': {
+      'H1111-T100': { total:6400, mat:4340, proc:1500, logi:320,  mgmt:240,  lme:'$2,650', fx:'1,310', prem:'155', misc:'42', matpx:'3,669', inWt:'1.25', scWt:'0.22', scPx:'1,100' },
+      'H1112-T100': { total:4700, mat:2920, proc:1350, logi:240,  mgmt:190,  lme:'$2,650', fx:'1,310', prem:'155', misc:'42', matpx:'3,669', inWt:'0.85', scWt:'0.18', scPx:'1,100' },
+      'H1113-T100': { total:1350, mat:510,  proc:550,  logi:110,  mgmt:180 },
+      'H1114-T100': { total:2450, mat:1660, proc:550,  logi:120,  mgmt:120,  lme:'$2,650', fx:'1,310', prem:'155', misc:'42', matpx:'3,669', inWt:'0.48', scWt:'0.09', scPx:'1,100' },
+      'H1115-T100': { total:800,  mat:430,  proc:240,  logi:50,   mgmt:80  },
+    },
+    'VND-0041': {
+      'H1111-T100': { total:6100, mat:3800, proc:1450, logi:300,  mgmt:550,  lme:'$2,650', fx:'1,300', prem:'145', misc:'38', matpx:'3,628', inWt:'1.10', scWt:'0.18', scPx:'1,050' },
+      'H1112-T100': { total:4500, mat:2700, proc:1100, logi:250,  mgmt:450,  lme:'$2,650', fx:'1,300', prem:'145', misc:'38', matpx:'3,628', inWt:'0.78', scWt:'0.12', scPx:'1,050' },
+      'H1113-T100': { total:1100, mat:450,  proc:420,  logi:90,   mgmt:140 },
+      'H1114-T100': { total:2650, mat:1780, proc:590,  logi:140,  mgmt:140,  lme:'$2,650', fx:'1,300', prem:'145', misc:'38', matpx:'3,628', inWt:'0.52', scWt:'0.10', scPx:'1,050' },
+      'H1115-T100': { total:850,  mat:450,  proc:270,  logi:50,   mgmt:80  },
+    },
+  };
+
+  var selectedVendorCode = 'VND-0012'; /* 기본: A사 */
+
+  /* ══ 업체별 테이블 ══ */
+  function renderVendorTable() {
+    var tbody = document.getElementById('vendor-tbody');
+    tbody.innerHTML = '';
+
+    VENDORS.forEach(function(v, i) {
+      var vq = QUOTES[v.code];
+      var total = Object.values(vq).reduce(function(s, q) { return s + q.total; }, 0);
+      var isSel = v.code === selectedVendorCode;
+
+      var tr = document.createElement('tr');
+      if (isSel) tr.classList.add('selected');
+      tr.style.cursor = 'pointer';
+      tr.onclick = function() { selectVendor(v.code); };
+
+      var scoreColor = v.score >= 90 ? 'ok' : 'warn';
+      var scoreTxtColor = v.score >= 90 ? 'var(--status-ok)' : 'var(--status-warn)';
+      var typeBadge = v.type === '기존거래사'
+        ? '<span class="badge badge-prog">기존거래사</span>'
+        : '<span class="badge badge-wait">신규후보사</span>';
+
+      tr.innerHTML =
+        '<td class="c muted">' + (i + 1) + '</td>' +
+        '<td style="font-family:monospace;font-size:11px;color:var(--text-mute)">' + v.code + '</td>' +
+        '<td style="font-weight:600">' + v.name + '</td>' +
+        '<td class="c">' + typeBadge + '</td>' +
+        '<td class="r" style="font-weight:700;font-size:13px">' + total.toLocaleString('ko-KR') + '원</td>' +
+        '<td>' +
+          '<div class="score-cell">' +
+            '<div class="score-bar"><div class="score-fill ' + scoreColor + '" style="width:' + v.score + '%"></div></div>' +
+            '<span style="font-size:12px;font-weight:700;color:' + scoreTxtColor + ';width:34px;text-align:right">' + v.score + '점</span>' +
+          '</div>' +
+        '</td>' +
+        '<td class="c muted">' + v.deadline + '</td>' +
+        '<td class="r muted">' + v.mold + '원</td>' +
+        '<td class="c"><span class="badge badge-ok">제출완료</span></td>' +
+        '<td style="font-size:11px;color:var(--text-mute)">' + v.note + '</td>';
+
+      tbody.appendChild(tr);
+    });
+
+    if (window.lucide) window.lucide.createIcons({ nodes: [tbody] });
+  }
+
+  /* ══ 품목별 세부 단가 테이블 ══ */
+  function renderItemTable(vCode) {
+    var vendor = VENDORS.find(function(v) { return v.code === vCode; });
+    var vq = QUOTES[vCode];
+
+    document.getElementById('item-section-title').textContent =
+      vendor.name + ' — 품목별 세부 단가';
+
+    var tbody = document.getElementById('item-tbody');
+    tbody.innerHTML = '';
+
+    var totals = { mat: 0, proc: 0, logi: 0, mgmt: 0, total: 0 };
+
+    PARTS.forEach(function(part, i) {
+      var q = vq[part.code];
+      totals.mat   += q.mat;
+      totals.proc  += q.proc;
+      totals.logi  += q.logi;
+      totals.mgmt  += q.mgmt;
+      totals.total += q.total;
+
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td class="c muted">' + (i + 1) + '</td>' +
+        '<td style="color:var(--blue);font-size:11px;font-weight:600">' + part.code + '</td>' +
+        '<td style="font-weight:500">' + part.name + '</td>' +
+        '<td class="muted">' + part.mat + '</td>' +
+        '<td class="r">' + q.mat.toLocaleString('ko-KR') + '</td>' +
+        '<td class="r">' + q.proc.toLocaleString('ko-KR') + '</td>' +
+        '<td class="r">' + q.logi.toLocaleString('ko-KR') + '</td>' +
+        '<td class="r">' + q.mgmt.toLocaleString('ko-KR') + '</td>' +
+        '<td class="r" style="font-weight:600">' + q.total.toLocaleString('ko-KR') + '</td>' +
+        '<td class="c">' +
+          '<button class="btn-detail" onclick="event.stopPropagation();openDetail(\'' + vCode + '\',\'' + part.code + '\')">' +
+            '<i data-lucide="bar-chart-2" style="width:11px;height:11px"></i>상세' +
+          '</button>' +
+        '</td>';
+
+      tbody.appendChild(tr);
+    });
+
+    /* 합계 행 */
+    var totalTr = document.createElement('tr');
+    totalTr.className = 'total-row';
+    totalTr.innerHTML =
+      '<td class="c" colspan="4" style="font-weight:700;text-align:left;padding-left:10px">합 계</td>' +
+      '<td class="r">' + totals.mat.toLocaleString('ko-KR')   + '</td>' +
+      '<td class="r">' + totals.proc.toLocaleString('ko-KR')  + '</td>' +
+      '<td class="r">' + totals.logi.toLocaleString('ko-KR')  + '</td>' +
+      '<td class="r">' + totals.mgmt.toLocaleString('ko-KR')  + '</td>' +
+      '<td class="r" style="font-size:13px">' + totals.total.toLocaleString('ko-KR') + '원</td>' +
+      '<td></td>';
+    tbody.appendChild(totalTr);
+
+    if (window.lucide) window.lucide.createIcons({ nodes: [tbody] });
+  }
+
+  function selectVendor(code) {
+    selectedVendorCode = code;
+    renderVendorTable();
+    renderItemTable(code);
+  }
+
+  /* ══ 상세 팝업 ══ */
+  function openDetail(vCode, pCode) {
+    var vendor = VENDORS.find(function(v) { return v.code === vCode; });
+    var part   = PARTS.find(function(p)   { return p.code === pCode; });
+    var q      = QUOTES[vCode][pCode];
+
+    document.getElementById('detail-title').textContent =
+      part.code + ' ' + part.name + ' — ' + vendor.name + ' 견적 상세';
+
+    var tbl = document.getElementById('detail-table');
+    tbl.innerHTML = '';
+
+    var thead = document.createElement('thead');
+    thead.innerHTML =
+      '<tr>' +
+        '<th style="width:190px">항목</th>' +
+        '<th class="c" style="width:100px">단위</th>' +
+        '<th class="r" style="width:130px">금액 / 수치</th>' +
+        '<th>비고</th>' +
+      '</tr>';
+    tbl.appendChild(thead);
+
+    var tbody = document.createElement('tbody');
+    var rows = [];
+
+    if (part.isAl && q.lme) {
+      rows.push({ section: '재료비 구성 (LME 기반)' });
+      rows.push({ label: 'LME 기준가',       unit: 'USD/MT',  val: q.lme,   note: '2026-01 기준 (LME-2026-0012)' });
+      rows.push({ label: '적용 환율',         unit: 'KRW/USD', val: q.fx,    note: '' });
+      rows.push({ label: '프리미엄',           unit: 'KRW/kg',  val: q.prem,  note: '' });
+      rows.push({ label: '부대비',             unit: 'KRW/kg',  val: q.misc,  note: '통관·운송 포함' });
+      rows.push({ label: '소재단가',           unit: 'KRW/kg',  val: q.matpx, note: 'LME×환율/1,000+프리미엄+부대비', isCalc: true });
+      rows.push({ label: '투입중량',           unit: 'kg/개',   val: q.inWt,  note: '' });
+      rows.push({ label: '스크랩중량',         unit: 'kg/개',   val: q.scWt,  note: '' });
+      rows.push({ label: '스크랩 회수단가',   unit: 'KRW/kg',  val: q.scPx,  note: '' });
+      rows.push({ label: '재료비 합계',        unit: '원/개',   val: q.mat.toLocaleString('ko-KR'), note: '투입중량×소재단가 − 스크랩중량×회수단가', isCalc: true });
+    } else {
+      rows.push({ section: '재료비' });
+      rows.push({ label: '재료비 (소재원가)', unit: '원/개', val: q.mat.toLocaleString('ko-KR'), note: part.mat + ' 소재 기준' });
+    }
+
+    rows.push({ section: '가공 / 물류 / 관리비' });
+    rows.push({ label: '가공비',      unit: '원/개', val: q.proc.toLocaleString('ko-KR'), note: '' });
+    rows.push({ label: '물류비',      unit: '원/개', val: q.logi.toLocaleString('ko-KR'), note: '' });
+    rows.push({ label: '관리비/이윤', unit: '원/개', val: q.mgmt.toLocaleString('ko-KR'), note: '' });
+    rows.push({ total: true, label: '견적 단가 합계', unit: '원/개', val: q.total.toLocaleString('ko-KR') });
+
+    rows.forEach(function(r) {
+      var tr = document.createElement('tr');
+
+      if (r.section) {
+        tr.className = 'dt-section';
+        var td = document.createElement('td');
+        td.colSpan = 4;
+        td.style.paddingLeft = '12px';
+        td.textContent = r.section;
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+
+      if (r.total)  tr.className = 'dt-total';
+      else if (r.isCalc) tr.className = 'dt-calc';
+
+      tr.innerHTML =
+        '<td>' + r.label + (r.isCalc ? '<span class="calc-tag">자동계산</span>' : '') + '</td>' +
+        '<td class="c">' + r.unit + '</td>' +
+        '<td class="r" style="font-weight:' + (r.total ? '700' : '500') + '">' + r.val + '</td>' +
+        '<td class="muted">' + (r.note || '') + '</td>';
+      tbody.appendChild(tr);
+    });
+
+    tbl.appendChild(tbody);
+    toggleModal('modal-detail', true);
+    if (window.lucide) window.lucide.createIcons({ nodes: [tbl] });
+  }
+
+  /* ══ 액션 ══ */
+  function openSelectModal() { toggleModal('modal-select', true); }
+
+  function doSelect() {
+    toggleModal('modal-select', false);
+    showToast('업체 선정 품의가 생성되었습니다 — 04-10 결재 화면으로 이동합니다.', 'ok', 3000);
+  }
+
+  /* ══ 공통 유틸 ══ */
+  function showToast(msg, type, ms) {
+    var bg = type === 'ok' ? '#16a34a' : type === 'bad' ? '#dc2626' : '#1f2937';
+    var el = document.createElement('div');
+    el.className = 'toast'; el.style.background = bg;
+    el.innerHTML =
+      '<i data-lucide="' + (type === 'bad' ? 'alert-circle' : 'check-circle') +
+      '" style="width:14px;height:14px;flex-shrink:0"></i><span>' + msg + '</span>';
+    document.body.appendChild(el);
+    if (window.lucide) window.lucide.createIcons({ nodes: [el] });
+    setTimeout(function() {
+      el.style.opacity = '0'; el.style.transition = 'opacity 0.2s';
+      setTimeout(function() { el.remove(); }, 220);
+    }, ms || 2400);
+  }
+
+  function toggleModal(id, open) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('open', open !== undefined ? open : !el.classList.contains('open'));
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape')
+      document.querySelectorAll('.modal-backdrop.open').forEach(function(m) { m.classList.remove('open'); });
+  });
+
+  /* ══ 초기 렌더링 ══ */
+  renderVendorTable();
+  renderItemTable(selectedVendorCode);
+</script>
+
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

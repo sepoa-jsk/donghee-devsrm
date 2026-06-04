@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>협력사 사전 등록·평가 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 평가 테이블 ── */
+  .eval-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .eval-table th {
+    background:var(--grid-head); padding:0 12px; height:32px; font-weight:600;
+    color:var(--text); text-align:center; border:1px solid var(--border); white-space:nowrap;
+  }
+  .eval-table td {
+    padding:0 12px; height:32px; border:1px solid var(--border);
+    color:var(--text); vertical-align:middle;
+  }
+  .eval-table td.lbl { text-align:left; }
+  .eval-table td.c   { text-align:center; }
+  .eval-table .cell-in {
+    width:60px; height:26px; border:1px solid var(--border); border-radius:3px;
+    text-align:center; font-size:12px; font-family:'Pretendard',sans-serif;
+  }
+  .eval-table .cell-in:focus {
+    border-color:var(--blue); outline:none;
+    box-shadow:0 0 0 2px rgba(26,86,170,0.15);
+  }
+  .eval-table tr.area-row td {
+    background:#eef0f3; font-weight:700; color:var(--text-sub); height:28px;
+  }
+  .eval-table tr.sub-row td { background:var(--grid-row-alt); font-weight:600; }
+  .eval-table tr.total-row td { background:var(--navy); color:#fff; font-weight:700; }
+
+  /* 합격 표시 — total-row(navy bg)에서도 가독성 확보 */
+  .pass-ok  { color:#4ade80; font-weight:700; }
+  .pass-bad { color:#f87171; font-weight:700; }
+
+  /* ── 결재선 (spec 정의 오버라이드 — 가로 정렬 유지) ── */
+  .step-bar { display:flex; align-items:center; gap:0; padding:8px 0; }
+  .step-node { display:flex; align-items:center; }
+  .step-box {
+    width:120px; border:1px solid var(--border); border-radius:4px;
+    padding:8px 10px; display:flex; flex-direction:column; gap:3px;
+    background:var(--surface);
+  }
+  .step-box.done { border-color:var(--status-ok); background:#f0fdf4; }
+  .step-box.prog { border-color:var(--blue); background:var(--blue-light); }
+  .step-box.wait { border-color:var(--border); background:#f9fafb; }
+  .step-role { font-size:10px; color:var(--text-mute); }
+  .step-name { font-size:12px; font-weight:600; color:var(--text); }
+  .step-date { font-size:10px; color:var(--text-sub); }
+  .step-sep {
+    width:28px; height:1px; background:var(--border-strong); flex-shrink:0;
+    position:relative;
+  }
+  .step-sep::after {
+    content:''; position:absolute; right:-4px; top:-3px;
+    border:4px solid transparent; border-left-color:var(--border-strong);
+  }
+
+  /* ── 토스트 ── */
+  .toast {
+    position:fixed; bottom:24px; right:24px; color:#fff;
+    padding:10px 16px; border-radius:4px; font-size:13px;
+    z-index:500; display:flex; align-items:center; gap:8px;
+    box-shadow:0 4px 16px rgba(0,0,0,.18);
+  }
+</style>
+</head>
+
+<body data-menu="09-01">
+<div class="page-wrap">
+
+  <!-- ── 타이틀 바 ── -->
+  <div class="page-title-bar">
+    <span class="page-title">협력사 사전 등록·평가</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="location.href='09-01_supplier_register.html'">
+        <i data-lucide="arrow-left"></i>목록
+      </button>
+      <button class="btn btn-danger" onclick="toggleModal('modal-reject', true)">
+        <i data-lucide="x-circle"></i>반려
+      </button>
+      <button class="btn btn-primary" onclick="showToast('협력사 등록이 승인되었습니다.', 'ok')">
+        <i data-lucide="check-circle"></i>승인
+      </button>
+    </div>
+  </div>
+
+  <div class="content-scroll">
+
+    <!-- ── 1. 업체 기본정보 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">업체 기본정보</span>
+        <span class="badge badge-prog" style="font-size:10px;margin-left:8px">구매팀장 검토 중</span>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">업체코드</label>
+          <input class="form-input" value="VND-0064" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">업체명</label>
+          <input class="form-input" value="I사 (금강정밀)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">대표</label>
+          <input class="form-input" value="김금강">
+        </div>
+        <div class="form-field">
+          <label class="form-label">사업자번호</label>
+          <input class="form-input" value="123-45-67890">
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">소재지</label>
+          <input class="form-input" value="경기도 안산시">
+        </div>
+        <div class="form-field">
+          <label class="form-label">품목군</label>
+          <select class="form-select">
+            <option selected>알루미늄 가공</option>
+            <option>프레스</option>
+            <option>플라스틱</option>
+            <option>표면처리</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">신청일</label>
+          <input class="form-input" value="2026-05-20" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">담당자</label>
+          <input class="form-input" value="이구매">
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 2. 사전 평가 체크리스트 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">사전 평가 체크리스트</span>
+        <span style="font-size:11px;color:var(--text-mute);margin-left:8px">합격 기준 70점 이상</span>
+      </div>
+      <table class="eval-table">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding-left:12px">평가 영역 · 항목</th>
+            <th style="width:80px">배점</th>
+            <th style="width:100px">평가 점수</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- 재무 -->
+          <tr class="area-row">
+            <td class="lbl" colspan="2">재무</td>
+            <td class="c">소계 <span id="sub-fin">20</span>점</td>
+          </tr>
+          <tr>
+            <td class="lbl">자본금·부채비율</td>
+            <td class="c">10</td>
+            <td class="c"><input type="number" id="fin1" class="cell-in" value="8" min="0" max="10" oninput="calcEval()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">최근 3년 매출 추이</td>
+            <td class="c">8</td>
+            <td class="c"><input type="number" id="fin2" class="cell-in" value="7" min="0" max="8" oninput="calcEval()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">신용등급</td>
+            <td class="c">7</td>
+            <td class="c"><input type="number" id="fin3" class="cell-in" value="5" min="0" max="7" oninput="calcEval()"></td>
+          </tr>
+          <!-- 기술 -->
+          <tr class="area-row">
+            <td class="lbl" colspan="2">기술</td>
+            <td class="c">소계 <span id="sub-tech">22</span>점</td>
+          </tr>
+          <tr>
+            <td class="lbl">보유 설비 적합성</td>
+            <td class="c">10</td>
+            <td class="c"><input type="number" id="tech1" class="cell-in" value="9" min="0" max="10" oninput="calcEval()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">기술 인증 (IATF 등)</td>
+            <td class="c">8</td>
+            <td class="c"><input type="number" id="tech2" class="cell-in" value="7" min="0" max="8" oninput="calcEval()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">R&amp;D 역량</td>
+            <td class="c">7</td>
+            <td class="c"><input type="number" id="tech3" class="cell-in" value="6" min="0" max="7" oninput="calcEval()"></td>
+          </tr>
+          <!-- 품질 -->
+          <tr class="area-row">
+            <td class="lbl" colspan="2">품질</td>
+            <td class="c">소계 <span id="sub-qual">21</span>점</td>
+          </tr>
+          <tr>
+            <td class="lbl">품질시스템 (ISO/IATF)</td>
+            <td class="c">10</td>
+            <td class="c"><input type="number" id="qual1" class="cell-in" value="9" min="0" max="10" oninput="calcEval()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">불량률 실적</td>
+            <td class="c">8</td>
+            <td class="c"><input type="number" id="qual2" class="cell-in" value="7" min="0" max="8" oninput="calcEval()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">클레임 이력</td>
+            <td class="c">7</td>
+            <td class="c"><input type="number" id="qual3" class="cell-in" value="5" min="0" max="7" oninput="calcEval()"></td>
+          </tr>
+          <!-- 생산 -->
+          <tr class="area-row">
+            <td class="lbl" colspan="2">생산</td>
+            <td class="c">소계 <span id="sub-prod">19</span>점</td>
+          </tr>
+          <tr>
+            <td class="lbl">생산능력 (CAPA)</td>
+            <td class="c">10</td>
+            <td class="c"><input type="number" id="prod1" class="cell-in" value="8" min="0" max="10" oninput="calcEval()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">납기 준수율</td>
+            <td class="c">8</td>
+            <td class="c"><input type="number" id="prod2" class="cell-in" value="7" min="0" max="8" oninput="calcEval()"></td>
+          </tr>
+          <tr>
+            <td class="lbl">공급 안정성</td>
+            <td class="c">7</td>
+            <td class="c"><input type="number" id="prod3" class="cell-in" value="4" min="0" max="7" oninput="calcEval()"></td>
+          </tr>
+          <!-- 종합 -->
+          <tr class="total-row">
+            <td class="lbl">종합 점수</td>
+            <td class="c">100점</td>
+            <td class="c"><span id="total-score">82</span>점 &nbsp;<span id="pass-mark" class="pass-ok">합격</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── 3. 심사 결재선 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">심사 결재선</span>
+      </div>
+      <div class="step-bar">
+        <!-- 1. 구매담당 (done) -->
+        <div class="step-node">
+          <div class="step-box done">
+            <span class="step-role">구매담당</span>
+            <span class="step-name">이구매</span>
+            <span class="step-date">2026-05-21</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 2. 구매팀장 (prog) -->
+        <div class="step-node">
+          <div class="step-box prog">
+            <span class="step-role">구매팀장</span>
+            <span class="step-name">이팀장</span>
+            <span class="step-date">검토중</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 3. 품질담당 (wait) -->
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">품질담당</span>
+            <span class="step-name">최품질</span>
+            <span class="step-date">대기</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 4. 구매부장 (wait) — last node, no sep -->
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">구매부장</span>
+            <span class="step-name">박부장</span>
+            <span class="step-date">대기</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── 반려 모달 ── -->
+<div id="modal-reject" class="modal-backdrop">
+  <div class="modal-box" style="width:480px">
+    <div class="modal-header">
+      <span class="modal-title">반려 처리</span>
+      <button class="modal-close" onclick="toggleModal('modal-reject', false)">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-field" style="margin-bottom:14px">
+        <label class="form-label">반려 사유 <span class="req">*</span></label>
+        <select class="form-select" id="reject-reason">
+          <option value="">-- 선택 --</option>
+          <option>재무 부적격</option>
+          <option>기술 미달</option>
+          <option>품질시스템 미흡</option>
+          <option>기타</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">반려 의견</label>
+        <textarea class="form-textarea" rows="4" id="reject-comment" placeholder="반려 사유를 상세히 입력하십시오."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="toggleModal('modal-reject', false)">취소</button>
+      <button class="btn btn-danger" onclick="doReject()">
+        <i data-lucide="x-circle"></i>반려 확정
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── 평가 계산 ── */
+  function calcEval() {
+    var fin  = (parseInt(document.getElementById('fin1').value)  || 0)
+             + (parseInt(document.getElementById('fin2').value)  || 0)
+             + (parseInt(document.getElementById('fin3').value)  || 0);
+    var tech = (parseInt(document.getElementById('tech1').value) || 0)
+             + (parseInt(document.getElementById('tech2').value) || 0)
+             + (parseInt(document.getElementById('tech3').value) || 0);
+    var qual = (parseInt(document.getElementById('qual1').value) || 0)
+             + (parseInt(document.getElementById('qual2').value) || 0)
+             + (parseInt(document.getElementById('qual3').value) || 0);
+    var prod = (parseInt(document.getElementById('prod1').value) || 0)
+             + (parseInt(document.getElementById('prod2').value) || 0)
+             + (parseInt(document.getElementById('prod3').value) || 0);
+
+    document.getElementById('sub-fin').textContent  = fin;
+    document.getElementById('sub-tech').textContent = tech;
+    document.getElementById('sub-qual').textContent = qual;
+    document.getElementById('sub-prod').textContent = prod;
+
+    var total = fin + tech + qual + prod;
+    document.getElementById('total-score').textContent = total;
+
+    var pm = document.getElementById('pass-mark');
+    if (total >= 70) {
+      pm.textContent = '합격';
+      pm.className = 'pass-ok';
+    } else {
+      pm.textContent = '불합격';
+      pm.className = 'pass-bad';
+    }
+  }
+
+  /* ── 모달 ── */
+  function toggleModal(id, open) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (open === undefined) {
+      el.classList.toggle('open');
+    } else {
+      el.classList.toggle('open', open);
+    }
+  }
+
+  /* ── 반려 확정 ── */
+  function doReject() {
+    var reason = document.getElementById('reject-reason').value;
+    if (!reason) {
+      showToast('반려 사유를 선택해 주세요.', 'bad');
+      return;
+    }
+    toggleModal('modal-reject', false);
+    showToast('반려 처리되었습니다.', 'bad');
+  }
+
+  /* ── 토스트 ── */
+  function showToast(msg, type, ms) {
+    var bg   = type === 'ok' ? '#16a34a' : type === 'bad' ? '#dc2626' : '#1f2937';
+    var icon = type === 'bad' ? 'alert-circle' : 'check-circle';
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.style.background = bg;
+    el.innerHTML =
+      '<i data-lucide="' + icon + '" style="width:14px;height:14px;flex-shrink:0"></i>' +
+      '<span>' + msg + '</span>';
+    document.body.appendChild(el);
+    if (window.lucide) window.lucide.createIcons({ nodes: [el] });
+    setTimeout(function () {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity 0.2s';
+      setTimeout(function () { el.remove(); }, 220);
+    }, ms || 2400);
+  }
+
+  /* ── ESC 단축키 ── */
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-backdrop.open').forEach(function (m) {
+        m.classList.remove('open');
+      });
+    }
+  });
+
+  /* ── 초기 계산 ── */
+  calcEval();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

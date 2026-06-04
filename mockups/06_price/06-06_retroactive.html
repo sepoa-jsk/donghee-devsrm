@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>임의정산(소급정산) 관리 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column; padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--status-ok);  } .st-ok::before   { background:var(--status-ok); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+
+  .diff-over  { color:var(--status-bad); font-weight:600; }
+  .diff-under { color:var(--blue);       font-weight:600; }
+
+  /* ── 슬라이드 패널 ── */
+  .slide-panel {
+    position:fixed; top:48px; right:0; bottom:0; width:420px;
+    background:var(--surface); border-left:1px solid var(--border);
+    box-shadow:-4px 0 16px rgba(0,0,0,.1);
+    transform:translateX(100%); transition:transform .2s ease-out;
+    z-index:100; display:flex; flex-direction:column;
+  }
+  .slide-panel.open { transform:translateX(0); }
+  .slide-header {
+    padding:0 20px; height:48px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+  }
+  .slide-title { font-size:14px; font-weight:600; color:var(--text); }
+  .slide-body { flex:1; overflow-y:auto; padding:20px; }
+  .slide-footer {
+    padding:12px 20px; border-top:1px solid var(--border);
+    display:flex; gap:8px; justify-content:flex-end; flex-shrink:0;
+  }
+
+  /* ── 합계 행 ── */
+  tr.total-row td {
+    background:var(--navy); color:#fff; font-weight:700;
+    border-bottom:none;
+  }
+
+  /* 정산방식 뱃지 */
+  .method {
+    display:inline-block; font-size:11px; padding:0 7px; height:18px; line-height:18px;
+    border-radius:2px; border:1px solid; white-space:nowrap;
+  }
+  .method-tax    { border-color:var(--blue);        color:var(--blue); }
+  .method-offset { border-color:var(--status-warn); color:var(--status-warn); }
+
+  .toast {
+    position:fixed; bottom:24px; right:440px; background:#1f2937; color:#fff;
+    padding:10px 16px; border-radius:4px; font-size:13px;
+    z-index:500; display:none; align-items:center; gap:8px;
+    box-shadow:0 4px 16px rgba(0,0,0,.18);
+  }
+  .toast.show { display:flex; }
+</style>
+</head>
+
+<body data-menu="06-06">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">임의정산(소급정산) 관리</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-primary" onclick="openPanel()">
+        <i data-lucide="plus"></i>정산 등록
+      </button>
+    </div>
+  </div>
+
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-filter" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-status" onclick="toggleStatusPanel()">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to" value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+  </div>
+
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">정산방식</span>
+      <select class="search-input" id="f-method" style="width:120px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="세금계산서">세금계산서</option>
+        <option value="상계">상계</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="status-strip" id="status-strip">
+    <button class="ss-btn active" onclick="setStatus('')">전체 <span class="ss-cnt" id="cnt-all">0</span></button>
+    <button class="ss-btn" onclick="setStatus('완료')">완료 <span class="ss-cnt" id="cnt-ok">0</span></button>
+    <button class="ss-btn" onclick="setStatus('진행')">진행 <span class="ss-cnt" id="cnt-prog">0</span></button>
+    <button class="ss-btn" onclick="setStatus('대기')">대기 <span class="ss-cnt" id="cnt-wait">0</span></button>
+  </div>
+
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="tbl" style="border:1px solid var(--border);border-radius:4px">
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox"></th>
+            <th style="width:120px">품번</th>
+            <th style="width:180px">소급 기간</th>
+            <th style="width:100px">기준단가(원)</th>
+            <th style="width:100px">변경단가(원)</th>
+            <th style="width:90px">차액/개(원)</th>
+            <th style="width:90px">소급수량</th>
+            <th style="width:110px">총 차액(원)</th>
+            <th style="width:80px">정산방식</th>
+            <th style="width:80px">상태</th>
+            <th style="width:108px">완료일</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+        <tfoot id="tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- 정산 등록 슬라이드 패널 -->
+<div class="slide-panel" id="slide-panel">
+  <div class="slide-header">
+    <span class="slide-title">소급정산 등록</span>
+    <button class="btn btn-ghost" style="padding:0 8px" onclick="closePanel()">
+      <i data-lucide="x" style="width:16px;height:16px"></i>
+    </button>
+  </div>
+  <div class="slide-body">
+    <div class="form-field" style="margin-bottom:14px">
+      <label class="form-label">품번 선택 <span class="req">*</span></label>
+      <select class="form-select" id="sp-part" onchange="loadPartData()">
+        <option value="">품번 선택</option>
+        <option value="H1110-T100">H1110-T100 · Frame Sub Ass'y</option>
+        <option value="H1110-T101">H1110-T101 · Bracket Assy Upper</option>
+        <option value="H1110-T102">H1110-T102 · Cover Plate</option>
+      </select>
+    </div>
+    <div id="sp-info" style="display:none;background:#f9fafb;border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin-bottom:14px;font-size:12px">
+      <div style="display:flex;gap:16px">
+        <span>기준단가: <strong id="sp-base" style="color:var(--text)"></strong></span>
+        <span>변경단가: <strong id="sp-new" style="color:var(--blue)"></strong></span>
+      </div>
+      <div style="margin-top:4px">단가 차액/개: <strong id="sp-diff" style="color:var(--status-bad)"></strong></div>
+    </div>
+    <div class="form-row form-row-2" style="margin-bottom:14px">
+      <div class="form-field">
+        <label class="form-label">소급 시작일 <span class="req">*</span></label>
+        <input type="date" class="form-input" id="sp-from" value="2026-01-15" oninput="calcTotal()">
+      </div>
+      <div class="form-field">
+        <label class="form-label">소급 종료일 <span class="req">*</span></label>
+        <input type="date" class="form-input" id="sp-to" value="2026-03-31" oninput="calcTotal()">
+      </div>
+    </div>
+    <div class="form-field" style="margin-bottom:14px">
+      <label class="form-label">소급 수량 (개) <span class="req">*</span></label>
+      <input class="form-input num" id="sp-qty" placeholder="0" oninput="calcTotal()">
+    </div>
+    <div class="form-field" style="margin-bottom:14px">
+      <label class="form-label">총 차액 (원)</label>
+      <input class="form-input num result" id="sp-total" readonly placeholder="수량 입력 후 자동 계산" style="background:#f0f2f5;font-weight:700">
+    </div>
+    <div class="form-field" style="margin-bottom:14px">
+      <label class="form-label">정산 방식 <span class="req">*</span></label>
+      <select class="form-select" id="sp-method">
+        <option>세금계산서 발행</option>
+        <option>상계 처리</option>
+      </select>
+    </div>
+    <div class="form-field">
+      <label class="form-label">비고</label>
+      <textarea class="form-textarea" rows="2" placeholder="정산 사유 또는 특이사항"></textarea>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <button class="btn btn-secondary" onclick="closePanel()">취소</button>
+    <button class="btn btn-primary" onclick="savePanel()">
+      <i data-lucide="save" style="width:14px;height:14px"></i>저장
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <i data-lucide="check-circle" style="width:15px;height:15px;color:#4ade80;flex-shrink:0"></i>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+const DATA = [
+  { part:'H1110-T100', period:'2026-01-15 ~ 2026-03-31', base:13200, newp:14500, diff:1300, qty:25000, total:32500000, method:'세금계산서', st:'완료', done:'2026-04-20' },
+  { part:'H1110-T100', period:'2026-02-01 ~ 2026-02-28', base:13200, newp:13500, diff:300,  qty:8000,  total:2400000,  method:'상계',     st:'완료', done:'2026-03-10' },
+  { part:'H1110-T101', period:'2026-03-01 ~ 2026-04-30', base:8200,  newp:8500,  diff:300,  qty:15000, total:4500000,  method:'세금계산서', st:'진행', done:'—' },
+  { part:'H1110-T102', period:'2026-04-10 ~ 2026-05-31', base:5600,  newp:5800,  diff:200,  qty:20000, total:4000000,  method:'상계',     st:'대기', done:'—' },
+];
+
+const ST_CLS    = { '완료':'st-ok', '진행':'st-prog', '대기':'st-wait' };
+const METHOD_CLS= { '세금계산서':'method-tax', '상계':'method-offset' };
+let currentSt = '';
+
+function fmt(n) { return n.toLocaleString(); }
+
+function applyFilter() {
+  const q      = document.getElementById('f-search').value.trim().toLowerCase();
+  const method = document.getElementById('f-method')?.value || '';
+  const rows = DATA.filter(d => {
+    if (currentSt && d.st !== currentSt) return false;
+    if (q && !d.part.toLowerCase().includes(q)) return false;
+    if (method && d.method !== method) return false;
+    return true;
+  });
+  renderRows(rows);
+  updateCounts();
+}
+
+function renderRows(rows) {
+  document.getElementById('tbody').innerHTML = rows.map(d => {
+    const diffCls = d.diff > 0 ? 'diff-over' : 'diff-under';
+    return `<tr>
+      <td class="c" onclick="event.stopPropagation()"><input type="checkbox"></td>
+      <td class="c" style="font-weight:600;color:var(--blue)">${d.part}</td>
+      <td class="c muted" style="font-size:11px">${d.period}</td>
+      <td class="r" style="padding-right:10px;font-variant-numeric:tabular-nums">${fmt(d.base)}</td>
+      <td class="r" style="padding-right:10px;font-variant-numeric:tabular-nums;color:var(--blue);font-weight:600">${fmt(d.newp)}</td>
+      <td class="r ${diffCls}" style="padding-right:10px">+${fmt(d.diff)}</td>
+      <td class="r" style="padding-right:10px;font-variant-numeric:tabular-nums">${fmt(d.qty)}</td>
+      <td class="r" style="padding-right:10px;font-variant-numeric:tabular-nums;font-weight:600">${fmt(d.total)}</td>
+      <td class="c"><span class="method ${METHOD_CLS[d.method]}">${d.method}</span></td>
+      <td class="c"><span class="st ${ST_CLS[d.st]}">${d.st}</span></td>
+      <td class="c muted">${d.done}</td>
+    </tr>`;
+  }).join('');
+
+  /* 합계 행 */
+  const totalAmt = rows.reduce((s, d) => s + d.total, 0);
+  document.getElementById('tfoot').innerHTML = `
+    <tr class="total-row">
+      <td colspan="7" style="text-align:right;padding-right:10px">합계</td>
+      <td style="text-align:right;padding-right:10px;font-variant-numeric:tabular-nums">${fmt(totalAmt)}</td>
+      <td colspan="3"></td>
+    </tr>`;
+}
+
+function updateCounts() {
+  document.getElementById('cnt-all').textContent  = DATA.length;
+  document.getElementById('cnt-ok').textContent   = DATA.filter(d => d.st === '완료').length;
+  document.getElementById('cnt-prog').textContent = DATA.filter(d => d.st === '진행').length;
+  document.getElementById('cnt-wait').textContent = DATA.filter(d => d.st === '대기').length;
+}
+
+function setStatus(st) {
+  currentSt = st;
+  document.querySelectorAll('.ss-btn').forEach(b => b.classList.remove('active'));
+  ['', '완료', '진행', '대기'].forEach((s, i) => {
+    if (s === st) document.querySelectorAll('.ss-btn')[i]?.classList.add('active');
+  });
+  applyFilter();
+}
+
+function toggleFilter() { document.getElementById('filter-panel').classList.toggle('open'); }
+function toggleStatusPanel() {
+  const el = document.getElementById('status-strip');
+  el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+
+function openPanel() {
+  document.getElementById('slide-panel').classList.add('open');
+  lucide.createIcons();
+}
+function closePanel() {
+  document.getElementById('slide-panel').classList.remove('open');
+}
+
+const PART_DATA = {
+  'H1110-T100': { base:13200, newp:14500 },
+  'H1110-T101': { base:8200,  newp:8500 },
+  'H1110-T102': { base:5600,  newp:5800 },
+};
+
+function loadPartData() {
+  const part = document.getElementById('sp-part').value;
+  const info = document.getElementById('sp-info');
+  if (!part || !PART_DATA[part]) { info.style.display='none'; return; }
+  const d = PART_DATA[part];
+  document.getElementById('sp-base').textContent = d.base.toLocaleString() + '원';
+  document.getElementById('sp-new').textContent  = d.newp.toLocaleString() + '원';
+  document.getElementById('sp-diff').textContent = '+' + (d.newp - d.base).toLocaleString() + '원';
+  info.style.display = 'block';
+  calcTotal();
+}
+
+function calcTotal() {
+  const part = document.getElementById('sp-part').value;
+  const qty  = parseInt(document.getElementById('sp-qty').value.replace(/,/g,'')) || 0;
+  if (!part || !PART_DATA[part] || !qty) { document.getElementById('sp-total').value=''; return; }
+  const diff  = PART_DATA[part].newp - PART_DATA[part].base;
+  const total = diff * qty;
+  document.getElementById('sp-total').value = total.toLocaleString();
+}
+
+function savePanel() {
+  closePanel();
+  showToast('소급정산이 등록되었습니다.');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+applyFilter();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

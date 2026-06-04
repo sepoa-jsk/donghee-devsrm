@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>목표가 설정 상세 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 내부비용 명세 테이블 ── */
+  table.cost-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.cost-table thead th {
+    background: var(--grid-head); padding: 0 10px; height: 32px;
+    font-weight: 600; color: var(--text); text-align: center;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  table.cost-table tbody td {
+    padding: 0 10px; height: 30px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text); vertical-align: middle;
+  }
+  table.cost-table tbody tr:last-child td { border-bottom: none; }
+  table.cost-table tbody tr:hover td { background: var(--grid-hover); }
+  table.cost-table tbody td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  table.cost-table tbody td.c { text-align: center; }
+  table.cost-table tbody td.muted { color: var(--text-sub); }
+  /* 합계 행 */
+  table.cost-table tbody tr.total-row td {
+    background: var(--grid-head);
+    font-weight: 600;
+    border-top: 1px solid var(--border-strong);
+    border-bottom: none;
+  }
+</style>
+</head>
+
+<!-- sidebar.js가 data-menu="03-02"를 읽어 사이드바를 주입·활성 표시 -->
+<body data-menu="03-02">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 (§4.1) -->
+  <div class="page-title-bar">
+    <span class="page-title">목표가 설정 상세</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="window.print()">
+        <i data-lucide="printer"></i>인쇄
+      </button>
+      <button class="btn btn-secondary" onclick="showToast('임시저장이 완료되었습니다.', 'ok')">
+        <i data-lucide="save"></i>임시저장
+      </button>
+      <button class="btn btn-primary" onclick="showModal('modal-approve')">
+        <i data-lucide="send"></i>승인 요청
+      </button>
+    </div>
+  </div>
+
+  <div class="content-scroll">
+
+    <!-- ── 1. 기본 정보 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">기본 정보</span>
+        <span class="badge badge-prog" style="font-size:10px">팀장 검토 중</span>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">문서번호</label>
+          <input type="text" class="form-input" value="TGT-2026-0024" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">작성일</label>
+          <input type="text" class="form-input" value="2026-01-15" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">작성자</label>
+          <input type="text" class="form-input" value="김개발 (개발구매팀)" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">진행 상태</label>
+          <input type="text" class="form-input" value="팀장 검토 중" readonly>
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">품번</label>
+          <input type="text" class="form-input" value="H1110-T100" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">품명</label>
+          <input type="text" class="form-input" value="Frame Sub Ass'y" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">도면 리비전</label>
+          <input type="text" class="form-input" value="Rev.A" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">기준 RFQ</label>
+          <input type="text" class="form-input" value="RFQ-2026-0053" readonly>
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">프로젝트</label>
+          <input type="text" class="form-input" value="PJT-520PHEV-FT-2026" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">고객사</label>
+          <input type="text" class="form-input" value="현대자동차" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">차종</label>
+          <input type="text" class="form-input" value="520 PHEV" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">SOP</label>
+          <input type="text" class="form-input" value="2026-10-01" readonly>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 2. 목표가 산정 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">목표가 산정</span>
+        <span style="font-size:11px;color:var(--text-mute)">품번 H1110-T100 · 연간수량 100,000개 기준</span>
+      </div>
+
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>고객 목표 판매가 (원/개)</label>
+          <input type="text" class="form-input num" id="f-sale" value="16,000" oninput="recalc()">
+          <span class="form-hint">고객사가 제시한 납품 목표가</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>목표 마진율 (%)</label>
+          <input type="text" class="form-input num" id="f-margin" value="15.0" oninput="recalc()">
+          <span class="form-hint">내부 마진 목표치 (영업손익 기준)</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label">연간수량 (개)</label>
+          <input type="text" class="form-input num" value="100,000" readonly>
+        </div>
+        <div class="form-field">
+          <label class="form-label">납기 조건</label>
+          <select class="form-select">
+            <option selected>FOB (부산항)</option>
+            <option>EXW (공장도)</option>
+            <option>CIF</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">허용 총원가 (원/개)</label>
+          <input type="text" class="form-input num result" id="f-allowed" value="13,600" readonly>
+          <span class="form-hint" id="hint-allowed">= 판매가 × (1 − 마진율)  →  16,000 × 0.85</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label"><span class="req">*</span>내부 소요 비용 (원/개)</label>
+          <input type="text" class="form-input num" id="f-internal" value="1,500" oninput="recalc()">
+          <span class="form-hint">물류·검수·관리비 합산 (아래 명세 참조)</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label">목표 구매단가 (원/개)</label>
+          <input type="text" class="form-input num result" id="f-target" value="12,100" readonly>
+          <span class="form-hint" id="hint-target">= 허용총원가 − 내부비용  →  13,600 − 1,500  ※ 협력사 미공개</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label">협상 허용 초과폭 (%)</label>
+          <input type="text" class="form-input num" value="3.0">
+          <span class="form-hint">목표가 대비 협상 허용 범위</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 3. 내부 소요 비용 명세 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">내부 소요 비용 명세</span>
+        <span style="font-size:11px;color:var(--text-mute)">합계 1,500원/개</span>
+        <button class="btn btn-secondary btn-sm" onclick="addCostRow()">
+          <i data-lucide="plus"></i>항목 추가
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table class="cost-table">
+          <thead>
+            <tr>
+              <th style="width:36px">No.</th>
+              <th style="text-align:left">비용 항목</th>
+              <th style="width:130px;text-align:right">금액 (원/개)</th>
+              <th style="text-align:left">산정 근거</th>
+              <th style="width:40px"></th>
+            </tr>
+          </thead>
+          <tbody id="cost-tbody">
+            <tr>
+              <td class="c muted">1</td>
+              <td>물류비 (운반·보관)</td>
+              <td class="r">500</td>
+              <td class="muted">연간 물류비 ÷ 연간수량 기준</td>
+              <td class="c">
+                <button class="btn btn-ghost btn-grid" style="height:22px;padding:0 4px;color:var(--text-mute)"
+                        onclick="this.closest('tr').remove()">
+                  <i data-lucide="x"></i>
+                </button>
+              </td>
+            </tr>
+            <tr>
+              <td class="c muted">2</td>
+              <td>수입검사·품질비</td>
+              <td class="r">300</td>
+              <td class="muted">품질팀 표준 공수 단가 적용</td>
+              <td class="c">
+                <button class="btn btn-ghost btn-grid" style="height:22px;padding:0 4px;color:var(--text-mute)"
+                        onclick="this.closest('tr').remove()">
+                  <i data-lucide="x"></i>
+                </button>
+              </td>
+            </tr>
+            <tr>
+              <td class="c muted">3</td>
+              <td>관리비 (간접비 배분)</td>
+              <td class="r">400</td>
+              <td class="muted">부서 간접비 배분율 적용</td>
+              <td class="c">
+                <button class="btn btn-ghost btn-grid" style="height:22px;padding:0 4px;color:var(--text-mute)"
+                        onclick="this.closest('tr').remove()">
+                  <i data-lucide="x"></i>
+                </button>
+              </td>
+            </tr>
+            <tr>
+              <td class="c muted">4</td>
+              <td>기타 (포장·단품관리)</td>
+              <td class="r">300</td>
+              <td class="muted">실적 기반 표준 단가 적용</td>
+              <td class="c">
+                <button class="btn btn-ghost btn-grid" style="height:22px;padding:0 4px;color:var(--text-mute)"
+                        onclick="this.closest('tr').remove()">
+                  <i data-lucide="x"></i>
+                </button>
+              </td>
+            </tr>
+            <tr class="total-row">
+              <td class="c">합계</td>
+              <td></td>
+              <td class="r">1,500</td>
+              <td></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── 4. 산정 근거 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">목표가 산정 근거</span>
+      </div>
+      <div class="form-field">
+        <textarea class="form-textarea" rows="5">520 PHEV Fuel Tank Module 개발 프로젝트 대상 Frame Sub Ass'y (H1110-T100) 목표 구매단가 산정.
+
+고객 목표 납품가 16,000원 기준, 내부 마진 목표율 15% 적용하여 허용 총원가 13,600원 산정.
+내부 물류·품질·관리비 합산 1,500원을 제외한 목표 구매단가 12,100원으로 설정.
+
+비고: Al 6061 소재 기준. LME 변동 시 재산정 검토 필요. 협력사에 목표가 미공개 원칙 적용.</textarea>
+      </div>
+    </div>
+
+    <!-- ── 5. 결재선 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">결재선</span>
+        <span style="font-size:11px;color:var(--text-mute)">2 / 4 단계 진행 중</span>
+      </div>
+
+      <div class="step-bar">
+        <div class="step-node">
+          <div class="step-box done">
+            <span class="step-role">작성자</span>
+            <span class="step-name">김개발</span>
+            <span class="step-date">2026-01-15</span>
+          </div>
+        </div>
+        <div class="step-sep"></div>
+        <div class="step-node">
+          <div class="step-box prog">
+            <span class="step-role">팀장 검토</span>
+            <span class="step-name">이팀장</span>
+            <span class="step-date">검토 중</span>
+          </div>
+        </div>
+        <div class="step-sep"></div>
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">부서장 승인</span>
+            <span class="step-name">박부장</span>
+            <span class="step-date">대기</span>
+          </div>
+        </div>
+        <div class="step-sep"></div>
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">최종 확정</span>
+            <span class="step-name">정본부장</span>
+            <span class="step-date">대기</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-hdr" style="margin-top:16px">
+        <span class="sec-cap">결재 의견</span>
+      </div>
+      <div style="font-size:12px;color:var(--text-mute);padding:8px 0">
+        등록된 결재 의견이 없습니다.
+      </div>
+    </div>
+
+    <!-- ── 6. 처리 이력 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">처리 이력</span>
+      </div>
+      <div class="history-list">
+        <div class="history-item">
+          <div class="history-dot prog"></div>
+          <div class="history-content">
+            <div class="history-text"><strong>팀장 검토 요청</strong> — 김개발 (개발구매팀)</div>
+            <div class="history-meta">2026-01-15 15:10 · 목표가 TGT-2026-0024 팀장 이팀장에게 검토 요청 완료</div>
+          </div>
+          <div class="history-right"><span class="badge badge-prog">진행</span></div>
+        </div>
+        <div class="history-item">
+          <div class="history-dot ok"></div>
+          <div class="history-content">
+            <div class="history-text"><strong>문서 작성 완료</strong> — 김개발 (개발구매팀)</div>
+            <div class="history-meta">2026-01-15 14:55 · 목표가 산정 및 내부비용 명세 4건 등록 완료</div>
+          </div>
+          <div class="history-right"><span class="badge badge-ok">완료</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content-scroll -->
+</div><!-- /page-wrap -->
+
+<!-- 승인 요청 모달 -->
+<div id="modal-approve" class="modal-backdrop">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">승인 요청</span>
+      <button class="modal-close" onclick="toggleModal('modal-approve', false)">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
+      <p style="font-size:13px;color:var(--text-sub);line-height:1.6">
+        TGT-2026-0024 (H1110-T100 목표가 12,100원) 를<br>
+        팀장 이팀장에게 검토 요청합니다.
+      </p>
+      <div class="form-field">
+        <label class="form-label">요청 메모 (선택)</label>
+        <textarea class="form-textarea" rows="2" placeholder="검토자에게 전달할 내용을 입력하세요"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="toggleModal('modal-approve', false)">취소</button>
+      <button class="btn btn-primary" onclick="confirmApprove()">
+        <i data-lucide="send"></i>요청
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── 자동 계산 ── */
+  function numVal(id) {
+    return parseFloat((document.getElementById(id).value || '').replace(/,/g, '')) || 0;
+  }
+  function fmtNum(n) {
+    return Math.round(n).toLocaleString('ko-KR');
+  }
+
+  function recalc() {
+    var sale     = numVal('f-sale');
+    var margin   = numVal('f-margin') / 100;
+    var internal = numVal('f-internal');
+    var allowed  = sale * (1 - margin);
+    var target   = allowed - internal;
+
+    document.getElementById('f-allowed').value = fmtNum(allowed);
+    document.getElementById('f-target').value  = fmtNum(target < 0 ? 0 : target);
+
+    document.getElementById('hint-allowed').textContent =
+      '= 판매가 × (1 − 마진율)  →  ' + fmtNum(sale) + ' × ' + (1 - margin).toFixed(2);
+    document.getElementById('hint-target').textContent =
+      '= 허용총원가 − 내부비용  →  ' + fmtNum(allowed) + ' − ' + fmtNum(internal) + '  ※ 협력사 미공개';
+  }
+
+  /* ── 비용 행 추가 ── */
+  var costRowCount = 4;
+  function addCostRow() {
+    costRowCount++;
+    var totalRow = document.querySelector('#cost-tbody tr.total-row');
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="c muted">' + (costRowCount) + '</td>' +
+      '<td><input type="text" class="td-input" placeholder="비용 항목" style="width:200px"></td>' +
+      '<td class="r"><input type="text" class="td-input num" placeholder="0" style="width:90px;text-align:right;font-variant-numeric:tabular-nums"></td>' +
+      '<td><input type="text" class="td-input" placeholder="산정 근거" style="width:100%;max-width:360px"></td>' +
+      '<td class="c">' +
+        '<button class="btn btn-ghost btn-grid" style="height:22px;padding:0 4px;color:var(--text-mute)"' +
+        ' onclick="this.closest(\'tr\').remove()">' +
+          '<i data-lucide="x"></i>' +
+        '</button>' +
+      '</td>';
+    document.getElementById('cost-tbody').insertBefore(tr, totalRow);
+    if (window.lucide) lucide.createIcons({ nodes: [tr] });
+  }
+
+  /* ── 모달 ── */
+  function showModal(id) { toggleModal(id, true); }
+  function toggleModal(id, open) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('open', open === undefined ? !el.classList.contains('open') : open);
+  }
+
+  function confirmApprove() {
+    toggleModal('modal-approve', false);
+    showToast('승인 요청이 전송되었습니다.', 'ok');
+  }
+
+  /* ── 토스트 ── */
+  function showToast(msg, type) {
+    var bg = type === 'ok' ? '#16a34a' : type === 'bad' ? '#dc2626' : '#1f2937';
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.style.background = bg;
+    el.innerHTML = '<i data-lucide="check-circle" style="width:14px;height:14px;flex-shrink:0"></i><span>' + msg + '</span>';
+    document.body.appendChild(el);
+    if (window.lucide) lucide.createIcons({ nodes: [el] });
+    setTimeout(function() {
+      el.style.opacity = '0'; el.style.transition = 'opacity 0.2s';
+      setTimeout(function() { el.remove(); }, 220);
+    }, 2400);
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 's') { e.preventDefault(); showToast('임시저장이 완료되었습니다.', 'ok'); }
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-backdrop.open').forEach(function(m) { m.classList.remove('open'); });
+    }
+  });
+</script>
+
+<!-- sidebar.js: 헤더 + 오버레이 사이드바 자동 주입 -->
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>개발 프로젝트 목록 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column; padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-prog { color:var(--status-prog); } .st-prog::before { background:var(--status-prog); }
+  .st-bad  { color:var(--status-bad);  } .st-bad::before  { background:var(--status-bad); }
+  .st-ok   { color:var(--status-ok);   } .st-ok::before   { background:var(--status-ok); }
+  .st-wait { color:var(--text-mute);   } .st-wait::before { background:var(--border-strong); }
+
+  .prog-cell { display:flex; align-items:center; gap:8px; }
+  .prog-bar { flex:1; height:6px; background:var(--grid-head); border-radius:3px; overflow:hidden; min-width:60px; }
+  .prog-fill { height:100%; background:var(--blue); border-radius:3px; }
+  .prog-pct { font-size:11px; color:var(--text-sub); font-variant-numeric:tabular-nums; width:34px; text-align:right; }
+</style>
+</head>
+
+<body data-menu="01-03">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">개발 프로젝트 목록</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-primary" onclick="location.href='01-04_project_detail.html'">
+        <i data-lucide="plus"></i>신규 프로젝트
+      </button>
+    </div>
+  </div>
+
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-filter" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-status" onclick="toggleStatusPanel()">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+  </div>
+
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">고객사</span>
+      <select class="search-select" id="f-customer" style="width:110px" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="현대">현대</option>
+        <option value="기아">기아</option>
+        <option value="모비스">모비스</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">단계</span>
+      <select class="search-select" id="f-stage" style="width:130px" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="기획">기획</option>
+        <option value="설계">설계</option>
+        <option value="원가산출">원가산출</option>
+        <option value="개발구매">개발구매</option>
+        <option value="품질·양산준비">품질·양산준비</option>
+        <option value="양산전환">양산전환</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">PM</span>
+      <select class="search-select" id="f-pm" style="width:100px" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="김개발">김개발</option>
+        <option value="이프로">이프로</option>
+        <option value="박PM">박PM</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="status-strip" id="status-strip">
+    <button class="ss-btn active" onclick="setStatus('')">전체 <span class="ss-cnt" id="cnt-all">0</span></button>
+    <button class="ss-btn" onclick="setStatus('진행중')">진행중 <span class="ss-cnt" id="cnt-prog">0</span></button>
+    <button class="ss-btn" onclick="setStatus('지연')">지연 <span class="ss-cnt" id="cnt-delay">0</span></button>
+    <button class="ss-btn" onclick="setStatus('완료')">완료 <span class="ss-cnt" id="cnt-done">0</span></button>
+    <button class="ss-btn" onclick="setStatus('보류')">보류 <span class="ss-cnt" id="cnt-hold">0</span></button>
+  </div>
+
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="tbl" style="border:1px solid var(--border);border-radius:4px">
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox"></th>
+            <th style="width:170px">프로젝트코드</th>
+            <th style="width:170px">프로젝트명</th>
+            <th style="width:130px">고객사·차종</th>
+            <th style="width:110px">대표품번</th>
+            <th style="width:110px">현재단계</th>
+            <th style="width:160px">진척률</th>
+            <th style="width:70px">PM</th>
+            <th style="width:100px">SOP</th>
+            <th style="width:90px">상태</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DATA = [
+  { code:'PJT-520PHEV-FT-2026', name:'Fuel Tank Module 개발', cust:'현대 520 PHEV', part:'H1110-T100', stage:'개발구매',      prog:45,  pm:'김개발', sop:'2026-10-01', st:'진행중' },
+  { code:'PJT-NX5-CM-2026',     name:'Cooling Module 개발',   cust:'기아 NX5',      part:'K2200-C100', stage:'원가산출',      prog:22,  pm:'이프로', sop:'2026-12-01', st:'진행중' },
+  { code:'PJT-MQ4-BR-2026',     name:'Bracket Assy 개발',     cust:'모비스 MQ4',    part:'M3300-B100', stage:'설계',          prog:12,  pm:'박PM',   sop:'2027-01-15', st:'진행중' },
+  { code:'PJT-520PHEV-RP-2026', name:'Reinforcement 개발',    cust:'현대 520 PHEV', part:'H1120-R100', stage:'품질·양산준비', prog:78,  pm:'김개발', sop:'2026-09-01', st:'지연' },
+  { code:'PJT-NX5-HP-2025',     name:'Heat Protector 개발',   cust:'기아 NX5',      part:'K2210-H100', stage:'양산전환',      prog:100, pm:'이프로', sop:'2026-03-01', st:'완료' },
+];
+
+const ST_CLS = { '진행중':'st-prog', '지연':'st-bad', '완료':'st-ok', '보류':'st-wait' };
+let currentSt = '';
+
+function applyFilter() {
+  const q        = document.getElementById('f-search').value.trim().toLowerCase();
+  const customer = document.getElementById('f-customer').value;
+  const stage    = document.getElementById('f-stage').value;
+  const pm       = document.getElementById('f-pm').value;
+
+  const rows = DATA.filter(d => {
+    if (currentSt && d.st !== currentSt) return false;
+    if (q && !d.code.toLowerCase().includes(q) && !d.name.toLowerCase().includes(q) && !d.part.toLowerCase().includes(q)) return false;
+    if (customer && !d.cust.includes(customer)) return false;
+    if (stage && d.stage !== stage) return false;
+    if (pm && d.pm !== pm) return false;
+    return true;
+  });
+  renderRows(rows);
+  updateCounts();
+}
+
+function renderRows(rows) {
+  document.getElementById('tbody').innerHTML = rows.map(d => {
+    return `<tr onclick="location.href='01-04_project_detail.html'">
+      <td class="c" onclick="event.stopPropagation()"><input type="checkbox"></td>
+      <td class="c"><a class="td-link" href="01-04_project_detail.html">${d.code}</a></td>
+      <td style="padding-left:12px">${d.name}</td>
+      <td class="c">${d.cust}</td>
+      <td class="c">${d.part}</td>
+      <td class="c">${d.stage}</td>
+      <td style="padding:0 10px"><div class="prog-cell"><div class="prog-bar"><div class="prog-fill" style="width:${d.prog}%"></div></div><span class="prog-pct">${d.prog}%</span></div></td>
+      <td class="c">${d.pm}</td>
+      <td class="c muted">${d.sop}</td>
+      <td class="c"><span class="st ${ST_CLS[d.st]}">${d.st}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function updateCounts() {
+  document.getElementById('cnt-all').textContent   = DATA.length;
+  document.getElementById('cnt-prog').textContent  = DATA.filter(d => d.st === '진행중').length;
+  document.getElementById('cnt-delay').textContent = DATA.filter(d => d.st === '지연').length;
+  document.getElementById('cnt-done').textContent  = DATA.filter(d => d.st === '완료').length;
+  document.getElementById('cnt-hold').textContent  = DATA.filter(d => d.st === '보류').length;
+}
+
+function setStatus(st) {
+  currentSt = st;
+  document.querySelectorAll('.ss-btn').forEach(b => b.classList.remove('active'));
+  ['', '진행중', '지연', '완료', '보류'].forEach((s, i) => {
+    if (s === st) document.querySelectorAll('.ss-btn')[i]?.classList.add('active');
+  });
+  applyFilter();
+}
+
+function toggleFilter() { document.getElementById('filter-panel').classList.toggle('open'); }
+function toggleStatusPanel() {
+  const el = document.getElementById('status-strip');
+  el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+
+renderRows(DATA);
+updateCounts();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

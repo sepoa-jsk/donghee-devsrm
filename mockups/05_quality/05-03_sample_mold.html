@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>샘플·금형 일정 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .search-wrap { flex:1; position:relative; max-width:400px; }
+  .search-wrap input {
+    width:100%; height:32px; border:1px solid var(--border); border-radius:4px;
+    padding:0 34px 0 12px; font-size:13px; font-family:'Pretendard',sans-serif;
+    color:var(--text); background:var(--surface); outline:none; transition:border-color .15s;
+  }
+  .search-wrap input:focus { border-color:var(--blue); box-shadow:0 0 0 2px rgba(26,86,170,.12); }
+  .search-wrap input::placeholder { color:var(--text-mute); }
+  .search-wrap .s-icon { position:absolute; right:9px; top:50%; transform:translateY(-50%); color:var(--text-mute); pointer-events:none; }
+
+  /* ── 좌우 분할 ── */
+  .main-split { flex:1; overflow:hidden; display:flex; }
+
+  /* ── 좌: 목록 패널 ── */
+  .left-panel {
+    width:300px; flex-shrink:0;
+    border-right:1px solid var(--border);
+    display:flex; flex-direction:column;
+    background:var(--surface);
+  }
+  .left-hdr {
+    height:36px; padding:0 14px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid var(--border);
+    background:var(--grid-head); flex-shrink:0;
+  }
+  .left-hdr-title { font-size:11px; font-weight:700; color:var(--text-sub); letter-spacing:0.3px; }
+  .left-hdr-cnt   { font-size:11px; color:var(--text-mute); font-variant-numeric:tabular-nums; }
+  .left-body { flex:1; overflow-y:auto; }
+  .left-body::-webkit-scrollbar { width:4px; }
+  .left-body::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:2px; }
+
+  .left-item {
+    padding:10px 14px; border-bottom:1px solid var(--border);
+    cursor:pointer; transition:background .1s;
+    border-left:3px solid transparent;
+  }
+  .left-item:hover { background:var(--grid-hover); }
+  .left-item.active { background:var(--blue-light); border-left-color:var(--blue); }
+  .li-top   { display:flex; align-items:center; justify-content:space-between; margin-bottom:3px; }
+  .li-code  { font-size:13px; font-weight:700; color:var(--navy); }
+  .left-item.active .li-code { color:var(--blue); }
+  .li-name  { font-size:12px; color:var(--text-sub); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .li-proj  { font-size:11px; color:var(--text-mute); margin-bottom:5px; }
+  .li-bot   { display:flex; align-items:center; justify-content:space-between; }
+  .li-phase { font-size:11px; font-weight:600; color:var(--text-sub); }
+  .li-phase.prog { color:var(--blue); }
+  .li-prog  { font-size:11px; color:var(--text-mute); font-variant-numeric:tabular-nums; }
+
+  .stt { display:inline-flex; align-items:center; gap:4px; font-size:11px; white-space:nowrap; }
+  .stt::before { content:''; width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+  .stt-ok   { color:var(--text-sub);   } .stt-ok::before   { background:var(--navy); }
+  .stt-prog { color:var(--text-sub);   } .stt-prog::before { background:var(--text-sub); }
+  .stt-wait { color:var(--text-mute);  } .stt-wait::before { background:var(--border-strong); }
+  .stt-bad  { color:var(--status-bad); } .stt-bad::before  { background:var(--status-bad); }
+
+  /* ── 우: 상세 패널 ── */
+  .right-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); }
+
+  /* 정보 + 스텝퍼 */
+  .info-section {
+    display:flex; gap:12px; padding:12px 20px;
+    border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .proj-box {
+    background:var(--surface); border:1px solid var(--border); border-radius:4px;
+    padding:12px 16px; width:296px; flex-shrink:0;
+  }
+  .box-cap {
+    font-size:11px; font-weight:700; color:var(--text-mute); letter-spacing:0.5px;
+    text-transform:uppercase; margin-bottom:10px;
+    display:flex; align-items:center;
+  }
+  .box-cap::after { content:''; flex:1; height:1px; background:var(--border); margin-left:8px; }
+  .pf-row { display:flex; align-items:baseline; padding:5px 0; border-bottom:1px solid var(--border); }
+  .pf-row:last-child { border-bottom:none; padding-bottom:0; }
+  .pf-label { font-size:12px; color:var(--text-mute); width:76px; flex-shrink:0; }
+  .pf-val   { font-size:12px; font-weight:600; color:var(--text); }
+
+  /* 스텝퍼 박스 (3단계) */
+  .stepper-box {
+    background:var(--surface); border:1px solid var(--border); border-radius:4px;
+    padding:12px 24px 16px; flex:1; display:flex; flex-direction:column;
+  }
+  .ms-steps { display:flex; align-items:flex-start; flex:1; margin-top:6px; }
+  .ms-phase { display:flex; flex-direction:column; align-items:center; flex:1; min-width:0; }
+  .ms-conn  { flex:1; height:2px; margin-top:9px; background:var(--border-strong); flex-shrink:0; min-width:20px; }
+  .ms-conn.done { background:var(--navy); }
+  .ms-dot { width:20px; height:20px; border-radius:50%; flex-shrink:0; margin-bottom:8px; }
+  .ms-dot.done    { background:var(--navy); }
+  .ms-dot.active  { background:var(--blue); box-shadow:0 0 0 4px rgba(26,86,170,.15); }
+  .ms-dot.pending { background:var(--surface); border:2px solid var(--border-strong); }
+  .ms-name { font-size:13px; font-weight:600; white-space:nowrap; color:var(--text-sub); }
+  .ms-phase.done   .ms-name { color:var(--navy); }
+  .ms-phase.active .ms-name { color:var(--blue); }
+  .ms-phase.pending .ms-name { color:var(--text-mute); }
+  .ms-date { font-size:11px; color:var(--text-mute); margin-top:4px; }
+  .ms-st   { font-size:11px; margin-top:2px; color:var(--text-mute); }
+  .ms-phase.done   .ms-st { color:var(--text-sub); }
+  .ms-phase.active .ms-st { color:var(--blue); font-weight:600; }
+
+  /* 서브 바 */
+  .right-sub-bar {
+    height:40px; padding:0 20px; gap:16px;
+    background:var(--surface); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; flex-shrink:0;
+  }
+  .ss-btn {
+    background:none; border:none; cursor:pointer; padding:0;
+    font-size:12px; color:var(--text-sub); font-family:'Pretendard',sans-serif;
+    display:flex; align-items:center; gap:5px; transition:color .1s;
+  }
+  .ss-btn:hover { color:var(--text); }
+  .ss-btn.active { color:var(--blue); font-weight:600; }
+  .ss-cnt { font-weight:700; font-variant-numeric:tabular-nums; }
+  .ss-btn.active .ss-cnt { color:var(--blue); }
+
+  /* 그리드 */
+  .grid-area { flex:1; overflow:hidden; display:flex; flex-direction:column; padding:12px 20px 16px; }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--text);       } .st-ok::before   { background:var(--navy); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+
+  .type-tag {
+    display:inline-block; font-size:11px; padding:0 6px; height:18px; line-height:18px;
+    border-radius:2px; border:1px solid var(--border); color:var(--text-sub); white-space:nowrap;
+  }
+</style>
+</head>
+
+<body data-menu="05-03">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">샘플·금형 일정</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-primary"><i data-lucide="plus"></i>항목 추가</button>
+    </div>
+  </div>
+
+  <!-- 검색 바 -->
+  <div class="search-bar">
+    <div class="search-wrap">
+      <input type="text" id="list-search" placeholder="품번 또는 프로젝트 검색" oninput="renderList()">
+      <i data-lucide="search" class="s-icon" style="width:14px;height:14px"></i>
+    </div>
+    <div class="search-field">
+      <span class="search-label">단계</span>
+      <select class="search-select" style="width:120px" id="filter-phase" onchange="renderList()">
+        <option value="">전체</option>
+        <option value="초도샘플">초도샘플</option>
+        <option value="초도금형">초도금형</option>
+        <option value="양산금형 검수">양산금형 검수</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 메인 분할 -->
+  <div class="main-split">
+
+    <!-- 좌: 품번 목록 -->
+    <div class="left-panel">
+      <div class="left-hdr">
+        <span class="left-hdr-title">품번 목록</span>
+        <span class="left-hdr-cnt" id="list-cnt">4건</span>
+      </div>
+      <div class="left-body" id="left-body"></div>
+    </div>
+
+    <!-- 우: 상세 -->
+    <div class="right-panel" id="right-panel"></div>
+
+  </div>
+
+</div>
+
+<script>
+const PROJECTS = [
+  {
+    partCode: 'H1110-T100', partName: "Frame Sub Ass'y",
+    projectCode: 'PJT-520PHEV-FT-2026', customer: '현대자동차', vehicle: '520 PHEV',
+    sop: '2026-10-01', supplier: 'A사', manager: '이품질', dept: '품질팀',
+    currentPhase: '초도샘플', totalItems: 10, doneItems: 3, delayItems: 1,
+    phases: [
+      { name:'초도샘플',     date:'2026-06-30', status:'active'  },
+      { name:'초도금형',     date:'2026-08-15', status:'pending' },
+      { name:'양산금형 검수', date:'2026-09-20', status:'pending' },
+    ],
+    items: [
+      { name:'초도샘플 발주',      type:'샘플', plan:'2026-05-01', actual:'2026-04-28', supplier:'A사', mgr:'이품질', st:'ok',   note:'' },
+      { name:'초도샘플 수령',      type:'샘플', plan:'2026-05-20', actual:'2026-05-22', supplier:'A사', mgr:'이품질', st:'ok',   note:'2일 지연 입고' },
+      { name:'초도샘플 치수 검사', type:'샘플', plan:'2026-06-05', actual:'2026-06-03', supplier:'A사', mgr:'이품질', st:'ok',   note:'' },
+      { name:'초도샘플 기능 시험', type:'샘플', plan:'2026-06-20', actual:'—',          supplier:'A사', mgr:'정설계', st:'prog', note:'결과 대기' },
+      { name:'초도샘플 승인',      type:'샘플', plan:'2026-06-30', actual:'—',          supplier:'A사', mgr:'이품질', st:'wait', note:'' },
+      { name:'초도금형 제작 발주', type:'금형', plan:'2026-05-15', actual:'—',          supplier:'A사', mgr:'김구매', st:'bad',  note:'발주 미진행' },
+      { name:'초도금형 완성',      type:'금형', plan:'2026-07-31', actual:'—',          supplier:'A사', mgr:'이공정', st:'wait', note:'' },
+      { name:'초도금형 검수',      type:'금형', plan:'2026-08-15', actual:'—',          supplier:'A사', mgr:'이품질', st:'wait', note:'' },
+      { name:'양산금형 제작 발주', type:'금형', plan:'2026-08-20', actual:'—',          supplier:'A사', mgr:'김구매', st:'prog', note:'견적 협의 중' },
+      { name:'양산금형 검수 완료', type:'금형', plan:'2026-09-20', actual:'—',          supplier:'A사', mgr:'이품질', st:'wait', note:'' },
+    ]
+  },
+  {
+    partCode: 'H1110-T101', partName: 'Bracket Assy Upper',
+    projectCode: 'PJT-520PHEV-FT-2026', customer: '현대자동차', vehicle: '520 PHEV',
+    sop: '2026-10-01', supplier: 'A사', manager: '이품질', dept: '품질팀',
+    currentPhase: '초도샘플', totalItems: 8, doneItems: 2, delayItems: 0,
+    phases: [
+      { name:'초도샘플',     date:'2026-07-15', status:'active'  },
+      { name:'초도금형',     date:'2026-08-31', status:'pending' },
+      { name:'양산금형 검수', date:'2026-09-25', status:'pending' },
+    ],
+    items: [
+      { name:'초도샘플 발주',      type:'샘플', plan:'2026-05-15', actual:'2026-05-14', supplier:'A사', mgr:'이품질', st:'ok',   note:'' },
+      { name:'초도샘플 수령',      type:'샘플', plan:'2026-06-05', actual:'2026-06-05', supplier:'A사', mgr:'이품질', st:'ok',   note:'' },
+      { name:'초도샘플 치수 검사', type:'샘플', plan:'2026-06-20', actual:'—',          supplier:'A사', mgr:'이품질', st:'prog', note:'' },
+      { name:'초도샘플 기능 시험', type:'샘플', plan:'2026-07-05', actual:'—',          supplier:'A사', mgr:'정설계', st:'wait', note:'' },
+      { name:'초도샘플 승인',      type:'샘플', plan:'2026-07-15', actual:'—',          supplier:'A사', mgr:'이품질', st:'wait', note:'' },
+      { name:'초도금형 제작 발주', type:'금형', plan:'2026-07-20', actual:'—',          supplier:'A사', mgr:'김구매', st:'wait', note:'' },
+      { name:'초도금형 완성',      type:'금형', plan:'2026-08-25', actual:'—',          supplier:'A사', mgr:'이공정', st:'wait', note:'' },
+      { name:'양산금형 검수',      type:'금형', plan:'2026-09-25', actual:'—',          supplier:'A사', mgr:'이품질', st:'wait', note:'' },
+    ]
+  },
+  {
+    partCode: 'H2210-R200', partName: 'Rear Bumper Assy',
+    projectCode: 'PJT-SANTA-RB-2026', customer: '현대자동차', vehicle: 'SANTA-FE',
+    sop: '2027-03-01', supplier: 'B사', manager: '박품질', dept: '품질팀',
+    currentPhase: '초도샘플', totalItems: 6, doneItems: 0, delayItems: 0,
+    phases: [
+      { name:'초도샘플',     date:'2026-11-30', status:'pending' },
+      { name:'초도금형',     date:'2027-01-15', status:'pending' },
+      { name:'양산금형 검수', date:'2027-02-20', status:'pending' },
+    ],
+    items: [
+      { name:'초도샘플 발주',      type:'샘플', plan:'2026-10-15', actual:'—', supplier:'B사', mgr:'박품질', st:'wait', note:'' },
+      { name:'초도샘플 수령',      type:'샘플', plan:'2026-11-10', actual:'—', supplier:'B사', mgr:'박품질', st:'wait', note:'' },
+      { name:'초도샘플 치수 검사', type:'샘플', plan:'2026-11-25', actual:'—', supplier:'B사', mgr:'박품질', st:'wait', note:'' },
+      { name:'초도샘플 승인',      type:'샘플', plan:'2026-11-30', actual:'—', supplier:'B사', mgr:'박품질', st:'wait', note:'' },
+      { name:'초도금형 발주',      type:'금형', plan:'2026-12-10', actual:'—', supplier:'B사', mgr:'김구매', st:'wait', note:'' },
+      { name:'양산금형 검수',      type:'금형', plan:'2027-02-20', actual:'—', supplier:'B사', mgr:'박품질', st:'wait', note:'' },
+    ]
+  },
+  {
+    partCode: 'H3310-B150', partName: 'Battery Mount Assy',
+    projectCode: 'PJT-ION9-BM-2026', customer: '현대자동차', vehicle: 'IONIQ 9',
+    sop: '2027-06-01', supplier: 'C사', manager: '김품질', dept: '품질팀',
+    currentPhase: '초도샘플', totalItems: 6, doneItems: 0, delayItems: 0,
+    phases: [
+      { name:'초도샘플',     date:'2027-01-31', status:'pending' },
+      { name:'초도금형',     date:'2027-03-31', status:'pending' },
+      { name:'양산금형 검수', date:'2027-05-15', status:'pending' },
+    ],
+    items: [
+      { name:'초도샘플 발주',      type:'샘플', plan:'2026-12-15', actual:'—', supplier:'C사', mgr:'김품질', st:'wait', note:'' },
+      { name:'초도샘플 수령',      type:'샘플', plan:'2027-01-10', actual:'—', supplier:'C사', mgr:'김품질', st:'wait', note:'' },
+      { name:'초도샘플 치수 검사', type:'샘플', plan:'2027-01-25', actual:'—', supplier:'C사', mgr:'김품질', st:'wait', note:'' },
+      { name:'초도샘플 승인',      type:'샘플', plan:'2027-01-31', actual:'—', supplier:'C사', mgr:'김품질', st:'wait', note:'' },
+      { name:'초도금형 발주',      type:'금형', plan:'2027-02-10', actual:'—', supplier:'C사', mgr:'김구매', st:'wait', note:'' },
+      { name:'양산금형 검수',      type:'금형', plan:'2027-05-15', actual:'—', supplier:'C사', mgr:'김품질', st:'wait', note:'' },
+    ]
+  }
+];
+
+const ST_LABEL = { ok:'완료', prog:'진행중', bad:'지연', wait:'대기' };
+const ST_CLASS  = { ok:'st-ok', prog:'st-prog', bad:'st-bad', wait:'st-wait' };
+
+let selectedCode    = 'H1110-T100';
+let rightTypeFilter = '';
+let rightStFilter   = '';
+
+function renderList() {
+  const q     = document.getElementById('list-search').value.trim().toLowerCase();
+  const phase = document.getElementById('filter-phase').value;
+
+  const filtered = PROJECTS.filter(p => {
+    const mq = !q || p.partCode.toLowerCase().includes(q) || p.projectCode.toLowerCase().includes(q) || p.partName.toLowerCase().includes(q);
+    const mp = !phase || p.currentPhase === phase;
+    return mq && mp;
+  });
+
+  document.getElementById('list-cnt').textContent = filtered.length + '건';
+
+  const isAct = p => p.phases.some(ph => ph.status === 'active');
+  document.getElementById('left-body').innerHTML = filtered.map(p => {
+    const pct      = Math.round(p.doneItems / p.totalItems * 100);
+    const active   = isAct(p);
+    const stClass  = p.delayItems > 0 ? 'stt-bad' : (active ? 'stt-prog' : 'stt-wait');
+    const stLabel  = p.delayItems > 0 ? '지연' : (active ? '진행중' : '대기');
+    return `
+      <div class="left-item${p.partCode === selectedCode ? ' active' : ''}"
+           onclick="selectProject('${p.partCode}')">
+        <div class="li-top">
+          <span class="li-code">${p.partCode}</span>
+          <span class="stt ${stClass}">${stLabel}</span>
+        </div>
+        <div class="li-name">${p.partName}</div>
+        <div class="li-proj">${p.projectCode}</div>
+        <div class="li-bot">
+          <span class="li-phase${active ? ' prog' : ''}">${p.currentPhase} 단계</span>
+          <span class="li-prog">${p.doneItems}/${p.totalItems} (${pct}%)</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function selectProject(code) {
+  selectedCode    = code;
+  rightTypeFilter = '';
+  rightStFilter   = '';
+  renderList();
+  renderRight();
+}
+
+function renderRight() {
+  const p = PROJECTS.find(x => x.partCode === selectedCode);
+  if (!p) return;
+
+  const pct        = Math.round(p.doneItems / p.totalItems * 100);
+  const inProgress = p.items.filter(i => i.st === 'prog').length;
+  const delayed    = p.items.filter(i => i.st === 'bad').length;
+  const waiting    = p.items.filter(i => i.st === 'wait').length;
+
+  /* 3단계 스텝퍼 */
+  let stepperHtml = '<div class="ms-steps">';
+  p.phases.forEach((ph, i) => {
+    const stLabel = ph.status === 'done' ? '완료' : ph.status === 'active' ? '진행중' : '대기';
+    stepperHtml += `
+      <div class="ms-phase ${ph.status}">
+        <div class="ms-dot ${ph.status}"></div>
+        <div class="ms-name">${ph.name}</div>
+        <div class="ms-date">${ph.date}</div>
+        <div class="ms-st">${stLabel}</div>
+      </div>`;
+    if (i < p.phases.length - 1) {
+      stepperHtml += `<div class="ms-conn${ph.status === 'done' ? ' done' : ''}"></div>`;
+    }
+  });
+  stepperHtml += '</div>';
+
+  /* 항목 필터 */
+  const filtered = p.items.filter(it => {
+    const mt = !rightTypeFilter || it.type === rightTypeFilter;
+    const ms = !rightStFilter   || it.st === rightStFilter;
+    return mt && ms;
+  });
+
+  const rows = filtered.map(it => `
+    <tr>
+      <td class="c"><input type="checkbox"></td>
+      <td style="padding-left:12px;font-weight:500">${it.name}</td>
+      <td class="c"><span class="type-tag">${it.type}</span></td>
+      <td class="c muted">${it.plan}</td>
+      <td class="c muted">${it.actual}</td>
+      <td class="c muted">${it.supplier}</td>
+      <td class="c muted">${it.mgr}</td>
+      <td class="c"><span class="st ${ST_CLASS[it.st]}">${ST_LABEL[it.st]}</span></td>
+      <td style="padding-left:12px" class="muted">${it.note}</td>
+    </tr>`).join('');
+
+  document.getElementById('right-panel').innerHTML = `
+    <div class="info-section">
+      <div class="proj-box">
+        <div class="box-cap">프로젝트 정보</div>
+        <div class="pf-row"><span class="pf-label">프로젝트</span><span class="pf-val">${p.projectCode}</span></div>
+        <div class="pf-row"><span class="pf-label">품번</span><span class="pf-val">${p.partCode} · ${p.partName}</span></div>
+        <div class="pf-row"><span class="pf-label">고객사</span><span class="pf-val">${p.customer} / ${p.vehicle}</span></div>
+        <div class="pf-row"><span class="pf-label">SOP</span><span class="pf-val">${p.sop}</span></div>
+        <div class="pf-row"><span class="pf-label">협력사</span><span class="pf-val">${p.supplier}</span></div>
+        <div class="pf-row"><span class="pf-label">담당</span><span class="pf-val">${p.manager} / ${p.dept}</span></div>
+        <div class="pf-row"><span class="pf-label">완료율</span><span class="pf-val">${p.doneItems} / ${p.totalItems} (${pct}%)</span></div>
+      </div>
+      <div class="stepper-box">
+        <div class="box-cap">샘플·금형 3단계 마일스톤</div>
+        ${stepperHtml}
+      </div>
+    </div>
+
+    <div class="right-sub-bar">
+      <div class="search-field">
+        <span class="search-label">유형</span>
+        <select class="search-select" style="width:90px" onchange="rightTypeFilter=this.value;renderRight()">
+          <option value="">전체</option>
+          <option value="샘플"${rightTypeFilter==='샘플'?' selected':''}>샘플</option>
+          <option value="금형"${rightTypeFilter==='금형'?' selected':''}>금형</option>
+        </select>
+      </div>
+      <div class="search-field">
+        <span class="search-label">상태</span>
+        <select class="search-select" style="width:90px" onchange="rightStFilter=this.value;renderRight()">
+          <option value="">전체</option>
+          <option value="ok">완료</option>
+          <option value="prog">진행중</option>
+          <option value="bad">지연</option>
+          <option value="wait">대기</option>
+        </select>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:16px">
+        <button class="ss-btn${!rightStFilter?' active':''}" onclick="rightStFilter='';renderRight()">전체 <span class="ss-cnt">${p.totalItems}</span></button>
+        <button class="ss-btn${rightStFilter==='ok'?' active':''}" onclick="rightStFilter='ok';renderRight()">완료 <span class="ss-cnt">${p.doneItems}</span></button>
+        <button class="ss-btn${rightStFilter==='prog'?' active':''}" onclick="rightStFilter='prog';renderRight()">진행중 <span class="ss-cnt">${inProgress}</span></button>
+        <button class="ss-btn${rightStFilter==='bad'?' active':''}" onclick="rightStFilter='bad';renderRight()" style="${delayed>0?'color:var(--status-bad)':''}">지연 <span class="ss-cnt">${delayed}</span></button>
+        <button class="ss-btn${rightStFilter==='wait'?' active':''}" onclick="rightStFilter='wait';renderRight()">대기 <span class="ss-cnt">${waiting}</span></button>
+      </div>
+    </div>
+
+    <div class="grid-area">
+      <div class="table-fill">
+        <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+          <thead>
+            <tr>
+              <th style="width:40px"><input type="checkbox"></th>
+              <th style="min-width:200px">항목</th>
+              <th style="width:70px">유형</th>
+              <th style="width:108px">계획일</th>
+              <th style="width:108px">실적일</th>
+              <th style="width:80px">협력사</th>
+              <th style="width:80px">담당자</th>
+              <th style="width:80px">상태</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  lucide.createIcons();
+}
+
+renderList();
+renderRight();
+</script>
+
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

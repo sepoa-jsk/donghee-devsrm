@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>레이아웃 참조 템플릿 | DevSRM</title>
+
+<!--
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║  DevSRM 공통 레이아웃 참조 (mockups/common/layout.html)          ║
+  ║                                                                  ║
+  ║  이 파일은 새 화면을 만들 때 복사해 사용하는 템플릿입니다.        ║
+  ║                                                                  ║
+  ║  새 화면 체크리스트:                                             ║
+  ║  1. <title> 변경                                                 ║
+  ║  2. <body data-menu="xx-xx"> — MENU_STRUCTURE.md 화면 코드 입력  ║
+  ║  3. .page-title-bar 내용 교체 (타이틀·버튼만 — 브레드크럼 없음) ║
+  ║  4. .content-scroll 내부에 화면 콘텐츠 작성                      ║
+  ║  5. (선택) window.DEVSRM_CONTEXT 재정의                          ║
+  ╚══════════════════════════════════════════════════════════════════╝
+-->
+
+<!-- 1. 디자인 토큰 + 공통 컴포넌트 CSS -->
+<link rel="stylesheet" href="tokens.css">
+
+<!-- 2. Lucide 아이콘 (sidebar.js 로드 전에 반드시 배치) -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<!-- 3. (선택) 이 화면의 고유 스타일 -->
+<style>
+  /* 화면별 로컬 스타일은 여기에만 작성.
+     tokens.css에 있는 클래스는 재정의하지 않는다. */
+</style>
+</head>
+
+<!--
+  data-menu: MENU_STRUCTURE.md 화면 코드 (예: "01-02", "04-06")
+  sidebar.js가 이 값을 읽어 해당 메뉴를 활성 상태로 표시하고
+  소속 1뎁스 그룹을 자동으로 펼칩니다.
+-->
+<body data-menu="00-02">
+
+<!-- ───────────────────────────────────────────────────────────────
+     sidebar.js 가 이 위치에 다음 3개 요소를 prepend 합니다:
+       <header id="srm-header">     (z-index: 300, position: fixed)
+       <div    id="srm-overlay">    (z-index: 199, position: fixed)
+       <nav    id="srm-sidebar">    (z-index: 200, position: fixed)
+     페이지 고유 콘텐츠는 .page-wrap 안에만 작성합니다.
+────────────────────────────────────────────────────────────────── -->
+
+<!-- (선택) sidebar.js 로드 전에 컨텍스트를 재정의할 경우 -->
+<!--
+<script>
+  window.DEVSRM_CONTEXT = {
+    project: { code: 'PJT-520PHEV-FT-2026', name: '520 PHEV Fuel Tank Module 개발' },
+    part:    { code: 'H1110-T100', name: "Frame Sub Ass'y" },
+    user:    { name: '김개발', dept: '개발구매팀', initial: '김' },
+    notificationCount: 3
+  };
+</script>
+-->
+
+<!-- ═══ 페이지 콘텐츠 래퍼 ═══════════════════════════════════════
+     .page-wrap 은 tokens.css 에서:
+       margin-top: 48px          (고정 헤더 높이 보정)
+       height: calc(100vh - 48px)
+       display: flex; flex-direction: column; overflow: hidden
+     으로 정의되어 있습니다. 자식 레이아웃을 변경하지 마세요.
+════════════════════════════════════════════════════════════════ -->
+<div class="page-wrap">
+
+  <!-- ── 타이틀 바 ── (높이 48px, §4.1 — 브레드크럼·상태뱃지 없음) -->
+  <div class="page-title-bar">
+
+    <!-- 페이지 제목만 좌측에 (16px / 600) -->
+    <h1 class="page-title">페이지 제목</h1>
+
+    <div class="page-title-spacer"></div>
+
+    <!-- 액션 버튼: 중요도 순 왼쪽→오른쪽 -->
+    <div class="page-actions">
+      <button class="btn btn-secondary">
+        <i data-lucide="x"></i>
+        취소
+      </button>
+      <button class="btn btn-primary">
+        <i data-lucide="check"></i>
+        저장
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 검색·필터 바 ── (높이 44px, 조건 변경 시 자동 조회, 리셋 버튼 없음)
+       목록(List) 화면에만 포함. 폼/상세 화면에서는 이 블록을 제거한다. -->
+  <div class="search-bar">
+    <div class="search-field">
+      <label class="search-label">고객사</label>
+      <select class="search-select" style="width:120px">
+        <option value="">전체</option>
+        <option>현대자동차</option>
+      </select>
+    </div>
+    <div class="search-sep"></div>
+    <div class="search-field">
+      <label class="search-label">상태</label>
+      <select class="search-select" style="width:110px">
+        <option value="">전체</option>
+        <option>진행중</option>
+        <option>완료</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <label class="search-label">검색어</label>
+      <input type="text" class="search-input" style="width:180px" placeholder="품번·품명">
+    </div>
+    <div class="ml-auto">
+      <!-- 보조 조회 버튼 (자동 조회가 기본, 이 버튼은 보조용) -->
+      <button class="btn btn-secondary btn-sm">
+        <i data-lucide="search"></i>
+        조회
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 콘텐츠 영역 ── (나머지 높이 전부 차지, 세로 스크롤) -->
+  <div class="content-scroll">
+
+    <!-- ▶ 목록(List) 화면: KPI strip → 테이블 wrap (하단까지 채움) -->
+    <!-- ▶ 폼/상세 화면: form-card 들을 세로로 나열 -->
+
+    <!-- KPI 카드 예시 (선택적, §4.4: 숫자는 --text, 상태는 좌측 컬러선) -->
+    <div class="kpi-strip">
+      <div class="kpi-card">
+        <div class="kpi-label">전체 품목</div>
+        <div class="kpi-value">24</div>
+        <div class="kpi-sub">개 품번</div>
+      </div>
+      <div class="kpi-card kpi-prog">
+        <div class="kpi-label">진행중</div>
+        <div class="kpi-value">8</div>
+        <div class="kpi-sub">개 견적 수신 대기</div>
+      </div>
+      <div class="kpi-card kpi-ok">
+        <div class="kpi-label">목표 구매단가</div>
+        <div class="kpi-value">12,100</div>
+        <div class="kpi-sub">원 / H1110-T100</div>
+      </div>
+      <div class="kpi-card kpi-bad">
+        <div class="kpi-label">확정단가 (협상 후)</div>
+        <div class="kpi-value">14,500</div>
+        <div class="kpi-sub">+2,400 <span class="badge badge-bad" style="font-size:10px;height:16px">초과</span></div>
+      </div>
+    </div>
+
+    <!-- 데이터 테이블 예시 -->
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:40px" class="c">No.</th>
+            <th style="width:130px">품번</th>
+            <th style="width:180px">품명</th>
+            <th style="width:100px">재질</th>
+            <th class="r" style="width:110px">목표단가 (원)</th>
+            <th class="r" style="width:110px">확정단가 (원)</th>
+            <th style="width:80px" class="c">상태</th>
+            <th style="width:100px">SOP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="selected">
+            <td class="c muted">1</td>
+            <td><span class="text-blue fw-600">H1110-T100</span></td>
+            <td>Frame Sub Ass'y</td>
+            <td>Aluminum 6061</td>
+            <td class="r">12,100</td>
+            <td class="r text-bad fw-600">14,500</td>
+            <td class="c"><span class="badge badge-warn">초과</span></td>
+            <td>2026-10-01</td>
+          </tr>
+          <tr>
+            <td class="c muted">2</td>
+            <td>H1115-T200</td>
+            <td>Bracket Ass'y</td>
+            <td>SPCC</td>
+            <td class="r">3,800</td>
+            <td class="r text-ok">3,650</td>
+            <td class="c"><span class="badge badge-ok">이내</span></td>
+            <td>2026-10-01</td>
+          </tr>
+          <tr>
+            <td class="c muted">3</td>
+            <td>H1120-T300</td>
+            <td>Pipe Ass'y</td>
+            <td>STS304</td>
+            <td class="r">—</td>
+            <td class="r muted">견적 대기</td>
+            <td class="c"><span class="badge badge-wait">대기</span></td>
+            <td>2026-10-01</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 페이지네이션 -->
+      <div class="pagination">
+        <button class="page-btn">
+          <i data-lucide="chevron-left" style="width:12px;height:12px"></i>
+        </button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn">2</button>
+        <button class="page-btn">3</button>
+        <button class="page-btn">
+          <i data-lucide="chevron-right" style="width:12px;height:12px"></i>
+        </button>
+      </div>
+    </div>
+
+  </div>
+  <!-- /content-scroll -->
+
+</div>
+<!-- /page-wrap -->
+
+<!-- ═══ 공통 모달 템플릿 (필요 시 복사해 사용) ════════════════════
+<div id="modal-confirm" class="modal-backdrop">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">확인</span>
+      <button class="modal-close" onclick="this.closest('.modal-backdrop').classList.remove('open')">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-sub);line-height:1.6">작업을 진행하시겠습니까?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="this.closest('.modal-backdrop').classList.remove('open')">취소</button>
+      <button class="btn btn-primary">확인</button>
+    </div>
+  </div>
+</div>
+══════════════════════════════════════════════════════════════ -->
+
+<!-- ── 공통 유틸리티 함수 ── -->
+<script>
+  /**
+   * 토스트 메시지 표시
+   * @param {string} msg — 메시지 텍스트
+   * @param {'default'|'ok'|'bad'} [type] — 색상 테마
+   * @param {number} [ms] — 표시 시간(ms), 기본 2400
+   */
+  function showToast(msg, type, ms) {
+    var bg = type === 'ok'  ? '#16a34a'
+           : type === 'bad' ? '#dc2626'
+           : '#1f2937';
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.style.background = bg;
+    el.innerHTML =
+      '<i data-lucide="' + (type === 'bad' ? 'alert-circle' : 'check-circle') + '" ' +
+      'style="width:14px;height:14px;flex-shrink:0"></i>' +
+      '<span>' + msg + '</span>';
+    document.body.appendChild(el);
+    if (window.lucide) window.lucide.createIcons({ nodes: [el] });
+    setTimeout(function () {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity 0.2s';
+      setTimeout(function () { el.remove(); }, 220);
+    }, ms || 2400);
+  }
+
+  /**
+   * 모달 열기/닫기
+   * @param {string} id — modal-backdrop 의 id
+   * @param {boolean} [open] — true=열기, false=닫기, 미입력=토글
+   */
+  function toggleModal(id, open) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var next = open === undefined ? !el.classList.contains('open') : open;
+    el.classList.toggle('open', next);
+  }
+
+  /* ESC → 열린 모달 닫기 */
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var open = document.querySelectorAll('.modal-backdrop.open');
+    open.forEach(function (m) { m.classList.remove('open'); });
+  });
+
+  /* Ctrl+S → 임시저장 토스트 (화면별로 handleTempSave 재정의 가능) */
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey && e.key === 's') {
+      e.preventDefault();
+      if (typeof handleTempSave === 'function') {
+        handleTempSave();
+      } else {
+        showToast('임시저장이 완료되었습니다.', 'ok');
+      }
+    }
+  });
+</script>
+
+<!-- 4. sidebar.js — 반드시 </body> 직전, 페이지 스크립트 뒤에 배치 -->
+<script src="sidebar.js"></script>
+</body>
+</html>

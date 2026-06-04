@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>업체 선정 품의/결재 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── step-bar 7단계 (96px 박스) ── */
+  .step-bar { display:flex; align-items:center; gap:0; flex-wrap:nowrap; padding:8px 0; }
+  .step-node { display:flex; align-items:center; }
+  .step-box {
+    width:96px; border:1px solid var(--border); border-radius:4px; padding:7px 8px;
+    display:flex; flex-direction:column; gap:2px; background:var(--surface);
+  }
+  .step-box.done { border-color:var(--status-ok); background:#f0fdf4; }
+  .step-box.prog { border-color:var(--blue); background:var(--blue-light); }
+  .step-box.wait { border-color:var(--border); background:#f9fafb; }
+  .step-role { font-size:10px; color:var(--text-mute); }
+  .step-name { font-size:12px; font-weight:600; color:var(--text); }
+  .step-date { font-size:10px; color:var(--text-sub); }
+  .step-sep {
+    width:18px; height:1px; background:var(--border-strong); flex-shrink:0;
+    position:relative;
+  }
+  .step-sep::after {
+    content:''; position:absolute; right:-4px; top:-3px;
+    border:4px solid transparent; border-left-color:var(--border-strong);
+  }
+
+  /* ── 선정 유형 / 이원화 라디오 ── */
+  .radio-row { display:flex; gap:20px; align-items:center; padding:4px 0; }
+  .radio-opt { display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; }
+  .radio-opt input { accent-color:var(--blue); cursor:pointer; width:15px; height:15px; }
+
+  /* ── 이원화 테이블 ── */
+  .snap-table { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; max-width:420px; }
+  .snap-table th {
+    background:var(--grid-head); padding:0 12px; height:30px; font-weight:600;
+    color:var(--text); text-align:center; border:1px solid var(--border);
+  }
+  .snap-table td { padding:0 12px; height:32px; border:1px solid var(--border); color:var(--text); }
+  .snap-table td.c { text-align:center; }
+  .snap-table .form-input { height:26px; width:80px; }
+
+  /* ── 선정 근거 카드 (4분할) ── */
+  .sel-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px; }
+  .sel-card { border:1px solid var(--border); border-radius:4px; padding:12px 14px; }
+  .sel-card .lbl { font-size:11px; color:var(--text-sub); margin-bottom:5px; }
+  .sel-card .val { font-size:13px; font-weight:600; color:var(--text); }
+  .sel-card .sub { font-size:11px; color:var(--text-mute); margin-top:3px; }
+
+  /* ── 인라인 링크 ── */
+  .inline-link { color:var(--blue); font-size:12px; margin-left:16px; }
+  .inline-link:hover { text-decoration:underline; }
+</style>
+</head>
+
+<body data-menu="04-10">
+<div class="page-wrap">
+
+  <!-- ── 타이틀 바 ── -->
+  <div class="page-title-bar">
+    <span class="page-title">업체 선정 품의/결재</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="location.href='04-02_rfq_list.html'">
+        <i data-lucide="arrow-left"></i>목록
+      </button>
+      <button class="btn btn-secondary" onclick="showToast('임시저장이 완료되었습니다.', 'ok')">
+        <i data-lucide="save"></i>임시저장
+      </button>
+      <button class="btn btn-danger" onclick="toggleModal('modal-reject', true)">
+        <i data-lucide="x-circle"></i>반려
+      </button>
+      <button class="btn btn-primary" onclick="showToast('결재 상신이 완료되었습니다.', 'ok')">
+        <i data-lucide="send"></i>결재 상신
+      </button>
+    </div>
+  </div>
+
+  <div class="content-scroll">
+
+    <!-- ── 1. 품의 기본 정보 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">품의 기본 정보</span>
+        <span class="badge badge-prog" style="font-size:10px;margin-left:8px">구매부장 검토 중</span>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">품의번호</label>
+          <input class="form-input" value="APV-SEL-2026-0008" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">품번</label>
+          <input class="form-input" value="H1110-T100" readonly style="background:#f0f2f5;color:var(--blue);font-weight:600">
+        </div>
+        <div class="form-field">
+          <label class="form-label">품명</label>
+          <input class="form-input" value="Frame Sub Ass'y" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">선정업체</label>
+          <input class="form-input" value="A사 (동희부품)" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">확정단가</label>
+          <input class="form-input num" value="14,500원" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">연간수량</label>
+          <input class="form-input num" value="100,000개" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">연간 구매금액</label>
+          <input class="form-input num" value="14.5억원" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">작성자</label>
+          <input class="form-input" value="김구매" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 2. 선정 유형 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">선정 유형</span>
+      </div>
+      <div class="radio-row">
+        <label class="radio-opt">
+          <input type="radio" name="seltype" value="strategic">
+          <span>전략적 선정</span>
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="seltype" value="competitive" checked>
+          <span>경쟁 입찰</span>
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="seltype" value="committee">
+          <span>심의입찰</span>
+        </label>
+        <a href="04-11_bid_evaluation.html" class="inline-link">심의입찰 평가표 보기 →</a>
+      </div>
+    </div>
+
+    <!-- ── 3. 이원화 여부 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">이원화 여부</span>
+      </div>
+      <div class="radio-row" style="margin-bottom:12px">
+        <label class="radio-opt">
+          <input type="radio" name="dualtype" value="single" checked onchange="toggleDual()">
+          <span>단일</span>
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="dualtype" value="dual" onchange="toggleDual()">
+          <span>이원화</span>
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="dualtype" value="multi" onchange="toggleDual()">
+          <span>다원화</span>
+        </label>
+      </div>
+      <div id="dual-table" style="display:none">
+        <table class="snap-table">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding-left:12px">업체</th>
+              <th>공급 비율 (%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>A사 (동희부품)</td>
+              <td class="c">
+                <input type="number" class="form-input num" id="ratio-a" value="70" min="0" max="100" oninput="sumDual()">
+              </td>
+            </tr>
+            <tr>
+              <td>D사 (대원금속)</td>
+              <td class="c">
+                <input type="number" class="form-input num" id="ratio-d" value="30" min="0" max="100" oninput="sumDual()">
+              </td>
+            </tr>
+            <tr style="background:var(--grid-head)">
+              <td style="font-weight:600;text-align:right;padding-right:12px">합계</td>
+              <td class="c" id="dual-sum" style="font-weight:700">100%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── 4. 선정 근거 요약 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">선정 근거 요약</span>
+      </div>
+      <div class="sel-grid">
+        <div class="sel-card">
+          <div class="lbl">가격</div>
+          <div class="val">14,500원</div>
+          <div class="sub">협상 3R 합의</div>
+        </div>
+        <div class="sel-card">
+          <div class="lbl">품질</div>
+          <div class="val">PPAP 승인 완료</div>
+          <div class="sub">IATF 16949 인증</div>
+        </div>
+        <div class="sel-card">
+          <div class="lbl">납기</div>
+          <div class="val">SOP 2026-10-01 충족</div>
+          <div class="sub">샘플 납기 적기 완료</div>
+        </div>
+        <div class="sel-card">
+          <div class="lbl">기술</div>
+          <div class="val">2공정 가공 적합</div>
+          <div class="sub">Al 6061 가공 실적 보유</div>
+        </div>
+      </div>
+      <div class="form-row form-row-full">
+        <div class="form-field">
+          <label class="form-label">종합 선정 의견</label>
+          <textarea class="form-textarea" rows="2">3개사 견적 비교 및 부서별 검토 결과 A사를 최종 선정. 협상 후 단가 14,500원(목표가 대비 +2,400원)이나 품질·납기·기술 종합 우위. 고객가 재협상 병행 추진.</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 5. 결재선 (7단계) ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">결재선</span>
+      </div>
+      <div class="step-bar">
+        <!-- 1. 구매담당 (done) -->
+        <div class="step-node">
+          <div class="step-box done">
+            <span class="step-role">구매담당</span>
+            <span class="step-name">김구매</span>
+            <span class="step-date">2026-03-25</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 2. 구매팀장 (done) -->
+        <div class="step-node">
+          <div class="step-box done">
+            <span class="step-role">구매팀장</span>
+            <span class="step-name">이팀장</span>
+            <span class="step-date">2026-03-26</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 3. 구매부장 (prog) -->
+        <div class="step-node">
+          <div class="step-box prog">
+            <span class="step-role">구매부장</span>
+            <span class="step-name">박부장</span>
+            <span class="step-date">검토중</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 4. 품질담당 (wait) -->
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">품질담당</span>
+            <span class="step-name">최품질</span>
+            <span class="step-date">대기</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 5. 개발담당 (wait) -->
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">개발담당</span>
+            <span class="step-name">정개발</span>
+            <span class="step-date">대기</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 6. 재경팀장 (wait) -->
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">재경팀장</span>
+            <span class="step-name">한재경</span>
+            <span class="step-date">대기</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 7. 대표이사 (wait) — last node, no sep -->
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">대표이사</span>
+            <span class="step-name">정대표</span>
+            <span class="step-date">대기</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ── 반려 모달 ── -->
+<div id="modal-reject" class="modal-backdrop">
+  <div class="modal-box" style="width:480px">
+    <div class="modal-header">
+      <span class="modal-title">반려 처리</span>
+      <button class="modal-close" onclick="toggleModal('modal-reject', false)">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-field" style="margin-bottom:14px">
+        <label class="form-label">반려 사유 <span class="req">*</span></label>
+        <select class="form-select" id="reject-reason">
+          <option value="">-- 선택 --</option>
+          <option>가격 미달</option>
+          <option>근거 부족</option>
+          <option>이원화 검토 필요</option>
+          <option>기타</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">반려 의견</label>
+        <textarea class="form-textarea" rows="4" id="reject-comment" placeholder="반려 사유를 상세히 입력하십시오."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="toggleModal('modal-reject', false)">취소</button>
+      <button class="btn btn-danger" onclick="doReject()">
+        <i data-lucide="x-circle"></i>반려 확정
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  /* ── 모달 ── */
+  function toggleModal(id, open) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (open === undefined) {
+      el.classList.toggle('open');
+    } else {
+      el.classList.toggle('open', open);
+    }
+  }
+
+  /* ── 반려 확정 ── */
+  function doReject() {
+    var reason = document.getElementById('reject-reason').value;
+    if (!reason) {
+      showToast('반려 사유를 선택해 주세요.', 'bad');
+      return;
+    }
+    toggleModal('modal-reject', false);
+    showToast('반려 처리되었습니다.', 'bad');
+  }
+
+  /* ── 이원화 토글 ── */
+  function toggleDual() {
+    var checked = document.querySelector('input[name="dualtype"]:checked');
+    var table   = document.getElementById('dual-table');
+    if (!checked) return;
+    if (checked.value === 'single') {
+      table.style.display = 'none';
+    } else {
+      table.style.display = 'block';
+      sumDual();
+    }
+  }
+
+  /* ── 이원화 합계 ── */
+  function sumDual() {
+    var a   = parseInt(document.getElementById('ratio-a').value) || 0;
+    var d   = parseInt(document.getElementById('ratio-d').value) || 0;
+    var sum = a + d;
+    var el  = document.getElementById('dual-sum');
+    el.textContent = sum + '%';
+    el.style.color = sum === 100 ? 'var(--status-ok)' : 'var(--status-bad)';
+  }
+
+  /* ── 토스트 ── */
+  function showToast(msg, type, ms) {
+    var bg = type === 'ok'  ? '#16a34a'
+           : type === 'bad' ? '#dc2626'
+           : '#1f2937';
+    var icon = type === 'bad' ? 'alert-circle' : 'check-circle';
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.style.background = bg;
+    el.innerHTML =
+      '<i data-lucide="' + icon + '" style="width:14px;height:14px;flex-shrink:0"></i>' +
+      '<span>' + msg + '</span>';
+    document.body.appendChild(el);
+    if (window.lucide) window.lucide.createIcons({ nodes: [el] });
+    setTimeout(function () {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity 0.2s';
+      setTimeout(function () { el.remove(); }, 220);
+    }, ms || 2400);
+  }
+
+  /* ── ESC 단축키 ── */
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-backdrop.open').forEach(function (m) {
+        m.classList.remove('open');
+      });
+    }
+    if (e.ctrlKey && e.key === 's') {
+      e.preventDefault();
+      showToast('임시저장이 완료되었습니다.', 'ok');
+    }
+  });
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

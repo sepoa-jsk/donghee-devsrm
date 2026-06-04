@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>원가절감안 등록 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column; padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  /* 절감유형 border badge */
+  .pt { display:inline-block; font-size:11px; padding:0 7px; height:18px; line-height:18px;
+        border-radius:2px; border:1px solid; white-space:nowrap; }
+  .pt-design { border-color:var(--blue);        color:var(--blue); }
+  .pt-method { border-color:var(--status-ok);   color:var(--status-ok); }
+  .pt-mat    { border-color:var(--status-warn);  color:var(--status-warn); }
+  .pt-logi   { border-color:var(--text-sub);     color:var(--text-sub); }
+
+  /* 상태 dot */
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--status-ok);  } .st-ok::before   { background:var(--status-ok); }
+  .st-prog { color:var(--status-prog);} .st-prog::before  { background:var(--status-prog); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before   { background:var(--status-bad); }
+
+  /* 합계 행 (navy) */
+  tr.total-row td {
+    background:var(--navy); color:#fff; font-weight:700; border-bottom:none;
+  }
+</style>
+</head>
+
+<body data-menu="04-09">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">원가절감안 등록</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-primary" onclick="openModal()">
+        <i data-lucide="plus"></i>절감안 등록
+      </button>
+    </div>
+  </div>
+
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-filter" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to" value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+  </div>
+
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">절감유형</span>
+      <select class="search-input" id="f-type" style="width:130px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="설계변경">설계변경</option>
+        <option value="공법변경">공법변경</option>
+        <option value="소재변경">소재변경</option>
+        <option value="물류개선">물류개선</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="tbl" style="border:1px solid var(--border);border-radius:4px">
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox"></th>
+            <th style="width:120px">절감안번호</th>
+            <th style="width:90px">절감유형</th>
+            <th>절감 항목</th>
+            <th style="width:90px">현재원가(원)</th>
+            <th style="width:90px">개선후원가(원)</th>
+            <th style="width:80px">절감액(원)</th>
+            <th style="width:100px">적용시점</th>
+            <th style="width:90px">상태</th>
+            <th style="width:80px">담당자</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+        <tfoot id="tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- 절감안 등록 모달 -->
+<div id="modal-cr" class="modal-backdrop">
+  <div class="modal-box" style="width:520px">
+    <div class="modal-header">
+      <span class="modal-title">원가절감안 등록</span>
+      <button class="modal-close" onclick="closeModal()">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+      <div class="form-field">
+        <label class="form-label">절감유형 <span class="req">*</span></label>
+        <select class="form-select" id="m-type">
+          <option value="">선택</option>
+          <option value="설계변경">설계변경</option>
+          <option value="공법변경">공법변경</option>
+          <option value="소재변경">소재변경</option>
+          <option value="물류개선">물류개선</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">절감 항목 <span class="req">*</span></label>
+        <input type="text" class="form-input" id="m-item" placeholder="절감 내용을 입력하세요">
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-field">
+          <label class="form-label">현재원가 (원) <span class="req">*</span></label>
+          <input type="number" class="form-input num" id="m-cur" placeholder="0" oninput="calcSave()">
+        </div>
+        <div class="form-field">
+          <label class="form-label">개선후원가 (원) <span class="req">*</span></label>
+          <input type="number" class="form-input num" id="m-imp" placeholder="0" oninput="calcSave()">
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">절감액 (원)</label>
+        <input type="text" class="form-input num result" id="m-save" readonly placeholder="자동 계산">
+      </div>
+      <div class="form-field">
+        <label class="form-label">적용시점 <span class="req">*</span></label>
+        <input type="date" class="form-input" id="m-apply">
+      </div>
+      <div class="form-field">
+        <label class="form-label">사유</label>
+        <textarea class="form-textarea" id="m-reason" rows="3" placeholder="절감안 상세 사유를 입력하세요"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveModal()">
+        <i data-lucide="save"></i>저장
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+const DATA = [
+  { no:'CR-2026-0007', type:'공법변경', item:'가공 2공정 → 1공정 통합', cur:2400,  imp:1600,  save:800, apply:'2026-04-01', st:'승인',   mgr:'김구매' },
+  { no:'CR-2026-0009', type:'소재변경', item:'스크랩 회수율 개선',       cur:11200, imp:10900, save:300, apply:'2026-04-01', st:'검토중', mgr:'정설계' },
+  { no:'CR-2026-0011', type:'물류개선', item:'평택 직납 전환',           cur:300,   imp:220,   save:80,  apply:'2026-05-01', st:'적용완료',mgr:'이구매' },
+  { no:'CR-2026-0013', type:'설계변경', item:'리브 구조 단순화 (VE)',    cur:1500,  imp:1350,  save:150, apply:'2026-06-01', st:'반려',   mgr:'정설계' },
+];
+
+const TYPE_CLS = {
+  '설계변경': 'pt-design',
+  '공법변경': 'pt-method',
+  '소재변경': 'pt-mat',
+  '물류개선': 'pt-logi'
+};
+
+const ST_CLS = {
+  '승인':   'st-ok',
+  '적용완료':'st-ok',
+  '검토중': 'st-prog',
+  '반려':   'st-bad'
+};
+
+function fmt(n) { return n.toLocaleString(); }
+
+function applyFilter() {
+  const q    = document.getElementById('f-search').value.trim().toLowerCase();
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+  const type = document.getElementById('f-type')?.value || '';
+
+  const rows = DATA.filter(d => {
+    if (q && !d.no.toLowerCase().includes(q) && !d.item.toLowerCase().includes(q)) return false;
+    if (from && d.apply < from) return false;
+    if (to   && d.apply > to)   return false;
+    if (type && d.type !== type) return false;
+    return true;
+  });
+  renderRows(rows);
+}
+
+function renderRows(rows) {
+  document.getElementById('tbody').innerHTML = rows.map(d => `
+    <tr>
+      <td class="c" onclick="event.stopPropagation()"><input type="checkbox"></td>
+      <td class="c" style="font-weight:600;color:var(--blue)">${d.no}</td>
+      <td class="c"><span class="pt ${TYPE_CLS[d.type]}">${d.type}</span></td>
+      <td style="padding-left:12px">${d.item}</td>
+      <td class="r" style="padding-right:10px;font-variant-numeric:tabular-nums">${fmt(d.cur)}</td>
+      <td class="r" style="padding-right:10px;font-variant-numeric:tabular-nums">${fmt(d.imp)}</td>
+      <td class="r" style="padding-right:10px;font-variant-numeric:tabular-nums;color:var(--blue);font-weight:600">${fmt(d.save)}</td>
+      <td class="c muted">${d.apply}</td>
+      <td class="c"><span class="st ${ST_CLS[d.st]}">${d.st}</span></td>
+      <td class="c">${d.mgr}</td>
+    </tr>`).join('');
+
+  const totalSave = rows.reduce((s, d) => s + d.save, 0);
+  document.getElementById('tfoot').innerHTML = `
+    <tr class="total-row">
+      <td colspan="6" style="text-align:right;padding-right:10px">합계</td>
+      <td style="text-align:right;padding-right:10px;font-variant-numeric:tabular-nums">${fmt(totalSave)}</td>
+      <td colspan="3"></td>
+    </tr>`;
+}
+
+function toggleFilter() {
+  document.getElementById('filter-panel').classList.toggle('open');
+}
+
+function openModal() {
+  document.getElementById('modal-cr').classList.add('open');
+  document.getElementById('m-type').value  = '';
+  document.getElementById('m-item').value  = '';
+  document.getElementById('m-cur').value   = '';
+  document.getElementById('m-imp').value   = '';
+  document.getElementById('m-save').value  = '';
+  document.getElementById('m-apply').value = '';
+  document.getElementById('m-reason').value= '';
+  if (window.lucide) lucide.createIcons();
+}
+
+function closeModal() {
+  document.getElementById('modal-cr').classList.remove('open');
+}
+
+function calcSave() {
+  const cur = parseFloat(document.getElementById('m-cur').value) || 0;
+  const imp = parseFloat(document.getElementById('m-imp').value) || 0;
+  const save = Math.max(0, cur - imp);
+  document.getElementById('m-save').value = save > 0 ? save.toLocaleString() : '';
+}
+
+function saveModal() {
+  closeModal();
+  showToast('원가절감안이 등록되었습니다.', 'ok');
+}
+
+function showToast(msg, type) {
+  const bg = type === 'ok' ? '#16a34a' : type === 'bad' ? '#dc2626' : '#1f2937';
+  const icon = type === 'bad' ? 'alert-circle' : 'check-circle';
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.style.background = bg;
+  el.innerHTML = `<i data-lucide="${icon}" style="width:14px;height:14px;flex-shrink:0"></i><span>${msg}</span>`;
+  document.body.appendChild(el);
+  if (window.lucide) lucide.createIcons({ nodes: [el] });
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transition = 'opacity 0.2s';
+    setTimeout(() => el.remove(), 220);
+  }, 2400);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape')
+    document.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
+});
+
+applyFilter();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

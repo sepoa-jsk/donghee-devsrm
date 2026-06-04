@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>DevSRM 목업 인덱스</title>
+<link rel="stylesheet" href="common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  body { background: var(--bg); }
+  .index-wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 48px 32px 80px;
+  }
+  .index-header { margin-bottom: 36px; }
+  .index-logo { font-size: 22px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+  .index-logo span { color: var(--blue); }
+  .index-sub { font-size: 13px; color: var(--text-sub); }
+
+  .module { margin-bottom: 28px; }
+  .module-title {
+    font-size: 12px; font-weight: 700; color: var(--text-sub);
+    letter-spacing: 0.5px; text-transform: uppercase;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .screen-list { list-style: none; }
+  .screen-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .screen-item:last-child { border-bottom: none; }
+  .screen-code {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-mute);
+    width: 44px;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .screen-link {
+    color: var(--blue);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .screen-link:hover { text-decoration: underline; }
+  .screen-name {
+    color: var(--text-mute);
+  }
+  .screen-badge {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--status-prog);
+    background: var(--blue-light);
+    border-radius: 2px;
+    padding: 1px 7px;
+    flex-shrink: 0;
+  }
+  .screen-badge.todo {
+    color: var(--text-mute);
+    background: var(--grid-head);
+  }
+  .screen-badge.priority {
+    color: var(--navy);
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 48px; }
+</style>
+</head>
+<body>
+
+<div class="index-wrap">
+  <div class="index-header">
+    <div class="index-logo">Dev<span>SRM</span></div>
+    <div class="index-sub">동희산업 개발구매시스템 — Phase 1 HTML 목업 인덱스</div>
+    <div style="margin-top:8px;font-size:12px;color:var(--text-mute)">
+      데모 시나리오: 현대자동차 520 PHEV · H1110-T100 Frame Sub Ass'y · PJT-520PHEV-FT-2026
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- 왼쪽 컬럼 -->
+    <div>
+
+      <!-- 00. 공통 -->
+      <div class="module">
+        <div class="module-title">
+          <i data-lucide="layout-dashboard" style="width:13px;height:13px"></i>
+          00. 공통
+        </div>
+        <ul class="screen-list">
+          <li class="screen-item">
+            <span class="screen-code">00-01</span>
+            <a href="00_common/00-01_login.html" class="screen-link">로그인</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">00-02</span>
+            <a href="00_common/00-02_dashboard.html" class="screen-link">메인 대시보드 (전사 KPI)</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">00-03</span>
+            <span class="screen-name">알림함</span>
+            <span class="screen-badge todo">미작업</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 01. 개발 프로젝트 -->
+      <div class="module">
+        <div class="module-title">
+          <i data-lucide="briefcase" style="width:13px;height:13px"></i>
+          01. 개발 프로젝트
+        </div>
+        <ul class="screen-list">
+          <li class="screen-item">
+            <span class="screen-code">01-01</span>
+            <a href="01_project/01-01_rfq_list.html" class="screen-link">고객 RFQ 목록</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">01-02</span>
+            <a href="01_project/01-02_rfq_register.html" class="screen-link">고객 RFQ 등록/상세</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">01-03</span>
+            <a href="01_project/01-03_project_list.html" class="screen-link">개발 프로젝트 목록</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">01-04</span>
+            <a href="01_project/01-04_project_detail.html" class="screen-link">개발 프로젝트 상세 (대시보드)</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">01-05</span>
+            <a href="01_project/01-05_milestone.html" class="screen-link">프로젝트 일정/마일스톤</a>
+            <span class="screen-badge">완료</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 02. 설계/BOM -->
+      <div class="module">
+        <div class="module-title">
+          <i data-lucide="git-branch" style="width:13px;height:13px"></i>
+          02. 설계 / BOM
+        </div>
+        <ul class="screen-list">
+          <li class="screen-item">
+            <span class="screen-code">02-01</span>
+            <a href="02_design_bom/02-01_part_list.html" class="screen-link">품번 목록</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">02-02</span>
+            <a href="02_design_bom/02-02_part_detail.html" class="screen-link">품번·BOM·도면 상세</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">02-03</span>
+            <a href="02_design_bom/02-03_drawing_history.html" class="screen-link">도면 리비전 이력</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">02-04</span>
+            <a href="02_design_bom/02-04_bom_tree.html" class="screen-link">BOM 트리 뷰</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">02-05</span>
+            <a href="02_design_bom/02-05_bom_create.html" class="screen-link">BOM 구성 작성</a>
+            <span class="screen-badge">완료</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 03. 원가관리 -->
+      <div class="module">
+        <div class="module-title">
+          <i data-lucide="calculator" style="width:13px;height:13px"></i>
+          03. 원가관리
+        </div>
+        <ul class="screen-list">
+          <li class="screen-item">
+            <span class="screen-code">03-01</span>
+            <a href="03_cost/03-01_target_list.html" class="screen-link">목표가 설정 목록</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">03-02</span>
+            <a href="03_cost/03-02_target_detail.html" class="screen-link">목표가 설정 상세</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">03-03</span>
+            <a href="03_cost/03-03_lme_list.html" class="screen-link">LME 기준정보 목록</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">03-04</span>
+            <a href="03_cost/03-04_lme_register.html" class="screen-link">LME 기준정보 등록</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">03-05</span>
+            <a href="03_cost/03-05_exchange_rate.html" class="screen-link">환율 관리</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">03-06</span>
+            <a href="03_cost/03-06_material_list.html" class="screen-link">재료비 산출 목록</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">03-07</span>
+            <a href="03_cost/03-07_material_cost.html" class="screen-link">재료비 산출 상세</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">03-08</span>
+            <a href="03_cost/03-08_cost_analysis.html" class="screen-link">목표가 대비 원가 분석</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">03-09</span>
+            <a href="03_cost/03-09_target_revision.html" class="screen-link">단계별 목표원가 차수 관리</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">03-10</span>
+            <a href="03_cost/03-10_cost_reduction_dept.html" class="screen-link">원가절감 목표 부서별 배부</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">03-11</span>
+            <a href="03_cost/03-11_cost_gap_analysis.html" class="screen-link">현상원가 차이 분석</a>
+            <span class="screen-badge">완료</span>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- 오른쪽 컬럼 -->
+    <div>
+
+      <!-- 04. 개발구매 -->
+      <div class="module">
+        <div class="module-title">
+          <i data-lucide="shopping-cart" style="width:13px;height:13px"></i>
+          04. 개발구매
+        </div>
+        <ul class="screen-list">
+          <li class="screen-item">
+            <span class="screen-code">04-01</span>
+            <a href="04_dev_purchase/04-01_purchase_target.html" class="screen-link">구매대상 품목 확정</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">04-02</span>
+            <a href="04_dev_purchase/04-02_rfq_list.html" class="screen-link">RFQ 목록</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">04-03</span>
+            <a href="04_dev_purchase/04-03_rfq_create.html" class="screen-link">RFQ 생성/발송</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">04-04</span>
+            <a href="04_dev_purchase/04-04_rfq_detail.html" class="screen-link">RFQ 상세 (대상 협력사 진행상태)</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">04-05</span>
+            <a href="04_dev_purchase/04-05_supplier_quote.html" class="screen-link">협력사 견적 제출</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">04-06</span>
+            <a href="04_dev_purchase/04-06_quote_compare.html" class="screen-link">견적 Breakdown 비교 ★</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">04-07</span>
+            <a href="04_dev_purchase/04-07_dept_review.html" class="screen-link">부서별 검토 (설계/품질/영업 탭)</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">04-08</span>
+            <a href="04_dev_purchase/04-08_negotiation.html" class="screen-link">협상 이력 관리 ★</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">04-09</span>
+            <a href="04_dev_purchase/04-09_cost_reduction.html" class="screen-link">원가절감안 등록</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">04-10</span>
+            <a href="04_dev_purchase/04-10_selection_approval.html" class="screen-link">업체 선정 품의/결재 ★</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">04-11</span>
+            <a href="04_dev_purchase/04-11_bid_evaluation.html" class="screen-link">심의입찰 평가 (가중치 기반)</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">04-12</span>
+            <a href="04_dev_purchase/04-12_supplier_change.html" class="screen-link">업체변경 / 이원화·다원화 품의</a>
+            <span class="screen-badge">완료</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 05. 품질관리 -->
+      <div class="module">
+        <div class="module-title">
+          <i data-lucide="shield-check" style="width:13px;height:13px"></i>
+          05. 품질관리
+        </div>
+        <ul class="screen-list">
+          <li class="screen-item">
+            <span class="screen-code">05-01</span>
+            <a href="05_quality/05-01_supplier_quality.html" class="screen-link">협력사 품질 평가</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">05-02</span>
+            <a href="05_quality/05-02_apqp.html" class="screen-link">APQP 일정 관리</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">05-03</span>
+            <a href="05_quality/05-03_sample_mold.html" class="screen-link">샘플·금형 일정</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">05-04</span>
+            <a href="05_quality/05-04_ppap_list.html" class="screen-link">PPAP 문서 관리 (목록)</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">05-04</span>
+            <a href="05_quality/05-04_ppap_detail.html" class="screen-link">PPAP 문서 관리 (12단계 상세)</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">05-05</span>
+            <a href="05_quality/05-05_eo_list.html" class="screen-link">EO 접수 현황</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">05-06</span>
+            <a href="05_quality/05-06_dev_request.html" class="screen-link">개발 요청서 작성 (가단가 결정)</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">05-07</span>
+            <a href="05_quality/05-07_design_notice.html" class="screen-link">설계 변경 통보</a>
+            <span class="screen-badge">완료</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 06. 단가관리 -->
+      <div class="module">
+        <div class="module-title">
+          <i data-lucide="tag" style="width:13px;height:13px"></i>
+          06. 단가관리
+        </div>
+        <ul class="screen-list">
+          <li class="screen-item">
+            <span class="screen-code">06-01</span>
+            <a href="06_price/06-01_price_list.html" class="screen-link">확정단가 목록</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">06-02</span>
+            <a href="06_price/06-02_price_detail.html" class="screen-link">확정단가 등록/상세</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">06-03</span>
+            <a href="06_price/06-03_price_history.html" class="screen-link">단가 이력 (시계열)</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">06-04</span>
+            <a href="06_price/06-04_price_approval.html" class="screen-link">가단가/정단가/사급단가 품의</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">06-05</span>
+            <a href="06_price/06-05_price_pending.html" class="screen-link">단가 미결 현황 모니터링</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">06-06</span>
+            <a href="06_price/06-06_retroactive.html" class="screen-link">임의정산(소급정산) 관리</a>
+            <span class="screen-badge">완료</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 07. 연계관리 -->
+      <div class="module">
+        <div class="module-title">
+          <i data-lucide="link" style="width:13px;height:13px"></i>
+          07. 연계관리
+        </div>
+        <ul class="screen-list">
+          <li class="screen-item">
+            <span class="screen-code">07-01</span>
+            <span class="screen-name">ERP 양산 전환 체크리스트</span>
+            <span class="screen-badge todo">미작업</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">07-02</span>
+            <span class="screen-name">ERP 전송 이력</span>
+            <span class="screen-badge todo">미작업</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">07-03</span>
+            <span class="screen-name">외부 API 연동 현황</span>
+            <span class="screen-badge todo">미작업</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 08. 변경관리 -->
+      <div class="module">
+        <div class="module-title">
+          <i data-lucide="refresh-cw" style="width:13px;height:13px"></i>
+          08. 변경관리
+        </div>
+        <ul class="screen-list">
+          <li class="screen-item">
+            <span class="screen-code">08-01</span>
+            <span class="screen-name">설계 변경 영향 분석</span>
+            <span class="screen-badge todo">미작업</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">08-02</span>
+            <span class="screen-name">LME 변동 영향 분석</span>
+            <span class="screen-badge todo">미작업</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">08-03</span>
+            <span class="screen-name">환율 변동 영향 분석</span>
+            <span class="screen-badge todo">미작업</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">08-04</span>
+            <span class="screen-name">단가 변경 이력</span>
+            <span class="screen-badge todo">미작업</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 09. 협력사 관리 -->
+      <div class="module">
+        <div class="module-title">
+          <i data-lucide="users" style="width:13px;height:13px"></i>
+          09. 협력사 관리
+        </div>
+        <ul class="screen-list">
+          <li class="screen-item">
+            <span class="screen-code">09-01</span>
+            <a href="09_supplier/09-01_supplier_register.html" class="screen-link">협력사 사전 등록·평가 (목록)</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">09-01</span>
+            <a href="09_supplier/09-01_supplier_register_detail.html" class="screen-link">협력사 사전 등록·평가 (상세)</a>
+            <span class="screen-badge">완료</span>
+          </li>
+          <li class="screen-item">
+            <span class="screen-code">09-02</span>
+            <a href="09_supplier/09-02_supplier_eval.html" class="screen-link">협력사 사후 평가 (Q-5스타)</a>
+            <span class="screen-badge">완료</span>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </div><!-- /grid-2 -->
+</div><!-- /index-wrap -->
+
+<script>
+  lucide.createIcons();
+</script>
+</body>
+</html>

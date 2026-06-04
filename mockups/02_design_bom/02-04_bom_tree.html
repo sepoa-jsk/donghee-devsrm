@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>BOM 트리 뷰 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 상단 컨트롤 바 ── */
+  .ctrl-bar {
+    height: 44px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 24px; gap: 10px;
+    flex-shrink: 0;
+  }
+  .ctrl-select {
+    height: 30px; border: 1px solid var(--border); border-radius: 4px;
+    padding: 0 28px 0 10px; font-size: 12px;
+    font-family: 'Pretendard', sans-serif; color: var(--text);
+    background: var(--surface);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 7px center;
+    appearance: none; outline: none; cursor: pointer;
+  }
+  .ctrl-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+  .ctrl-btn {
+    height: 28px; padding: 0 10px; border-radius: 4px;
+    font-size: 12px; font-family: 'Pretendard', sans-serif; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-sub);
+    cursor: pointer; white-space: nowrap; transition: background .12s;
+  }
+  .ctrl-btn:hover { background: var(--bg); color: var(--text); }
+  .ctrl-btn.active { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
+
+  /* ── 프로젝트 카드 ── */
+  .proj-card {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 8px 24px; display: flex; align-items: center; gap: 0;
+    flex-shrink: 0; font-size: 12px;
+  }
+  .pc-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 20px; border-right: 1px solid var(--border);
+  }
+  .pc-item:first-child { padding-left: 0; }
+  .pc-item:last-child  { border-right: none; }
+  .pc-label { color: var(--text-mute); }
+  .pc-val   { color: var(--text); font-weight: 600; }
+
+  /* ── BOM 트리 영역 ── */
+  .tree-area {
+    flex: 1; overflow: hidden; display: flex; flex-direction: column;
+    padding: 14px 24px 16px;
+  }
+  .tree-fill { flex: 1; overflow-y: auto; }
+  .tree-fill::-webkit-scrollbar { width: 6px; }
+  .tree-fill::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+  /* ── BOM 행 스타일 ── */
+  table.bom-table {
+    width: 100%; border-collapse: collapse; font-size: 12px;
+    border-top: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+  }
+  table.bom-table thead th {
+    background: var(--grid-head); padding: 0 10px; height: 32px;
+    font-size: 12px; font-weight: 600; color: var(--text);
+    text-align: center !important;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    white-space: nowrap; position: sticky; top: 0; z-index: 1;
+  }
+  table.bom-table thead th:last-child { border-right: none; }
+  table.bom-table tbody td {
+    padding: 0 10px; height: 32px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text); vertical-align: middle; white-space: nowrap;
+  }
+  table.bom-table tbody td:last-child { border-right: none; }
+  table.bom-table tbody tr:hover td { background: var(--grid-hover); cursor: pointer; }
+  table.bom-table tbody tr.selected td { background: var(--grid-select); }
+  table.bom-table tbody tr.hidden { display: none; }
+
+  /* ── 트리 셀 내부 ── */
+  .tree-cell {
+    display: flex; align-items: center; gap: 0;
+  }
+  /* 펼치기/접기 버튼 */
+  .expand-btn {
+    width: 18px; height: 18px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-sub); border-radius: 2px;
+    transition: color .1s, background .1s;
+    margin-right: 4px;
+  }
+  .expand-btn:hover { background: var(--bg); color: var(--text); }
+  .leaf-spacer { width: 22px; flex-shrink: 0; }
+
+  /* 링크 */
+  .bom-code-link {
+    color: var(--blue); font-weight: 600; text-decoration: none; cursor: pointer;
+  }
+  .bom-code-link:hover { text-decoration: underline; }
+
+  /* 레벨별 색 힌트 */
+  .lv0 .bom-code-link { color: var(--navy); }
+  .lv1 .bom-code-link { color: var(--blue); }
+  .lv2 .bom-code-link { color: var(--blue); }
+  .lv3 .bom-code-link { color: var(--text-sub); }
+
+  /* 상태 점 */
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--text);       } .st-ok::before   { background:var(--navy); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+
+  /* mBOM 내제 행 하이라이트 */
+  table.bom-table tbody tr.mfg-row td { background:#fffbeb; }
+  table.bom-table tbody tr.mfg-row:hover td { background:#fef3c7; }
+</style>
+</head>
+
+<body data-menu="02-04">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">BOM 트리 뷰</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary btn-sm" onclick="location.href='02-02_part_detail.html'">
+        <i data-lucide="file-text"></i>품번 상세
+      </button>
+    </div>
+  </div>
+
+  <!-- 컨트롤 바 -->
+  <div class="ctrl-bar">
+    <span style="font-size:12px;color:var(--text-sub);font-weight:500">프로젝트</span>
+    <select class="ctrl-select" style="width:220px" onchange="switchProject(this.value)">
+      <option value="FTM">PJT-520PHEV-FT-2026 · Fuel Tank Module</option>
+      <option value="CM">PJT-NX5-CM-2026 · Cooling Module</option>
+      <option value="BR">PJT-MQ4-BR-2026 · Bracket Assy</option>
+    </select>
+    <span style="font-size:12px;color:var(--text-sub);font-weight:500">최상위 품번</span>
+    <select class="ctrl-select" style="width:160px" id="root-select" onchange="buildTree()">
+      <option value="H1110-T100">H1110-T100</option>
+    </select>
+    <div class="ctrl-sep"></div>
+    <button class="ctrl-btn active" id="btn-ebom" onclick="switchBomType('eBOM')">eBOM</button>
+    <button class="ctrl-btn" id="btn-mbom" onclick="switchBomType('mBOM')">mBOM</button>
+    <div class="ctrl-sep"></div>
+    <button class="ctrl-btn" onclick="expandAll()">
+      <i data-lucide="chevrons-down" style="width:13px;height:13px"></i>전체 펼치기
+    </button>
+    <button class="ctrl-btn" onclick="collapseAll()">
+      <i data-lucide="chevrons-up" style="width:13px;height:13px"></i>전체 접기
+    </button>
+    <div class="ctrl-sep"></div>
+    <button class="ctrl-btn" id="btn-purchase" onclick="togglePurchaseFilter()">
+      <i data-lucide="package-check" style="width:13px;height:13px"></i>구매대상만
+    </button>
+    <div class="page-title-spacer"></div>
+    <span style="font-size:11px;color:var(--text-mute)" id="bom-summary"></span>
+  </div>
+
+  <!-- 프로젝트 정보 카드 -->
+  <div class="proj-card">
+    <div class="pc-item"><span class="pc-label">고객사</span><span class="pc-val">현대자동차</span></div>
+    <div class="pc-item"><span class="pc-label">차종</span><span class="pc-val">520 PHEV</span></div>
+    <div class="pc-item"><span class="pc-label">대상 품번</span><a href="02-02_part_detail.html" class="pc-val" style="color:var(--blue);text-decoration:none">H1110-T100 · Frame Sub Ass'y</a></div>
+    <div class="pc-item"><span class="pc-label">도면 Rev</span><span class="pc-val">Rev.B</span></div>
+    <div class="pc-item"><span class="pc-label">SOP</span><span class="pc-val">2026-10-01</span></div>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <a href="../01_project/01-04_project_detail.html" class="ctrl-btn" style="text-decoration:none">프로젝트 상세</a>
+      <a href="../03_cost/03-07_material_cost.html" class="ctrl-btn" style="text-decoration:none">재료비 산출</a>
+    </div>
+  </div>
+
+  <!-- BOM 트리 -->
+  <div class="tree-area">
+    <div class="tree-fill">
+      <table class="bom-table" id="bom-table">
+        <thead>
+          <tr>
+            <th style="text-align:left !important;padding-left:10px;width:320px">품번 / 품명</th>
+            <th style="width:50px">수량</th>
+            <th style="width:50px">레벨</th>
+            <th style="width:120px">재질</th>
+            <th style="width:68px">도면 Rev</th>
+            <th style="width:90px">적용시점</th>
+            <th style="width:76px">구매구분</th>
+            <th class="r" style="width:88px">순중량(kg)</th>
+            <th class="r" style="width:88px">투입중량(kg)</th>
+            <th class="r" style="width:80px">스크랩(kg)</th>
+            <th class="r" style="width:110px">목표구매단가(원)</th>
+            <th style="width:76px">상태</th>
+          </tr>
+        </thead>
+        <tbody id="bom-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ── BOM 데이터 ── */
+const BOM_DATA = {
+  FTM: {
+    roots: ['H1110-T100'],
+    nodes: {
+      'H1110-T100': { name:"Frame Sub Ass'y",    mat:'Aluminum 6061', rev:'Rev.B', type:'구매대상', netW:2.60, inW:2.85, scrap:0.42, target:12100, qty:1, eff:'2026-03-10', children:['H1110-T101','H1110-T102','H1110-T103','H1110-T104','H1110-T105'], status:'개발중', plm:'연동' },
+      'H1110-T101': { name:'Bracket Assy Upper', mat:'SPCC',          rev:'Rev.A', type:'구매대상', netW:0.38, inW:0.42, scrap:0.04, target:2200,  qty:1, eff:'2026-01-15', children:['H1110-T101A','H1110-T101B'], status:'개발중', plm:'연동' },
+      'H1110-T102': { name:'Cover Plate',        mat:'Aluminum 6061', rev:'Rev.A', type:'구매대상', netW:0.32, inW:0.38, scrap:0.06, target:1800,  qty:1, eff:'2026-01-15', children:['H1110-T102A'], status:'개발중', plm:'연동' },
+      'H1110-T103': { name:'Rubber Seal',        mat:'NBR70',         rev:'Rev.A', type:'사급',     netW:0.08, inW:0.08, scrap:0.00, target:420,   qty:2, eff:'2026-01-15', children:[], status:'개발중', plm:'연동' },
+      'H1110-T104': { name:'Pipe Connector',     mat:'Aluminum 6061', rev:'Rev.A', type:'구매대상', netW:0.15, inW:0.18, scrap:0.03, target:1100,  qty:1, eff:'2026-01-15', children:[], status:'개발중', plm:'연동' },
+      'H1110-T105': { name:'Hose Assembly',      mat:'EPDM',          rev:'Rev.A', type:'구매대상', netW:0.20, inW:0.22, scrap:0.02, target:3200,  qty:1, eff:'2026-01-15', children:[], status:'개발중', plm:'미연동' },
+      'H1110-T101A':{ name:'Upper Bracket Body', mat:'SPCC',          rev:'Rev.A', type:'내제',     netW:0.28, inW:0.32, scrap:0.04, target:1600,  qty:1, eff:'2026-01-15', children:[], status:'개발중', plm:'연동', mfg:'프레스 → 절곡' },
+      'H1110-T101B':{ name:'Mounting Tab',       mat:'SPCC',          rev:'Rev.A', type:'내제',     netW:0.05, inW:0.06, scrap:0.01, target:null,  qty:2, eff:'2026-01-15', children:[], status:'개발중', plm:'연동', mfg:'프레스' },
+      'H1110-T102A':{ name:'Cover Base Plate',   mat:'Aluminum 6061', rev:'Rev.A', type:'내제',     netW:0.30, inW:0.34, scrap:0.04, target:1500,  qty:1, eff:'2026-01-15', children:[], status:'개발중', plm:'연동', mfg:'프레스 → 트리밍' },
+    }
+  },
+  CM: {
+    roots: ['K2200-C100'],
+    nodes: {
+      'K2200-C100': { name:'Cooling Module Assy', mat:'Aluminum 6061', rev:'Rev.A', type:'구매대상', netW:1.80, inW:2.00, scrap:0.20, target:18500, qty:1, eff:'2026-02-10', children:['K2200-C101','K2200-C102'], status:'개발중', plm:'연동' },
+      'K2200-C101': { name:'Radiator Bracket',    mat:'SPCC',          rev:'Rev.A', type:'구매대상', netW:0.42, inW:0.48, scrap:0.06, target:2600,  qty:2, eff:'2026-02-10', children:[], status:'개발중', plm:'연동' },
+      'K2200-C102': { name:'Hose Clamp Set',      mat:'SUS304',        rev:'Rev.A', type:'구매대상', netW:0.03, inW:0.03, scrap:0.00, target:120,   qty:4, eff:'2026-02-10', children:[], status:'개발중', plm:'연동' },
+    }
+  },
+  BR: {
+    roots: ['M3300-B100'],
+    nodes: {
+      'M3300-B100': { name:'Bracket Assy',    mat:'SPCC', rev:'Rev.A', type:'구매대상', netW:0.95, inW:1.08, scrap:0.13, target:9500, qty:1, eff:'2026-03-02', children:['M3300-B101'], status:'개발중', plm:'미연동' },
+      'M3300-B101': { name:'Reinforce Plate', mat:'SPCC', rev:'-',     type:'구매대상', netW:0.30, inW:0.35, scrap:0.05, target:null, qty:1, eff:'-',          children:[], status:'도면등록중', plm:'미연동' },
+    }
+  }
+};
+
+let currentProj = 'FTM';
+let expandedSet = new Set();
+let purchaseOnly = false;
+let bomType = 'eBOM';
+
+function switchProject(proj) {
+  currentProj = proj;
+  const data = BOM_DATA[proj];
+  const sel = document.getElementById('root-select');
+  sel.innerHTML = data.roots.map(r =>
+    `<option value="${r}">${r}</option>`
+  ).join('');
+  buildTree();
+}
+
+function buildTree() {
+  const data  = BOM_DATA[currentProj];
+  const rootId = document.getElementById('root-select').value;
+  expandedSet = new Set(Object.keys(data.nodes)); // all expanded by default
+
+  renderTree(data, rootId);
+}
+
+function renderTree(data, rootId) {
+  const tbody = document.getElementById('bom-tbody');
+  tbody.innerHTML = '';
+
+  let seq = 0;
+  const rows = [];
+
+  function traverse(id, level) {
+    const node = data.nodes[id];
+    if (!node) return;
+    seq++;
+
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded  = expandedSet.has(id);
+    const isPurchase  = node.type === '구매대상';
+    const isHidden    = purchaseOnly && !isPurchase;
+
+    rows.push({ id, node, level, seq, hasChildren, isExpanded, isPurchase, isHidden });
+
+    if (hasChildren && isExpanded) {
+      node.children.forEach(childId => traverse(childId, level + 1));
+    }
+  }
+
+  traverse(rootId, 0);
+
+  // Summary
+  const total    = rows.length;
+  const purchase = rows.filter(r => r.isPurchase).length;
+  document.getElementById('bom-summary').textContent = purchaseOnly
+    ? `구매대상 ${purchase}개 표시 (전체 ${total}개 중)`
+    : `전체 ${total}개 품번 · 구매대상 ${purchase}개 · 내제 ${total - purchase}개`;
+
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.dataset.id = r.id;
+    if (r.isPurchase) tr.classList.add('purchase-target');
+    if (r.isHidden)   tr.classList.add('hidden');
+    if (bomType === 'mBOM' && r.node.type === '내제') tr.classList.add('mfg-row');
+
+    const indentPx = r.level * 20;
+
+    const expandBtn = r.hasChildren
+      ? `<button class="expand-btn" onclick="event.stopPropagation();toggleNode('${r.id}')" title="${r.isExpanded ? '접기' : '펼치기'}">
+           <i data-lucide="chevron-down" style="width:13px;height:13px"></i>
+         </button>`
+      : `<span class="leaf-spacer"></span>`;
+
+    const fmt = n => n !== null && n !== undefined ? n.toLocaleString() : '-';
+    const fmtW = n => n !== null ? n.toFixed(2) : '-';
+
+    const stMap = { '개발중':'st-prog', '도면등록중':'st-wait', '양산':'st-ok' };
+    const stHtml = `<span class="st ${stMap[r.node.status] || 'st-wait'}">${r.node.status}</span>`;
+
+    const mfgTag = (bomType === 'mBOM' && r.node.mfg)
+      ? ` <span style="font-size:10px;color:var(--status-warn);border:1px solid var(--status-warn);border-radius:2px;padding:0 4px;margin-left:4px">${r.node.mfg}</span>` : '';
+
+    tr.innerHTML = `
+      <td style="text-align:left;padding-left:6px">
+        <div class="tree-cell lv${r.level}" style="padding-left:${indentPx}px">
+          ${expandBtn}
+          <a href="02-02_part_detail.html" class="bom-code-link" onclick="event.stopPropagation()" style="margin-right:6px">${r.id}</a>
+          <span style="color:var(--text-sub)">${r.node.name}${mfgTag}</span>
+        </div>
+      </td>
+      <td style="text-align:center;color:var(--text-sub)">${r.node.qty}</td>
+      <td style="text-align:center;color:var(--text-mute);font-size:11px">L${r.level + 1}</td>
+      <td style="text-align:center;color:var(--text-sub)">${r.node.mat}</td>
+      <td style="text-align:center;color:var(--text-sub)">${r.node.rev}</td>
+      <td style="text-align:center;color:var(--text-sub);font-size:11px">${r.node.eff || '-'}</td>
+      <td style="text-align:center;font-size:11px;color:var(--text-sub)">${r.node.type}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${fmtW(r.node.netW)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${fmtW(r.node.inW)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--text-mute)">${fmtW(r.node.scrap)}</td>
+      <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${fmt(r.node.target)}</td>
+      <td style="text-align:center">${stHtml}</td>
+    `;
+
+    tr.addEventListener('click', e => {
+      if (e.target.closest('button') || e.target.tagName === 'A') return;
+      document.querySelectorAll('#bom-tbody tr.selected').forEach(t => t.classList.remove('selected'));
+      tr.classList.toggle('selected');
+    });
+
+    tbody.appendChild(tr);
+  });
+
+  lucide.createIcons();
+}
+
+function toggleNode(id) {
+  if (expandedSet.has(id)) {
+    expandedSet.delete(id);
+    // collapse all descendants too
+    const data = BOM_DATA[currentProj];
+    function collapseDesc(nodeId) {
+      const node = data.nodes[nodeId];
+      if (!node) return;
+      node.children?.forEach(c => { expandedSet.delete(c); collapseDesc(c); });
+    }
+    collapseDesc(id);
+  } else {
+    expandedSet.add(id);
+  }
+  const rootId = document.getElementById('root-select').value;
+  renderTree(BOM_DATA[currentProj], rootId);
+}
+
+function expandAll() {
+  const data = BOM_DATA[currentProj];
+  Object.keys(data.nodes).forEach(id => expandedSet.add(id));
+  const rootId = document.getElementById('root-select').value;
+  renderTree(data, rootId);
+}
+
+function collapseAll() {
+  const rootId = document.getElementById('root-select').value;
+  expandedSet = new Set([rootId]);
+  renderTree(BOM_DATA[currentProj], rootId);
+}
+
+function togglePurchaseFilter() {
+  purchaseOnly = !purchaseOnly;
+  document.getElementById('btn-purchase').classList.toggle('active', purchaseOnly);
+  const rootId = document.getElementById('root-select').value;
+  renderTree(BOM_DATA[currentProj], rootId);
+}
+
+function switchBomType(type) {
+  bomType = type;
+  document.getElementById('btn-ebom').classList.toggle('active', type === 'eBOM');
+  document.getElementById('btn-mbom').classList.toggle('active', type === 'mBOM');
+  const rootId = document.getElementById('root-select').value;
+  renderTree(BOM_DATA[currentProj], rootId);
+}
+
+/* init */
+buildTree();
+</script>
+<script src="../common/sidebar.js"></script>
+</body>
+</html>

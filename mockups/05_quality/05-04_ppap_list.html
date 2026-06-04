@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>PPAP 문서 관리 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .search-wrap { flex:1; position:relative; max-width:480px; }
+  .search-wrap input {
+    width:100%; height:32px; border:1px solid var(--border); border-radius:4px;
+    padding:0 34px 0 12px; font-size:13px; font-family:'Pretendard',sans-serif;
+    color:var(--text); background:var(--surface); outline:none; transition:border-color .15s;
+  }
+  .search-wrap input:focus { border-color:var(--blue); box-shadow:0 0 0 2px rgba(26,86,170,.12); }
+  .search-wrap input::placeholder { color:var(--text-mute); }
+  .search-wrap .s-icon { position:absolute; right:9px; top:50%; transform:translateY(-50%); color:var(--text-mute); pointer-events:none; }
+
+  .ss-btn {
+    background:none; border:none; cursor:pointer;
+    font-size:12px; color:var(--text-sub); font-family:'Pretendard',sans-serif;
+    display:flex; align-items:center; gap:5px; padding:0; transition:color .1s;
+  }
+  .ss-btn:hover { color:var(--text); }
+  .ss-btn.active { color:var(--blue); font-weight:600; }
+  .ss-cnt { font-weight:700; font-variant-numeric:tabular-nums; }
+  .ss-btn.active .ss-cnt { color:var(--blue); }
+
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column; padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; cursor:pointer; }
+  .td-link:hover { text-decoration:underline; }
+
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--text);       } .st-ok::before   { background:var(--navy); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+
+  /* 진행률 바 */
+  .prog-bar-wrap { display:flex; align-items:center; gap:8px; }
+  .prog-bar { height:6px; border-radius:3px; background:var(--border); flex:1; min-width:60px; overflow:hidden; }
+  .prog-bar-fill { height:100%; border-radius:3px; background:var(--navy); }
+  .prog-num { font-size:11px; color:var(--text-sub); white-space:nowrap; font-variant-numeric:tabular-nums; min-width:40px; text-align:right; }
+</style>
+</head>
+
+<body data-menu="05-04">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">PPAP 문서 관리</span>
+  </div>
+
+  <!-- 검색 바 -->
+  <div class="search-bar">
+    <div class="search-wrap">
+      <input type="text" placeholder="품번 또는 협력사 검색">
+      <i data-lucide="search" class="s-icon" style="width:14px;height:14px"></i>
+    </div>
+    <div class="search-field">
+      <span class="search-label">협력사</span>
+      <select class="search-select" style="width:100px">
+        <option>전체</option>
+        <option selected>A사</option>
+        <option>B사</option>
+        <option>C사</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">상태</span>
+      <select class="search-select" style="width:100px">
+        <option>전체</option>
+        <option>진행중</option>
+        <option>완료</option>
+        <option>반려</option>
+        <option>미제출</option>
+      </select>
+    </div>
+    <div class="ml-auto">
+      <button class="btn btn-primary">
+        <i data-lucide="plus"></i>PPAP 등록
+      </button>
+    </div>
+  </div>
+
+  <!-- 상태 스트립 -->
+  <div class="search-bar" style="height:36px;border-top:none;gap:20px">
+    <button class="ss-btn active">전체 <span class="ss-cnt">4</span></button>
+    <button class="ss-btn">진행중 <span class="ss-cnt">2</span></button>
+    <button class="ss-btn">완료 <span class="ss-cnt">1</span></button>
+    <button class="ss-btn" style="color:var(--status-bad)">반려 <span class="ss-cnt" style="color:var(--status-bad)">1</span></button>
+    <button class="ss-btn">미제출 <span class="ss-cnt">0</span></button>
+  </div>
+
+  <!-- 그리드 -->
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox"></th>
+            <th style="width:130px">품번</th>
+            <th style="min-width:180px">품명</th>
+            <th style="width:80px">협력사</th>
+            <th style="width:108px">SOP</th>
+            <th style="width:110px">최초 제출일</th>
+            <th style="width:180px">12단계 진행률</th>
+            <th style="width:96px">상태</th>
+            <th style="width:110px">최종 업데이트</th>
+            <th style="width:80px">담당자</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr onclick="location.href='05-04_ppap_detail.html'" style="cursor:pointer">
+            <td class="c" onclick="event.stopPropagation()"><input type="checkbox"></td>
+            <td class="c"><a class="td-link" href="05-04_ppap_detail.html" onclick="event.stopPropagation()">H1110-T100</a></td>
+            <td style="padding-left:12px">Frame Sub Ass'y</td>
+            <td class="c muted">A사</td>
+            <td class="c muted">2026-10-01</td>
+            <td class="c muted">2026-05-10</td>
+            <td class="c">
+              <div class="prog-bar-wrap">
+                <div class="prog-bar"><div class="prog-bar-fill" style="width:58%"></div></div>
+                <span class="prog-num">7 / 12</span>
+              </div>
+            </td>
+            <td class="c"><span class="st st-prog">진행중</span></td>
+            <td class="c muted">2026-06-03</td>
+            <td class="c muted">이품질</td>
+          </tr>
+          <tr onclick="location.href='05-04_ppap_detail.html'" style="cursor:pointer">
+            <td class="c" onclick="event.stopPropagation()"><input type="checkbox"></td>
+            <td class="c"><a class="td-link" href="05-04_ppap_detail.html" onclick="event.stopPropagation()">H1110-T101</a></td>
+            <td style="padding-left:12px">Bracket Assy Upper</td>
+            <td class="c muted">A사</td>
+            <td class="c muted">2026-10-01</td>
+            <td class="c muted">2026-05-15</td>
+            <td class="c">
+              <div class="prog-bar-wrap">
+                <div class="prog-bar"><div class="prog-bar-fill" style="width:33%"></div></div>
+                <span class="prog-num">4 / 12</span>
+              </div>
+            </td>
+            <td class="c"><span class="st st-bad">반려</span></td>
+            <td class="c muted">2026-05-28</td>
+            <td class="c muted">이품질</td>
+          </tr>
+          <tr>
+            <td class="c"><input type="checkbox"></td>
+            <td class="c"><a class="td-link" href="05-04_ppap_detail.html">H1110-T102</a></td>
+            <td style="padding-left:12px">Cover Plate</td>
+            <td class="c muted">A사</td>
+            <td class="c muted">2026-10-01</td>
+            <td class="c muted">2026-04-20</td>
+            <td class="c">
+              <div class="prog-bar-wrap">
+                <div class="prog-bar"><div class="prog-bar-fill" style="width:100%"></div></div>
+                <span class="prog-num">12 / 12</span>
+              </div>
+            </td>
+            <td class="c"><span class="st st-ok">완료</span></td>
+            <td class="c muted">2026-05-20</td>
+            <td class="c muted">이품질</td>
+          </tr>
+          <tr>
+            <td class="c"><input type="checkbox"></td>
+            <td class="c"><a class="td-link" href="05-04_ppap_detail.html">H1110-T103</a></td>
+            <td style="padding-left:12px">Rubber Seal</td>
+            <td class="c muted">B사</td>
+            <td class="c muted">2026-10-01</td>
+            <td class="c muted">2026-06-01</td>
+            <td class="c">
+              <div class="prog-bar-wrap">
+                <div class="prog-bar"><div class="prog-bar-fill" style="width:17%"></div></div>
+                <span class="prog-num">2 / 12</span>
+              </div>
+            </td>
+            <td class="c"><span class="st st-prog">진행중</span></td>
+            <td class="c muted">2026-06-02</td>
+            <td class="c muted">이품질</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

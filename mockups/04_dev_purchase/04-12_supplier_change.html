@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>업체변경 / 이원화·다원화 품의 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── step-bar 7단계 (96px 박스) ── */
+  .step-bar { display:flex; align-items:center; gap:0; flex-wrap:nowrap; padding:8px 0; }
+  .step-node { display:flex; align-items:center; }
+  .step-box {
+    width:96px; border:1px solid var(--border); border-radius:4px; padding:7px 8px;
+    display:flex; flex-direction:column; gap:2px; background:var(--surface);
+  }
+  .step-box.done { border-color:var(--status-ok); background:#f0fdf4; }
+  .step-box.prog { border-color:var(--blue); background:var(--blue-light); }
+  .step-box.wait { border-color:var(--border); background:#f9fafb; }
+  .step-role { font-size:10px; color:var(--text-mute); }
+  .step-name { font-size:12px; font-weight:600; color:var(--text); }
+  .step-date { font-size:10px; color:var(--text-sub); }
+  .step-sep {
+    width:18px; height:1px; background:var(--border-strong); flex-shrink:0;
+    position:relative;
+  }
+  .step-sep::after {
+    content:''; position:absolute; right:-4px; top:-3px;
+    border:4px solid transparent; border-left-color:var(--border-strong);
+  }
+
+  /* ── 라디오 행 ── */
+  .radio-row { display:flex; gap:20px; align-items:center; padding:4px 0; }
+  .radio-opt { display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; }
+  .radio-opt input { accent-color:var(--blue); cursor:pointer; width:15px; height:15px; }
+
+  /* ── 공급 비율 테이블 ── */
+  .snap-table { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; max-width:480px; }
+  .snap-table th {
+    background:var(--grid-head); padding:0 12px; height:30px; font-weight:600;
+    color:var(--text); text-align:center; border:1px solid var(--border);
+  }
+  .snap-table td { padding:0 12px; height:32px; border:1px solid var(--border); color:var(--text); }
+  .snap-table td.c { text-align:center; }
+  .snap-table td.r { text-align:right; }
+  .snap-table .form-input { height:26px; width:80px; }
+
+  /* ── 토스트 ── */
+  .toast {
+    position:fixed; bottom:24px; right:24px; background:#1f2937; color:#fff;
+    padding:10px 16px; border-radius:4px; font-size:13px;
+    z-index:500; display:flex; align-items:center; gap:8px;
+    box-shadow:0 4px 16px rgba(0,0,0,.18);
+    opacity:0; pointer-events:none; transition:opacity .15s;
+  }
+  .toast.show { opacity:1; pointer-events:auto; }
+</style>
+</head>
+
+<body data-menu="04-12">
+<div class="page-wrap">
+
+  <!-- ── 타이틀 바 ── -->
+  <div class="page-title-bar">
+    <span class="page-title">업체변경 / 이원화·다원화 품의</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" onclick="location.href='04-02_rfq_list.html'">
+        <i data-lucide="arrow-left"></i>목록
+      </button>
+      <button class="btn btn-secondary" onclick="showToast('임시저장이 완료되었습니다.', 'ok')">
+        <i data-lucide="save"></i>임시저장
+      </button>
+      <button class="btn btn-primary" onclick="showToast('결재 상신이 완료되었습니다.', 'ok')">
+        <i data-lucide="send"></i>결재 상신
+      </button>
+    </div>
+  </div>
+
+  <div class="content-scroll">
+
+    <!-- ── 1. 기존 선정 업체 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">기존 선정 업체</span>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-field">
+          <label class="form-label">품번</label>
+          <input class="form-input" value="H1110-T100" readonly style="background:#f0f2f5;color:var(--blue);font-weight:600">
+        </div>
+        <div class="form-field">
+          <label class="form-label">현재 업체</label>
+          <input class="form-input" value="A사 (동희부품) 단독" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">확정단가 (원)</label>
+          <input class="form-input num" value="14,500" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+        <div class="form-field">
+          <label class="form-label">적용 시작일</label>
+          <input class="form-input" value="2026-04-01" readonly style="background:#f0f2f5;color:var(--text-sub)">
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 2. 변경·추가 사유 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">변경·추가 사유</span>
+      </div>
+      <div class="radio-row" style="margin-bottom:12px">
+        <label class="radio-opt">
+          <input type="radio" name="reason" value="quality">
+          <span>품질 이슈</span>
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="reason" value="supply" checked>
+          <span>공급 안정성</span>
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="reason" value="cost">
+          <span>원가 절감</span>
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="reason" value="etc">
+          <span>기타</span>
+        </label>
+      </div>
+      <div class="form-row form-row-full">
+        <div class="form-field">
+          <label class="form-label">사유 상세</label>
+          <textarea class="form-textarea" rows="2">Fuel Tank Module 단일 공급 리스크 대응. 공급 안정성 확보를 위한 이원화 추진. D사(대원금속) 품질평가 완료, 단가 경쟁력 확보.</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 3. 변경 설정 ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">변경 설정</span>
+      </div>
+      <div class="radio-row" style="margin-bottom:14px">
+        <label class="radio-opt">
+          <input type="radio" name="changetype" value="replace" onchange="onChangeType()">
+          <span>업체 교체</span>
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="changetype" value="dual" checked onchange="onChangeType()">
+          <span>이원화 추가</span>
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="changetype" value="multi" onchange="onChangeType()">
+          <span>다원화 추가</span>
+        </label>
+      </div>
+      <div id="ratio-table">
+        <table class="snap-table">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding-left:12px;width:200px">업체</th>
+              <th style="width:140px">공급 비율 (%)</th>
+              <th style="text-align:left;padding-left:12px">비고</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>A사 (동희부품)</td>
+              <td class="c">
+                <input type="number" class="form-input num" id="r-a" value="70" min="0" max="100" oninput="sumRatio()">
+              </td>
+              <td style="color:var(--text-sub)">기존</td>
+            </tr>
+            <tr>
+              <td>D사 (대원금속)</td>
+              <td class="c">
+                <input type="number" class="form-input num" id="r-d" value="30" min="0" max="100" oninput="sumRatio()">
+              </td>
+              <td style="color:var(--text-sub)">신규 추가</td>
+            </tr>
+            <tr style="background:var(--grid-head)">
+              <td style="font-weight:600;text-align:right;padding-right:12px">합계</td>
+              <td class="c" id="ratio-sum" style="font-weight:700;color:#16a34a">100%</td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── 4. 결재선 (7단계) ── -->
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">결재선</span>
+      </div>
+      <div class="step-bar">
+        <!-- 1. 구매담당 (done) -->
+        <div class="step-node">
+          <div class="step-box done">
+            <span class="step-role">구매담당</span>
+            <span class="step-name">김구매</span>
+            <span class="step-date">2026-06-04</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 2. 구매팀장 (prog) -->
+        <div class="step-node">
+          <div class="step-box prog">
+            <span class="step-role">구매팀장</span>
+            <span class="step-name">이팀장</span>
+            <span class="step-date">검토중</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 3. 구매부장 (wait) -->
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">구매부장</span>
+            <span class="step-name">박부장</span>
+            <span class="step-date">대기</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 4. 품질담당 (wait) -->
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">품질담당</span>
+            <span class="step-name">최품질</span>
+            <span class="step-date">대기</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 5. 개발담당 (wait) -->
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">개발담당</span>
+            <span class="step-name">정개발</span>
+            <span class="step-date">대기</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 6. 재경팀장 (wait) -->
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">재경팀장</span>
+            <span class="step-name">한재경</span>
+            <span class="step-date">대기</span>
+          </div>
+          <div class="step-sep"></div>
+        </div>
+        <!-- 7. 대표이사 (wait) — last node, no sep -->
+        <div class="step-node">
+          <div class="step-box wait">
+            <span class="step-role">대표이사</span>
+            <span class="step-name">정대표</span>
+            <span class="step-date">대기</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+  /* ── 변경 유형 전환 ── */
+  function onChangeType() {
+    var checked = document.querySelector('input[name="changetype"]:checked');
+    var table   = document.getElementById('ratio-table');
+    if (!checked) return;
+    if (checked.value === 'replace') {
+      table.style.display = 'none';
+    } else {
+      table.style.display = 'block';
+      sumRatio();
+    }
+  }
+
+  /* ── 공급 비율 합계 ── */
+  function sumRatio() {
+    var a   = parseInt(document.getElementById('r-a').value) || 0;
+    var d   = parseInt(document.getElementById('r-d').value) || 0;
+    var sum = a + d;
+    var el  = document.getElementById('ratio-sum');
+    el.textContent = sum + '%';
+    el.style.color = sum === 100 ? '#16a34a' : 'var(--status-bad)';
+  }
+
+  /* ── 토스트 ── */
+  function showToast(msg, type, ms) {
+    var bg = type === 'ok'  ? '#16a34a'
+           : type === 'bad' ? '#dc2626'
+           : '#1f2937';
+    var icon = type === 'bad' ? 'alert-circle' : 'check-circle';
+    var el = document.createElement('div');
+    el.className = 'toast show';
+    el.style.background = bg;
+    el.innerHTML =
+      '<i data-lucide="' + icon + '" style="width:14px;height:14px;flex-shrink:0"></i>' +
+      '<span>' + msg + '</span>';
+    document.body.appendChild(el);
+    if (window.lucide) window.lucide.createIcons({ nodes: [el] });
+    setTimeout(function () {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity 0.2s';
+      setTimeout(function () { el.remove(); }, 220);
+    }, ms || 2400);
+  }
+
+  /* ── ESC / Ctrl+S 단축키 ── */
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-backdrop.open').forEach(function (m) {
+        m.classList.remove('open');
+      });
+    }
+    if (e.ctrlKey && e.key === 's') {
+      e.preventDefault();
+      showToast('임시저장이 완료되었습니다.', 'ok');
+    }
+  });
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

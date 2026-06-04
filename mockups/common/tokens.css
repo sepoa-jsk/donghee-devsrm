@@ -1,0 +1,1248 @@
+/* ═══════════════════════════════════════════════════════════════════
+   DevSRM Design Tokens & Component Library
+   DESIGN.md 기반 — 모든 목업 HTML 에서 이 파일 하나만 <link> 하면 됩니다.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+/* ─── 1. Design Tokens ─────────────────────────────────────────── */
+:root {
+  /* Brand */
+  --navy:          #1e2d4e;
+  --navy-dark:     #16223b;
+  --blue:          #1a56aa;
+  --blue-hover:    #1648a0;
+  --blue-light:    #e8f0fb;
+
+  /* Status */
+  --status-wait:   #6b7280;
+  --status-prog:   #1a56aa;
+  --status-ok:     #16a34a;
+  --status-warn:   #d97706;
+  --status-bad:    #dc2626;
+
+  /* Surface */
+  --bg:            #ffffff;
+  --surface:       #ffffff;
+  --border:        #d8dde4;
+  --border-strong: #b6bcc7;
+
+  /* Text */
+  --text:          #1f2937;
+  --text-sub:      #6b7280;
+  --text-mute:     #9ca3af;
+
+  /* Grid */
+  --grid-head:     #f0f2f5;
+  --grid-row-alt:  #fafbfc;
+  --grid-hover:    #eef4fc;
+  --grid-select:   #d6e6f9;
+}
+
+/* ─── 2. Reset & Base ──────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html { font-size: 13px; }
+
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; }
+
+/* ─── 3. Page Layout ───────────────────────────────────────────── */
+
+/* 헤더 높이(48px)만큼 콘텐츠 영역을 아래로 밀어내는 래퍼 */
+.page-wrap {
+  margin-top: 48px;
+  height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 타이틀 바 (페이지 제목 + 액션 버튼 — 브레드크럼 없음, §4.1) */
+.page-title-bar {
+  height: 48px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* 검색/필터 바 */
+.search-bar {
+  height: 44px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+/* 스크롤 가능한 콘텐츠 영역 */
+.content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px 32px;
+}
+.content-scroll::-webkit-scrollbar { width: 6px; }
+.content-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+
+/* ─── 4. Header (sidebar.js가 주입, CSS만 여기 정의) ─────────────── */
+.srm-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 48px;
+  background: var(--navy);
+  display: flex;
+  align-items: center;
+  padding: 0 16px 0 8px;
+  gap: 12px;
+  z-index: 300;
+}
+
+.srm-gnb-toggle {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: rgba(255,255,255,0.85);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.srm-gnb-toggle:hover { background: rgba(255,255,255,0.1); }
+
+.srm-header-logo {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+}
+.srm-header-logo span { color: #6aabff; }
+
+.srm-header-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.2);
+  flex-shrink: 0;
+}
+
+.srm-header-context {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  min-width: 0;
+}
+.srm-header-ctx-label { white-space: nowrap; }
+.srm-header-ctx-val {
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.srm-header-ctx-sep {
+  width: 1px;
+  height: 12px;
+  background: rgba(255,255,255,0.25);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.srm-header-spacer { flex: 1; }
+
+.srm-header-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.85);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.srm-notif-btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: rgba(255,255,255,0.8);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.srm-notif-btn:hover { background: rgba(255,255,255,0.1); }
+
+.srm-header-notif {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--status-bad);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.srm-user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* ─── 5. Sidebar Overlay (sidebar.js가 주입) ────────────────────── */
+
+/* 배경 딤 처리 */
+.srm-overlay {
+  position: fixed;
+  top: 48px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 199;
+  display: none;
+  cursor: default;
+}
+.srm-overlay.visible { display: block; }
+
+/* 사이드바 패널 */
+.srm-sidebar {
+  position: fixed;
+  top: 48px;
+  left: 0;
+  bottom: 0;
+  width: 260px;
+  background: var(--navy);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.18);
+  transform: translateX(-100%);
+  transition: transform 200ms ease-out;
+  overflow: hidden;
+}
+.srm-sidebar.open { transform: translateX(0); }
+
+.srm-sidebar-inner {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 16px;
+}
+.srm-sidebar-inner::-webkit-scrollbar { width: 3px; }
+.srm-sidebar-inner::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+}
+
+/* 사용자 프로필 (사이드바 상단) */
+.srm-sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.srm-sidebar-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.srm-sidebar-profile-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.3;
+}
+.srm-sidebar-profile-dept {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  margin-top: 1px;
+}
+
+/* 현재 프로젝트 표시 */
+.srm-sidebar-project {
+  padding: 8px 16px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.12);
+}
+.srm-sidebar-project-code {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6aabff;
+  letter-spacing: 0.4px;
+  margin-bottom: 2px;
+}
+.srm-sidebar-project-name {
+  font-size: 11px;
+  color: rgba(255,255,255,0.65);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── 아코디언 그룹 ─── */
+.srm-nav-group { border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+.srm-nav-group-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 14px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.65);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  text-align: left;
+}
+.srm-nav-group-header:hover {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.9);
+}
+.srm-nav-group.open .srm-nav-group-header {
+  color: #fff;
+  background: rgba(255,255,255,0.04);
+}
+
+.srm-nav-group-label { flex: 1; }
+
+.srm-nav-chevron {
+  color: rgba(255,255,255,0.35);
+  transition: transform 180ms ease-out;
+  flex-shrink: 0;
+}
+.srm-nav-group.open .srm-nav-chevron { transform: rotate(90deg); }
+
+/* 2뎁스 메뉴 */
+.srm-nav-children {
+  list-style: none;
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 200ms ease-out;
+}
+.srm-nav-group.open .srm-nav-children {
+  max-height: 600px; /* 충분히 큰 값 */
+}
+
+.srm-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px 7px 36px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.1s, color 0.1s;
+}
+.srm-nav-item:hover {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.9);
+}
+.srm-nav-item.active {
+  color: #fff;
+  font-weight: 600;
+  background: rgba(255,255,255,0.08);
+}
+.srm-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--blue);
+  border-radius: 0 2px 2px 0;
+}
+
+.srm-nav-item-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  flex-shrink: 0;
+}
+.srm-nav-item.active .srm-nav-item-dot { background: var(--blue); }
+
+/* ─── 6. Page Title ────────────────────────────────────────────── */
+/* 브레드크럼 제거 (DESIGN.md §4.1). 페이지 제목만 표시. */
+.page-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.page-title-spacer { flex: 1; }
+.page-actions { display: flex; align-items: center; gap: 8px; }
+
+/* ─── 7. Buttons ────────────────────────────────────────────────── */
+.btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: 'Pretendard', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+  line-height: 1;
+}
+.btn i { width: 16px; height: 16px; flex-shrink: 0; }
+
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:hover { background: var(--blue-hover); }
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--navy);
+  border: 1px solid var(--border-strong);
+}
+.btn-secondary:hover { background: var(--bg); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--navy);
+  border: 1px solid transparent;
+}
+.btn-ghost:hover { background: var(--bg); border-color: var(--border); }
+
+.btn-danger { background: var(--surface); color: var(--status-bad); border: 1px solid var(--status-bad); }
+.btn-danger:hover { background: #fff5f5; }
+
+.btn-success { background: #16a34a; color: #fff; }
+.btn-success:hover { background: #15803d; }
+
+.btn-sm { height: 26px; padding: 0 10px; font-size: 12px; }
+.btn-sm i { width: 12px; height: 12px; }
+
+/* ─── 8. Status Badges ─────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1;
+}
+.badge-wait    { background: #f3f4f6; color: var(--status-wait); }
+.badge-prog    { background: var(--blue-light); color: var(--status-prog); }
+.badge-ok      { background: #dcfce7; color: var(--status-ok); }
+.badge-warn    { background: #fef3c7; color: var(--status-warn); }
+.badge-bad     { background: #fee2e2; color: var(--status-bad); }
+/* ERP 톤 중립 뱃지: 기능 속성 표시용 (LME 연동, 시스템 자동 등) — §4.3, §5.5 */
+.badge-outline { background: transparent; color: var(--text-sub); border: 1px solid var(--border-strong); }
+
+/* ─── 9. Form Components ───────────────────────────────────────── */
+
+/* 섹션 구분: form-card 대신 sec-hdr + sec-cap 패턴 사용 (DESIGN.md §4.6)
+   사용법: <div class="sec-hdr"><span class="sec-cap">기본 정보</span></div> */
+.sec-hdr {
+  display: flex;
+  align-items: center;
+  margin: 22px 0 12px;
+}
+.sec-hdr:first-child { margin-top: 0; }
+.sec-hdr::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  margin-left: 8px;
+}
+.sec-cap {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-sub);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* 폼 레이아웃 */
+.form-row {
+  display: grid;
+  gap: 0 24px;
+  margin-bottom: 14px;
+  align-items: start;
+}
+.form-row:last-child { margin-bottom: 0; }
+.form-row-2 { grid-template-columns: 1fr 1fr; }
+.form-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+.form-row-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.form-row-5 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+.form-row-full { grid-template-columns: 1fr; }
+
+/* 필드 */
+.form-field { display: flex; flex-direction: column; gap: 4px; }
+
+.form-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+.form-label .req { color: var(--status-bad); margin-right: 2px; }
+
+/* Input */
+.form-input {
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-family: 'Pretendard', sans-serif;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+.form-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(26,86,170,0.15);
+}
+.form-input:disabled {
+  background: #f0f2f5;
+  color: var(--text-mute);
+  cursor: not-allowed;
+}
+.form-input.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Select */
+.form-select {
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 28px 0 10px;
+  font-size: 13px;
+  font-family: 'Pretendard', sans-serif;
+  color: var(--text);
+  background: var(--surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  appearance: none;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+.form-select:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(26,86,170,0.15); }
+
+/* Textarea */
+.form-textarea {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: 'Pretendard', sans-serif;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  resize: vertical;
+  min-height: 72px;
+  width: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  line-height: 1.6;
+}
+.form-textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(26,86,170,0.15);
+}
+
+/* Read-only display field */
+.form-display {
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: #f0f2f5;
+  display: flex;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 도움말 텍스트 */
+.form-hint {
+  font-size: 11px;
+  color: var(--text-mute);
+  margin-top: 1px;
+}
+
+/* ─── 10. Data Grid / Table ─────────────────────────────────────── */
+
+/* 목록 화면 공통 그리드 컨테이너 */
+.table-fill {
+  background: var(--surface);
+  border: 1px solid var(--border) !important;
+  border-radius: 4px !important;
+}
+
+.table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+table.data-table thead th {
+  background: var(--grid-head);
+  padding: 0 10px;
+  height: 32px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center !important;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+table.data-table thead th:last-child { border-right: none; }
+table.data-table thead th.r { text-align: center !important; }
+table.data-table thead th.c { text-align: center !important; }
+
+table.data-table tbody td {
+  padding: 0 10px;
+  height: 30px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+table.data-table tbody td:last-child { border-right: none; }
+table.data-table tbody tr:hover td { background: var(--grid-hover); cursor: pointer; }
+table.data-table tbody tr.selected td { background: var(--grid-select); }
+
+table.data-table tbody td.r {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+table.data-table tbody td.c { text-align: center; }
+table.data-table tbody td.muted { color: var(--text-mute); }
+
+/* 테이블 내 인라인 인풋 */
+.td-input {
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-family: 'Pretendard', sans-serif;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+}
+.td-input:focus { border-color: var(--blue); box-shadow: 0 0 0 1px rgba(26,86,170,0.2); }
+.td-input.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 페이지네이션 */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.page-btn {
+  height: 26px;
+  min-width: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  font-size: 12px;
+  color: var(--text-sub);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+}
+.page-btn:hover { background: var(--bg); color: var(--text); }
+.page-btn.active {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ─── 11. KPI Strip ─────────────────────────────────────────────── */
+.kpi-strip {
+  display: flex;
+  gap: 12px;
+  padding: 0 0 16px;
+  flex-wrap: nowrap;
+}
+.kpi-card {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px 18px;
+  min-width: 0;
+}
+.kpi-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-sub);
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-sub {
+  font-size: 11px;
+  color: var(--text-sub);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+/* §4.4: KPI 숫자도 --text 기본색 유지. 상태는 kpi-sub 내 작은 뱃지로 표현.
+   .kpi-card.kpi-ok/warn/bad/prog 클래스는 좌측 강조선만 적용. */
+.kpi-card.kpi-ok   { border-left: 3px solid var(--status-ok); }
+.kpi-card.kpi-warn { border-left: 3px solid var(--status-warn); }
+.kpi-card.kpi-bad  { border-left: 3px solid var(--status-bad); }
+.kpi-card.kpi-prog { border-left: 3px solid var(--status-prog); }
+
+/* ─── 12. Modal ─────────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 400;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.modal-backdrop.open { display: flex; }
+
+.modal-box {
+  background: var(--surface);
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  min-width: 380px;
+  max-width: 640px;
+  width: 100%;
+  overflow: hidden;
+}
+.modal-header {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+}
+.modal-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+.modal-close:hover { background: var(--bg); color: var(--text); }
+.modal-body { padding: 16px 20px; }
+.modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  background: var(--bg);
+}
+
+/* ─── 13. Attachments ───────────────────────────────────────────── */
+.attach-zone {
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+  padding: 20px;
+  text-align: center;
+  color: var(--text-sub);
+  font-size: 12px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.attach-zone:hover { border-color: var(--blue); background: var(--blue-light); }
+.attach-zone i { display: block; margin: 0 auto 6px; color: var(--text-mute); }
+
+.attach-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.attach-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+}
+.attach-name { flex: 1; color: var(--blue); }
+.attach-size { color: var(--text-mute); font-size: 11px; }
+.attach-date { color: var(--text-mute); font-size: 11px; }
+.attach-del { background: none; border: none; cursor: pointer; color: var(--text-mute); padding: 2px; }
+.attach-del:hover { color: var(--status-bad); }
+
+/* ─── 14. History / Timeline ────────────────────────────────────── */
+.history-list { display: flex; flex-direction: column; }
+.history-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.history-item:last-child { border-bottom: none; padding-bottom: 0; }
+.history-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.history-dot.ok   { background: var(--status-ok); }
+.history-dot.prog { background: var(--status-prog); }
+.history-dot.wait { background: var(--text-mute); }
+.history-dot.bad  { background: var(--status-bad); }
+.history-dot.warn { background: var(--status-warn); }
+.history-content { flex: 1; min-width: 0; }
+.history-text { font-size: 12px; color: var(--text); }
+.history-text strong { font-weight: 600; }
+.history-meta { font-size: 11px; color: var(--text-mute); margin-top: 2px; }
+.history-right { flex-shrink: 0; }
+
+/* ─── 15. Step Bar (결재선) ─────────────────────────────────────── */
+.step-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+.step-node {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.step-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  min-width: 100px;
+  text-align: center;
+}
+.step-box.done  { border-color: var(--status-ok);   background: #f0fdf4; }
+.step-box.prog  { border-color: var(--status-prog);  background: var(--blue-light); }
+.step-box.wait  { border-color: var(--border); }
+.step-box.bad   { border-color: var(--status-bad);   background: #fff5f5; }
+.step-role { font-size: 10px; color: var(--text-mute); }
+.step-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.step-date { font-size: 10px; color: var(--text-sub); }
+.step-sep {
+  width: 28px;
+  height: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* ─── 16. Alert Bar ─────────────────────────────────────────────── */
+/* DESIGN.md §4.2: 화면 상단 안내 박스 전면 금지.
+   이 클래스들은 모달 내 인라인 검증 메시지에만 제한적으로 허용한다.
+   페이지 상단(.content-scroll 최상단) 사용 금지.              */
+.alert-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.alert-bar i { flex-shrink: 0; margin-top: 1px; }
+.alert-info { background: var(--blue-light); color: #1a4a8f; border: 1px solid #b3d0f5; }
+.alert-warn { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.alert-bad  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+/* ─── 17. Section Divider ───────────────────────────────────────── */
+.section-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0 16px;
+}
+
+/* ─── 18. Toast (임시저장 등 피드백) ───────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1f2937;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  animation: toast-in 0.15s ease-out;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── 19. 계산 결과 표시 (§4.5) ─────────────────────────────────
+   computed-box 제거. 계산 결과는 readonly input + form-hint 로 표시.
+   예:
+     <input type="text" class="form-input num" value="13,600" readonly>
+     <span class="form-hint">= 판매가 × (1 - 마진율)  →  16,000 × 0.85</span>
+   ─────────────────────────────────────────────────────────────── */
+
+/* readonly 폼 인풋: 계산값 표시용 (배경으로 편집불가 명시) */
+.form-input[readonly] {
+  background: #f0f2f5;
+  color: var(--text-sub);
+  cursor: default;
+}
+/* 계산 결과값은 굵기로만 강조 (색상 강조 없음, §4.4) */
+.form-input.result {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  background: #f0f2f5;
+}
+
+/* ─── 20. Search Bar Elements ───────────────────────────────────── */
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.search-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+.search-input {
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: 'Pretendard', sans-serif;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  min-width: 0;
+  transition: border-color 0.15s;
+}
+.search-input:focus { border-color: var(--blue); }
+.search-select {
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 24px 0 8px;
+  font-size: 12px;
+  font-family: 'Pretendard', sans-serif;
+  color: var(--text);
+  background: var(--surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  appearance: none;
+  outline: none;
+  cursor: pointer;
+}
+.search-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* ─── 20-A. Search Wrap (텍스트 검색창 + 빨간 돋보기 아이콘) ────── */
+/* 사용법:
+   <div class="search-wrap">
+     <input type="text" placeholder="Search" id="f-search">
+     <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+   </div>
+*/
+.search-wrap {
+  flex: 1;
+  position: relative;
+  max-width: 560px;
+}
+.search-wrap input {
+  width: 100%;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 34px 0 12px;
+  font-size: 13px;
+  font-family: 'Pretendard', sans-serif;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.search-wrap input:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(26,86,170,.12); }
+.search-wrap input::placeholder { color: var(--text-mute); }
+.search-wrap .s-icon {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #dc2626;
+  pointer-events: none;
+}
+
+/* ─── 20-B. 필터·상태 버튼 + 날짜 범위 ───────────────────────────── */
+/* 사용법 (search-bar 내 순서):
+   1. <div class="search-wrap"> … </div>
+   2. <button class="btn-filter" onclick="toggleFilter()">
+        <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+      </button>
+   3. <button class="btn-status" onclick="…">
+        <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+      </button>
+   4. <div class="date-range">
+        <input type="date" id="f-from" value="…" onchange="applyFilter()">
+        <span class="dr-sep">~</span>
+        <input type="date" id="f-to"   value="…" onchange="applyFilter()">
+        <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+      </div>
+   5. <div class="ml-auto"><button class="btn btn-primary">…</button></div>
+*/
+.btn-filter {
+  height: 32px; padding: 0 12px; border-radius: 4px;
+  font-size: 13px; font-family: 'Pretendard', sans-serif; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  cursor: pointer; white-space: nowrap; transition: background 0.12s;
+}
+.btn-filter:hover { background: var(--bg); }
+.btn-status {
+  height: 32px; padding: 0 12px; border-radius: 4px;
+  font-size: 13px; font-family: 'Pretendard', sans-serif; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  cursor: pointer; white-space: nowrap; transition: background 0.12s;
+}
+.btn-status:hover { background: var(--bg); }
+.date-range {
+  height: 32px; display: flex; align-items: center; gap: 4px;
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 0 10px; background: var(--surface); font-size: 12px; color: var(--text);
+}
+.date-range input[type="date"] {
+  border: none; outline: none; font-size: 12px;
+  font-family: 'Pretendard', sans-serif; color: var(--text);
+  background: transparent; width: 108px; cursor: pointer;
+}
+.date-range input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
+.date-range .dr-sep { color: var(--text-mute); }
+
+/* ─── 20-D. 필터 패널 (필터 버튼 클릭 시 펼침) ───────────────────── */
+.filter-panel {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 24px;
+  display: none; flex-shrink: 0;
+  gap: 16px; align-items: center; flex-wrap: wrap;
+}
+.filter-panel.open { display: flex; }
+
+/* ─── 20-C. Status Strip (검색바 하단 상태 탭) ───────────────────── */
+.status-strip {
+  height: 36px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 24px;
+  flex-shrink: 0;
+}
+.ss-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+  color: var(--text-sub);
+  font-family: 'Pretendard', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: color 0.1s;
+}
+.ss-btn:hover { color: var(--text); }
+.ss-btn.active { color: var(--blue); font-weight: 600; }
+.ss-cnt { font-weight: 700; font-variant-numeric: tabular-nums; }
+.ss-btn.active .ss-cnt { color: var(--blue); }
+
+/* ─── 21. Utility Classes ───────────────────────────────────────── */
+.text-blue  { color: var(--blue); }
+.text-ok    { color: var(--status-ok); }
+.text-warn  { color: var(--status-warn); }
+.text-bad   { color: var(--status-bad); }
+.text-muted { color: var(--text-mute); }
+.text-sub   { color: var(--text-sub); }
+
+.fw-600 { font-weight: 600; }
+.fw-700 { font-weight: 700; }
+
+/* ─── 22. Section Box (Rule 4 / §5.9) ──────────────────────────
+   소제목 단위 박스 그룹핑. 1px border, radius 4px, 그림자 없음.
+   §4.6에서 금지한 계산식·결과 카드와 다른 개념 (레이아웃 구분용).
+   ─────────────────────────────────────────────────────────────── */
+.section-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.section-box:last-child { margin-bottom: 0; }
+
+.section-box-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section-box-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+
+/* ─── 23. 강제 규칙 (DESIGN.md §5.1·§5.3) ───────────────────────
+   Rule 1: .btn 아이콘 = 16px (인라인 style 덮어쓰기)
+   Rule 2: data-table th = center (위 section 10에서 이미 설정)
+   Rule 3: 배치는 layout 패턴으로 구현 (enforcer 불필요)
+   ─────────────────────────────────────────────────────────────── */
+/* ── 아이콘 크기 표준: 모든 lucide 아이콘 16×16 강제 (공통) ──
+   인라인 style(13/14/18px)·btn-sm·btn-grid 등 모든 개별 지정을 덮어쓴다.
+   lucide가 <i data-lucide>를 <svg class="lucide">로 치환하므로 두 선택자 모두 지정. */
+svg.lucide, i[data-lucide],
+.btn i, .btn svg { width: 16px !important; height: 16px !important; }
+.num { font-variant-numeric: tabular-nums; }
+
+.flex { display: flex; }
+.flex-center { display: flex; align-items: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.gap-4  { gap: 4px; }
+.gap-8  { gap: 8px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+.ml-auto { margin-left: auto; }

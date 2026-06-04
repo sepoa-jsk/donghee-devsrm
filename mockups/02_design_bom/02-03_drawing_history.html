@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>도면 리비전 이력 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .search-wrap { flex:1; position:relative; max-width:560px; }
+  .search-wrap input {
+    width:100%; height:32px; border:1px solid var(--border); border-radius:4px;
+    padding:0 34px 0 12px; font-size:13px; font-family:'Pretendard',sans-serif;
+    color:var(--text); background:var(--surface); outline:none; transition:border-color .15s;
+  }
+  .search-wrap input:focus { border-color:var(--blue); box-shadow:0 0 0 2px rgba(26,86,170,.12); }
+  .search-wrap input::placeholder { color:var(--text-mute); }
+  .search-wrap .s-icon { position:absolute; right:9px; top:50%; transform:translateY(-50%); color:#dc2626; pointer-events:none; }
+  .btn-ctrl {
+    height:32px; padding:0 12px; border-radius:4px;
+    font-size:13px; font-family:'Pretendard',sans-serif; font-weight:500;
+    display:inline-flex; align-items:center; gap:5px;
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    cursor:pointer; white-space:nowrap; transition:background .12s;
+  }
+  .btn-ctrl:hover { background:var(--bg); }
+  .date-range {
+    height:32px; display:flex; align-items:center; gap:4px;
+    border:1px solid var(--border); border-radius:4px;
+    padding:0 10px; background:var(--surface); font-size:12px;
+  }
+  .date-range input[type="date"] {
+    border:none; outline:none; font-size:12px;
+    font-family:'Pretendard',sans-serif; color:var(--text);
+    background:transparent; width:108px; cursor:pointer;
+  }
+  .date-range input[type="date"]::-webkit-calendar-picker-indicator { display:none; }
+  .date-range .dr-sep { color:var(--text-mute); }
+  .status-strip {
+    height:36px; background:var(--surface);
+    display:flex; align-items:center; padding:0 24px; gap:24px; flex-shrink:0;
+  }
+  .ss-btn {
+    background:none; border:none; cursor:pointer;
+    font-size:12px; color:var(--text-sub); font-family:'Pretendard',sans-serif;
+    display:flex; align-items:center; gap:5px; padding:0; transition:color .1s;
+  }
+  .ss-btn:hover { color:var(--text); }
+  .ss-btn.active { color:var(--blue); font-weight:600; }
+  .ss-cnt { font-weight:700; font-variant-numeric:tabular-nums; }
+  .ss-btn.active .ss-cnt { color:var(--blue); }
+  .filter-panel {
+    background:var(--bg); border-bottom:1px solid var(--border);
+    padding:10px 24px; display:none; flex-shrink:0;
+    gap:16px; align-items:center; flex-wrap:wrap;
+  }
+  .filter-panel.open { display:flex; }
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column;
+    padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-ok   { color:var(--text);       } .st-ok::before   { background:var(--navy); }
+  .st-prog { color:var(--text-sub);   } .st-prog::before { background:var(--text-sub); }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-bad  { color:var(--status-bad); } .st-bad::before  { background:var(--status-bad); }
+
+  /* 변경값 표시 */
+  .chg-up   { color:var(--status-bad); font-size:10px; }
+  .chg-down { color:var(--navy);       font-size:10px; }
+  .chg-same { color:var(--text-mute);  font-size:10px; }
+  /* 변경 유형 텍스트 */
+  .type-init { color:var(--text-mute);  font-size:11px; }
+  .type-chg  { color:var(--text-sub);   font-size:11px; font-weight:500; }
+  .kc-link{font-size:11px;color:var(--blue);border:1px solid var(--border);border-radius:3px;padding:2px 8px;text-decoration:none}
+  .kc-link:hover{background:var(--blue-light)}
+</style>
+</head>
+
+<body data-menu="02-03">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">도면 리비전 이력</span>
+  </div>
+
+  <div style="padding:8px 24px;background:#f9fafb;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-sub);display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <span>프로젝트 <a href="01-04_project_detail.html" style="color:var(--blue);font-weight:600;text-decoration:none">PJT-520PHEV-FT-2026</a></span>
+    <i data-lucide="chevron-right" style="width:13px;height:13px;color:var(--text-mute)"></i>
+    <span>품번 <strong style="color:var(--text)">H1110-T100</strong></span>
+    <i data-lucide="chevron-right" style="width:13px;height:13px;color:var(--text-mute)"></i>
+    <span>리비전 <strong style="color:var(--text)">Rev.B</strong></span>
+    <i data-lucide="chevron-right" style="width:13px;height:13px;color:var(--text-mute)"></i>
+    <span>적용 <strong style="color:var(--text)">2026-03-10</strong></span>
+    <span style="margin-left:auto;display:flex;gap:6px">
+      <a href="../03_cost/03-02_target_detail.html" class="kc-link">목표가</a>
+      <a href="../03_cost/03-07_material_cost.html" class="kc-link">재료비</a>
+      <a href="../04_dev_purchase/04-06_quote_compare.html" class="kc-link">견적비교</a>
+    </span>
+  </div>
+
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-ctrl" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+    <button class="btn-ctrl" onclick="toggleStatusPanel()">
+      <i data-lucide="bar-chart-2" style="width:14px;height:14px;color:var(--blue)"></i>상태
+    </button>
+    <div class="date-range">
+      <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+      <span class="dr-sep">~</span>
+      <input type="date" id="f-to"   value="2026-12-31" onchange="applyFilter()">
+      <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+    </div>
+    <div class="ml-auto">
+      <button class="btn btn-primary" onclick="location.href='02-02_part_detail.html'">
+        <i data-lucide="plus"></i>리비전 등록
+      </button>
+    </div>
+  </div>
+
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">프로젝트</span>
+      <input type="text" class="search-input" id="f-proj" placeholder="코드/명" style="width:150px" oninput="applyFilter()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">품번</span>
+      <input type="text" class="search-input" id="f-code" placeholder="품번" style="width:110px" oninput="applyFilter()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">변경 유형</span>
+      <select class="search-select" id="f-chgtype" onchange="applyFilter()" style="width:120px">
+        <option value="">전체</option>
+        <option>최초 등록</option>
+        <option>설계 변경</option>
+        <option>재질 변경</option>
+        <option>중량 변경</option>
+        <option>기타</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="status-strip" id="status-strip">
+    <button class="ss-btn active" data-s="" onclick="setStatus(this,'')">
+      전체 <span class="ss-cnt" id="cnt-all">0</span>
+    </button>
+    <button class="ss-btn" data-s="확정" onclick="setStatus(this,'확정')">
+      확정 <span class="ss-cnt" id="cnt-ok">0</span>
+    </button>
+    <button class="ss-btn" data-s="검토중" onclick="setStatus(this,'검토중')">
+      검토중 <span class="ss-cnt" id="cnt-rev">0</span>
+    </button>
+    <button class="ss-btn" data-s="등록중" onclick="setStatus(this,'등록중')">
+      등록중 <span class="ss-cnt" id="cnt-reg">0</span>
+    </button>
+    <button class="ss-btn" data-s="반려" onclick="setStatus(this,'반려')">
+      반려 <span class="ss-cnt" id="cnt-rej">0</span>
+    </button>
+  </div>
+
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="main-table">
+        <thead>
+          <tr>
+            <th style="width:36px">
+              <input type="checkbox" id="chk-all" onclick="toggleAll(this)"
+                style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer">
+            </th>
+            <th style="width:36px">No</th>
+            <th style="width:150px">프로젝트</th>
+            <th style="width:110px">품번</th>
+            <th>품명</th>
+            <th style="width:60px">리비전</th>
+            <th style="width:120px">도면번호</th>
+            <th style="width:80px">변경 유형</th>
+            <th class="r" style="width:120px">순중량(kg)</th>
+            <th class="r" style="width:120px">투입중량(kg)</th>
+            <th style="width:120px">재질</th>
+            <th style="width:160px">변경 사유</th>
+            <th style="width:70px">변경자</th>
+            <th style="width:90px">승인일</th>
+            <th style="width:70px">상태</th>
+            <th style="width:56px">상세</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const ROWS = [
+  /* H1110-T100 — Frame Sub Ass'y (Rev.A + Rev.B) */
+  { no:1,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',   code:'H1110-T100', name:"Frame Sub Ass'y",      rev:'Rev.A', dwgNo:'DWG-T100-001', chgType:'최초 등록', netW:2.40, netWPrev:null, inW:2.70, inWPrev:null, mat:'Aluminum 6061', matPrev:null, reason:'최초 도면 등록',                  editor:'홍설계', date:'2026-01-15', status:'확정' },
+  { no:2,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',   code:'H1110-T100', name:"Frame Sub Ass'y",      rev:'Rev.B', dwgNo:'DWG-T100-002', chgType:'설계 변경', netW:2.60, netWPrev:2.40, inW:2.85, inWPrev:2.70, mat:'Aluminum 6061', matPrev:null, reason:'보강 리브 추가 · 투입중량 상향',   editor:'홍설계', date:'2026-03-10', status:'확정' },
+  /* H1110-T101 — Bracket Assy Upper */
+  { no:3,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',   code:'H1110-T101', name:'Bracket Assy Upper',   rev:'Rev.A', dwgNo:'DWG-T101-001', chgType:'최초 등록', netW:0.38, netWPrev:null, inW:0.42, inWPrev:null, mat:'SPCC',          matPrev:null, reason:'최초 도면 등록',                  editor:'홍설계', date:'2026-01-15', status:'확정' },
+  /* H1110-T102 — Cover Plate */
+  { no:4,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',   code:'H1110-T102', name:'Cover Plate',          rev:'Rev.A', dwgNo:'DWG-T102-001', chgType:'최초 등록', netW:0.32, netWPrev:null, inW:0.38, inWPrev:null, mat:'Aluminum 6061', matPrev:null, reason:'최초 도면 등록',                  editor:'홍설계', date:'2026-01-15', status:'확정' },
+  /* H1110-T103 — Rubber Seal */
+  { no:5,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',   code:'H1110-T103', name:'Rubber Seal',          rev:'Rev.A', dwgNo:'DWG-T103-001', chgType:'최초 등록', netW:0.08, netWPrev:null, inW:0.08, inWPrev:null, mat:'NBR70',         matPrev:null, reason:'최초 도면 등록 (사급)',             editor:'홍설계', date:'2026-01-15', status:'확정' },
+  /* H1110-T104 — Pipe Connector */
+  { no:6,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',   code:'H1110-T104', name:'Pipe Connector',       rev:'Rev.A', dwgNo:'DWG-T104-001', chgType:'최초 등록', netW:0.15, netWPrev:null, inW:0.18, inWPrev:null, mat:'Aluminum 6061', matPrev:null, reason:'최초 도면 등록',                  editor:'홍설계', date:'2026-01-15', status:'확정' },
+  /* H1110-T105 — Hose Assembly */
+  { no:7,  proj:'PJT-520PHEV-FT-2026', projName:'520 PHEV FTM',   code:'H1110-T105', name:'Hose Assembly',        rev:'Rev.A', dwgNo:'DWG-T105-001', chgType:'최초 등록', netW:0.20, netWPrev:null, inW:0.22, inWPrev:null, mat:'EPDM',          matPrev:null, reason:'최초 도면 등록',                  editor:'홍설계', date:'2026-01-15', status:'확정' },
+  /* K2200-C100 — NX5 Cooling */
+  { no:8,  proj:'PJT-NX5-CM-2026',     projName:'NX5 Cooling',    code:'K2200-C100', name:'Cooling Module Assy',  rev:'Rev.A', dwgNo:'DWG-C100-001', chgType:'최초 등록', netW:1.80, netWPrev:null, inW:2.00, inWPrev:null, mat:'Aluminum 6061', matPrev:null, reason:'최초 도면 등록',                  editor:'정설계', date:'2026-02-10', status:'확정' },
+  /* M3300-B100 — MQ4 Bracket */
+  { no:9,  proj:'PJT-MQ4-BR-2026',     projName:'MQ4 Bracket',    code:'M3300-B100', name:'Bracket Assy',         rev:'Rev.A', dwgNo:'DWG-B100-001', chgType:'최초 등록', netW:0.95, netWPrev:null, inW:1.08, inWPrev:null, mat:'SPCC',          matPrev:null, reason:'최초 도면 등록',                  editor:'박설계', date:'2026-03-02', status:'검토중' },
+];
+
+let activeStatus = '';
+
+function fmtW(curr, prev) {
+  const v = curr.toFixed(2);
+  if (prev === null) return `<span style="font-variant-numeric:tabular-nums">${v}</span>`;
+  const d = (curr - prev).toFixed(2);
+  const sign = d > 0 ? '+' : '';
+  const cls  = d > 0 ? 'chg-up' : d < 0 ? 'chg-down' : 'chg-same';
+  return `<span style="font-variant-numeric:tabular-nums">${v}</span> <span class="${cls}">${sign}${d}</span>`;
+}
+
+function fmtMat(curr, prev) {
+  if (prev === null) return `<span style="color:var(--text-sub)">${curr}</span>`;
+  return `<span style="color:var(--text-sub)">${curr}</span> <span style="font-size:10px;color:var(--text-mute)">(구: ${prev})</span>`;
+}
+
+function stText(s) {
+  const map = { '확정':'st-ok', '검토중':'st-prog', '등록중':'st-wait', '반려':'st-bad' };
+  return `<span class="st ${map[s] || 'st-wait'}">${s}</span>`;
+}
+
+function chgTypeCell(t) {
+  const cls = t === '최초 등록' ? 'type-init' : 'type-chg';
+  return `<span class="${cls}">${t}</span>`;
+}
+
+function updateStrip(rows) {
+  document.getElementById('cnt-all').textContent = rows.length;
+  document.getElementById('cnt-ok').textContent  = rows.filter(r => r.status === '확정').length;
+  document.getElementById('cnt-rev').textContent = rows.filter(r => r.status === '검토중').length;
+  document.getElementById('cnt-reg').textContent = rows.filter(r => r.status === '등록중').length;
+  document.getElementById('cnt-rej').textContent = rows.filter(r => r.status === '반려').length;
+}
+
+function renderRows(rows) {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.innerHTML = `
+      <td style="text-align:center">
+        <input type="checkbox" class="row-chk"
+          style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer"
+          onchange="onRowCheck()">
+      </td>
+      <td style="text-align:center;color:var(--text-mute)">${r.no}</td>
+      <td style="padding-left:10px">
+        <div style="font-weight:500;color:var(--text)">${r.projName}</div>
+        <div style="font-size:11px;color:var(--text-mute)">${r.proj}</div>
+      </td>
+      <td style="text-align:center">
+        <a href="02-02_part_detail.html" class="td-link" onclick="event.stopPropagation()">${r.code}</a>
+      </td>
+      <td style="padding-left:10px;color:var(--text-sub)">${r.name}</td>
+      <td style="text-align:center;font-weight:600;color:var(--navy)">${r.rev}</td>
+      <td style="text-align:center;color:var(--text-mute);font-size:11px">${r.dwgNo}</td>
+      <td style="text-align:center">${chgTypeCell(r.chgType)}</td>
+      <td style="text-align:right">${fmtW(r.netW, r.netWPrev)}</td>
+      <td style="text-align:right">${fmtW(r.inW, r.inWPrev)}</td>
+      <td style="text-align:center">${fmtMat(r.mat, r.matPrev)}</td>
+      <td style="padding-left:10px;font-size:11px;color:var(--text-sub);white-space:normal">${r.reason}</td>
+      <td style="text-align:center;font-size:11px;color:var(--text-sub)">${r.editor}</td>
+      <td style="text-align:center;font-size:11px;color:var(--text-mute);font-variant-numeric:tabular-nums">${r.date}</td>
+      <td style="text-align:center">${stText(r.status)}</td>
+      <td style="text-align:center">
+        <button class="btn btn-ghost btn-sm btn-grid"
+          onclick="event.stopPropagation();location.href='02-02_part_detail.html'">
+          <i data-lucide="chevron-right"></i>
+        </button>
+      </td>
+    `;
+    tr.addEventListener('click', e => {
+      if (e.target.tagName === 'INPUT' || e.target.closest('button') || e.target.tagName === 'A') return;
+      const chk = tr.querySelector('.row-chk');
+      chk.checked = !chk.checked;
+      tr.classList.toggle('selected', chk.checked);
+      onRowCheck();
+    });
+    tbody.appendChild(tr);
+  });
+  lucide.createIcons();
+}
+
+function getBaseFiltered() {
+  const q       = document.getElementById('f-search').value.trim().toLowerCase();
+  const proj    = (document.getElementById('f-proj')    || {}).value?.trim().toLowerCase() || '';
+  const code    = (document.getElementById('f-code')    || {}).value?.trim().toLowerCase() || '';
+  const chgtype = (document.getElementById('f-chgtype') || {}).value || '';
+  const from    = document.getElementById('f-from').value;
+  const to      = document.getElementById('f-to').value;
+
+  return ROWS.filter(r => {
+    if (q       && !r.code.toLowerCase().includes(q) && !r.name.toLowerCase().includes(q)
+                 && !r.projName.toLowerCase().includes(q)) return false;
+    if (proj    && !r.proj.toLowerCase().includes(proj) && !r.projName.toLowerCase().includes(proj)) return false;
+    if (code    && !r.code.toLowerCase().includes(code)) return false;
+    if (chgtype && r.chgType !== chgtype) return false;
+    if (from    && r.date < from) return false;
+    if (to      && r.date > to)   return false;
+    return true;
+  });
+}
+
+function applyFilter() {
+  const base = getBaseFiltered();
+  const rows = activeStatus ? base.filter(r => r.status === activeStatus) : base;
+  renderRows(rows);
+  updateStrip(base);
+  resetChecks();
+}
+
+function setStatus(btn, s) {
+  activeStatus = s;
+  document.querySelectorAll('.ss-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+
+function toggleFilter() { document.getElementById('filter-panel').classList.toggle('open'); }
+function toggleStatusPanel() {
+  const s = document.getElementById('status-strip');
+  s.style.display = s.style.display === 'none' ? 'flex' : 'none';
+}
+function toggleAll(m) {
+  document.querySelectorAll('.row-chk').forEach(c => {
+    c.checked = m.checked;
+    c.closest('tr').classList.toggle('selected', m.checked);
+  });
+  onRowCheck();
+}
+function onRowCheck() {
+  const all = document.querySelectorAll('.row-chk');
+  const chk = document.querySelectorAll('.row-chk:checked');
+  const m   = document.getElementById('chk-all');
+  m.indeterminate = chk.length > 0 && chk.length < all.length;
+  m.checked = all.length > 0 && chk.length === all.length;
+}
+function resetChecks() {
+  document.getElementById('chk-all').checked       = false;
+  document.getElementById('chk-all').indeterminate = false;
+}
+
+updateStrip(ROWS);
+renderRows(ROWS);
+</script>
+<script src="../common/sidebar.js"></script>
+</body>
+</html>
