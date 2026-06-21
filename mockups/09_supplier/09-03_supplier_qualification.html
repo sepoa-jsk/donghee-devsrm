@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1920">
-<title>(주)금강정밀 | 협력사 상세 | DevSRM</title>
+<title>협력사 적격성 심사 | DevSRM</title>
 <link rel="stylesheet" href="../common/tokens.css">
 <script src="https://unpkg.com/lucide@latest"></script>
 <style>
@@ -106,12 +106,12 @@
 </style>
 </head>
 
-<body data-menu="09-01">
+<body data-menu="09-03">
 <div class="page-wrap">
 
   <!-- ── 타이틀 바 ── -->
   <div class="page-title-bar">
-    <button class="btn btn-secondary btn-sm" onclick="location.href='09-01_supplier_register.html'" style="margin-right:4px">
+    <button class="btn btn-secondary btn-sm" onclick="location.href='09-01_supplier_apply_list.html'" style="margin-right:4px">
       <i data-lucide="arrow-left"></i>
     </button>
     <span class="page-title" id="hd-name">(주)금강정밀</span>
@@ -121,11 +121,11 @@
       <button class="btn btn-secondary" onclick="window.print()">
         <i data-lucide="printer"></i>인쇄
       </button>
-      <button class="btn btn-secondary" onclick="location.href='09-01_supplier_new.html'">
+      <button class="btn btn-secondary" onclick="location.href='09-02_supplier_apply_form.html'">
         <i data-lucide="pencil"></i>수정
       </button>
-      <button class="btn btn-primary" onclick="showToast('사전평가 화면으로 이동합니다.', 'ok')">
-        <i data-lucide="clipboard-check"></i>사전평가 진행
+      <button class="btn btn-primary" onclick="showToast('심사 결과가 저장되었습니다.', 'ok')">
+        <i data-lucide="clipboard-check"></i>심사 완료
       </button>
     </div>
   </div>
@@ -142,6 +142,7 @@
       <button class="sidebar-tab"        onclick="switchTab('tab-sales', this)">영업현황</button>
       <button class="sidebar-tab"        onclick="switchTab('tab-cert', this)">인증정보</button>
       <button class="sidebar-tab"        onclick="switchTab('tab-credit', this)">신용평가정보</button>
+      <button class="sidebar-tab"        onclick="switchTab('tab-result', this)">심사결과·결재</button>
     </div>
 
     <!-- 오른쪽 콘텐츠 -->
@@ -407,22 +408,22 @@
         <div class="form-row form-row-4" style="margin-bottom:20px">
           <div class="form-field">
             <label class="form-label">대표이사</label>
-            <div class="vw-val">박금강</div>
+            <div class="vw-val" id="mgmt-ceo">박금강</div>
           </div>
           <div class="form-field">
             <label class="form-label">생년월일</label>
-            <div class="vw-val">1962-08-15</div>
+            <div class="vw-val" id="mgmt-birth">1962-08-15</div>
           </div>
           <div class="form-field" style="grid-column:span 2">
             <label class="form-label">최종학력</label>
-            <div class="vw-val">한양대학교 공과대학 기계공학과</div>
+            <div class="vw-val" id="mgmt-edu">한양대학교 공과대학 기계공학과</div>
           </div>
         </div>
 
         <div style="margin-bottom:6px;font-size:12px;font-weight:600;color:var(--text-sub)">주요경력</div>
         <table class="data-table" style="border:1px solid var(--border);border-radius:4px;max-width:640px;margin-bottom:20px">
           <thead><tr><th>경력 상세</th></tr></thead>
-          <tbody>
+          <tbody id="mgmt-career-tbody">
             <tr><td style="padding-left:12px">현대자동차(주) 구매팀 부장 (1988~2002)</td></tr>
             <tr><td style="padding-left:12px">(주)금강정밀 대표이사 (2008~현재)</td></tr>
           </tbody>
@@ -439,7 +440,7 @@
             <th style="width:150px">오너/설립자 관계</th>
             <th>기타사항</th>
           </tr></thead>
-          <tbody>
+          <tbody id="mgmt-history-tbody">
             <tr>
               <td class="c muted">2008-03-15</td>
               <td style="padding-left:12px">박금강</td>
@@ -459,7 +460,7 @@
             <th style="width:110px">지분 (%)</th>
             <th>비고</th>
           </tr></thead>
-          <tbody>
+          <tbody id="mgmt-share-tbody">
             <tr>
               <td style="padding-left:12px">박금강</td>
               <td class="r" style="padding-right:12px">68.00</td>
@@ -483,7 +484,7 @@
             <div class="mgmt-sec-hd"><span class="sec-group" style="margin:0;border:none;padding:0">임직원현황</span></div>
             <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
               <thead><tr><th>유형</th><th style="width:80px">인원 (명)</th></tr></thead>
-              <tbody>
+              <tbody id="mgmt-emp-tbody">
                 <tr><td style="padding-left:12px">임원</td><td class="r" style="padding-right:12px">3</td></tr>
                 <tr><td style="padding-left:12px">관리직</td><td class="r" style="padding-right:12px">12</td></tr>
                 <tr><td style="padding-left:12px">생산직 (내국인)</td><td class="r" style="padding-right:12px">65</td></tr>
@@ -500,7 +501,7 @@
             <div class="mgmt-sec-hd"><span class="sec-group" style="margin:0;border:none;padding:0">노조현황</span></div>
             <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
               <thead><tr><th>노조명</th><th style="width:70px">인원</th><th>비고</th></tr></thead>
-              <tbody>
+              <tbody id="mgmt-union-tbody">
                 <tr>
                   <td style="padding-left:12px">금강정밀 노동조합</td>
                   <td class="r" style="padding-right:10px">41</td>
@@ -513,7 +514,7 @@
             <div class="mgmt-sec-hd"><span class="sec-group" style="margin:0;border:none;padding:0">해외지사</span></div>
             <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
               <thead><tr><th>지역</th><th style="width:70px">법인 수</th></tr></thead>
-              <tbody>
+              <tbody id="mgmt-overseas-tbody">
                 <tr><td class="c muted" colspan="2" style="padding:10px">해외지사 없음</td></tr>
               </tbody>
             </table>
@@ -530,7 +531,7 @@
             <th style="width:130px">성명</th>
             <th>연락처</th>
           </tr></thead>
-          <tbody>
+          <tbody id="mgmt-exec-tbody">
             <tr>
               <td style="padding-left:12px">경영지원</td>
               <td style="padding-left:12px">전무이사</td>
@@ -928,6 +929,142 @@
 
       </div><!-- /tab-credit -->
 
+      <!-- ══ TAB: 심사결과·결재 ══ -->
+      <div id="tab-result" class="tab-panel">
+
+        <div class="sec-group" style="margin-top:0">심사 체크리스트</div>
+
+        <table class="data-table" style="border:1px solid var(--border);border-radius:4px;margin-bottom:20px;font-size:12px">
+          <thead>
+            <tr>
+              <th style="width:36px;text-align:center">No.</th>
+              <th style="text-align:left;padding-left:12px">심사 항목</th>
+              <th style="width:80px">배점</th>
+              <th style="width:80px">취득점수</th>
+              <th style="width:100px">판정</th>
+              <th>심사 의견</th>
+            </tr>
+          </thead>
+          <tbody id="chk-tbody">
+            <tr>
+              <td class="c">1</td>
+              <td style="padding-left:12px">재무건전성 (부채비율·유동비율)</td>
+              <td class="c">20</td>
+              <td class="c" style="font-weight:600">14</td>
+              <td class="c"><span class="badge badge-ok">통과</span></td>
+              <td style="padding-left:12px;color:var(--text-sub)">부채비율 180% 이내, 유동비율 양호</td>
+            </tr>
+            <tr>
+              <td class="c">2</td>
+              <td style="padding-left:12px">기술 역량 (설비·인력·특허)</td>
+              <td class="c">20</td>
+              <td class="c" style="font-weight:600">17</td>
+              <td class="c"><span class="badge badge-ok">통과</span></td>
+              <td style="padding-left:12px;color:var(--text-sub)">자동화 설비 3대, 품질담당 2명 보유</td>
+            </tr>
+            <tr>
+              <td class="c">3</td>
+              <td style="padding-left:12px">품질 시스템 (ISO 인증·불량율)</td>
+              <td class="c">20</td>
+              <td class="c" style="font-weight:600">16</td>
+              <td class="c"><span class="badge badge-ok">통과</span></td>
+              <td style="padding-left:12px;color:var(--text-sub)">IATF 16949 보유, 최근 3년 불량율 0.3%</td>
+            </tr>
+            <tr>
+              <td class="c">4</td>
+              <td style="padding-left:12px">생산 능력 (CAPA·납기 준수)</td>
+              <td class="c">20</td>
+              <td class="c" style="font-weight:600">15</td>
+              <td class="c"><span class="badge badge-ok">통과</span></td>
+              <td style="padding-left:12px;color:var(--text-sub)">월 50,000개 CAPA 확인, 납기 준수율 97%</td>
+            </tr>
+            <tr>
+              <td class="c">5</td>
+              <td style="padding-left:12px">협력 가능성 (ESG·준법·소통)</td>
+              <td class="c">20</td>
+              <td class="c" style="font-weight:600">12</td>
+              <td class="c"><span class="badge badge-warn">조건부</span></td>
+              <td style="padding-left:12px;color:var(--text-sub)">ESG 보고서 미제출 — 6개월 내 제출 조건</td>
+            </tr>
+            <tr style="background:var(--grid-row-alt)">
+              <td colspan="2" style="padding-left:12px;font-weight:600">합계</td>
+              <td class="c" style="font-weight:700">100</td>
+              <td class="c" style="font-weight:700;color:var(--blue)">74</td>
+              <td colspan="2"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="sec-group">심사 결과</div>
+
+        <div class="form-row form-row-4" style="margin-bottom:14px">
+          <div class="form-field">
+            <label class="form-label">심사 총점</label>
+            <div class="vw-val blue">74 / 100점</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">종합 판정</label>
+            <div class="vw-val">
+              <span class="badge badge-warn" style="font-size:12px">조건부 적격</span>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">심사 완료일</label>
+            <div class="vw-val">2026-06-10</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">심사 담당자</label>
+            <div class="vw-val">이구매 (개발구매팀)</div>
+          </div>
+        </div>
+
+        <div class="form-row form-row-full" style="margin-bottom:20px">
+          <div class="form-field">
+            <label class="form-label">심사 의견 / 조건 사항</label>
+            <div class="vw-val" style="min-height:60px;align-items:flex-start;padding:8px 10px;line-height:1.6">
+              기술·품질 역량은 적격 수준. ESG 보고서 미비로 조건부 승인 처리.<br>
+              6개월 이내 ESG 보고서 제출 완료 시 전환 등급 부여 예정.
+            </div>
+          </div>
+        </div>
+
+        <div class="sec-group">승인 결재선</div>
+
+        <div class="step-bar" style="margin-bottom:24px">
+          <div class="step-node">
+            <div class="step-box done">
+              <span class="step-role">심사 담당</span>
+              <span class="step-name">이구매</span>
+              <span class="date">2026-06-10</span>
+            </div>
+          </div>
+          <div class="step-sep"></div>
+          <div class="step-node">
+            <div class="step-box done">
+              <span class="step-role">팀장</span>
+              <span class="step-name">박팀장</span>
+              <span class="date">2026-06-11</span>
+            </div>
+          </div>
+          <div class="step-sep"></div>
+          <div class="step-node">
+            <div class="step-box prog">
+              <span class="step-role">구매 부장</span>
+              <span class="step-name">최부장</span>
+              <span class="date" style="color:var(--text-mute)">검토 중</span>
+            </div>
+          </div>
+          <div class="step-sep"></div>
+          <div class="step-node">
+            <div class="step-box wait">
+              <span class="step-role">임원</span>
+              <span class="step-name">김이사</span>
+              <span class="date" style="color:var(--text-mute)">대기</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tab-result -->
 
     </div><!-- /supplier-content -->
   </div><!-- /supplier-body -->
@@ -939,6 +1076,17 @@ var COMPANY_DB = {
   'VND-0064': {
     name:'(주)금강정밀',        shortName:'금강정밀',
     nameEn:'Kumgang Precision Co., Ltd.',
+    ceoBirth:'1962-08-15',      ceoEdu:'한양대학교 공과대학 기계공학과',
+    ceoCareer:[
+      '현대자동차(주) 구매팀 부장 (1988~2002)',
+      '(주)금강정밀 대표이사 (2008~현재)'
+    ],
+    history:[{ date:'2008-03-15', founder:'박금강', owner:'박금강', rel:'본인', note:'경기도 시흥 산업단지 내 창업' }],
+    shares:[ { name:'박금강', pct:'68.00', note:'대표이사' }, { name:'박민준', pct:'20.00', note:'장남, 기술이사' }, { name:'기타 소액주주', pct:'12.00', note:'' } ],
+    emp:{ exec:3, mgr:12, prodKr:65, prodFr:7, etc:0 },
+    union:[{ name:'금강정밀 노동조합', cnt:41, note:'한국금속노조 경기지부' }],
+    overseas:[],
+    execs:[ { dept:'경영지원', rank:'전무이사', name:'박민준', tel:'010-4521-8734' }, { dept:'품질', rank:'이사', name:'최품질', tel:'010-7823-4159' }, { dept:'생산', rank:'이사', name:'정생산', tel:'010-6234-9871' } ],
     ceo:'박금강',               bizNo:'124-86-34521',
     corpNo:'110111-4567890',    corpType:'법인사업자',  vendorType:'잠재업체',
     founded:'2008-03-15',       country:'대한민국',     language:'한국어',
@@ -955,6 +1103,17 @@ var COMPANY_DB = {
   'VND-0061': {
     name:'(주)정밀단조',        shortName:'정밀단조',
     nameEn:'Jungmil Forging Co., Ltd.',
+    ceoBirth:'1968-03-27',      ceoEdu:'충남대학교 기계공학과',
+    ceoCareer:[
+      '동국제강(주) 생산기술팀 차장 (1995~2004)',
+      '(주)정밀단조 대표이사 (2005~현재)'
+    ],
+    history:[{ date:'2005-07-10', founder:'이단조', owner:'이단조', rel:'본인', note:'충남 천안 산업단지 내 창업' }],
+    shares:[ { name:'이단조', pct:'75.00', note:'대표이사' }, { name:'이수진', pct:'15.00', note:'배우자' }, { name:'기타 소액주주', pct:'10.00', note:'' } ],
+    emp:{ exec:2, mgr:8, prodKr:42, prodFr:5, etc:0 },
+    union:[],
+    overseas:[],
+    execs:[ { dept:'품질', rank:'이사', name:'박품질', tel:'010-3344-5566' }, { dept:'생산', rank:'부장', name:'김단조', tel:'010-9988-7766' } ],
     ceo:'이단조',               bizNo:'215-87-12345',
     corpNo:'110111-2345678',    corpType:'법인사업자',  vendorType:'잠재업체',
     founded:'2005-07-10',       country:'대한민국',     language:'한국어',
@@ -971,6 +1130,17 @@ var COMPANY_DB = {
   'VND-0058': {
     name:'(주)한길표면',        shortName:'한길표면',
     nameEn:'Hangil Surface Treatment Co., Ltd.',
+    ceoBirth:'1959-11-04',      ceoEdu:'인하대학교 화학공학과',
+    ceoCareer:[
+      '(주)삼성전기 도금사업부 과장 (1992~2000)',
+      '(주)한길표면 대표이사 (2001~현재)'
+    ],
+    history:[{ date:'2001-03-22', founder:'최한길', owner:'최한길', rel:'본인', note:'인천 서구 산업단지 내 창업' }],
+    shares:[ { name:'최한길', pct:'80.00', note:'대표이사' }, { name:'최영수', pct:'12.00', note:'장남' }, { name:'기타 소액주주', pct:'8.00', note:'' } ],
+    emp:{ exec:2, mgr:6, prodKr:28, prodFr:3, etc:0 },
+    union:[],
+    overseas:[],
+    execs:[ { dept:'영업', rank:'이사', name:'김영업', tel:'010-5522-3344' }, { dept:'품질', rank:'부장', name:'이도금', tel:'010-7788-9900' } ],
     ceo:'최한길',               bizNo:'134-81-56789',
     corpNo:'110111-5678901',    corpType:'법인사업자',  vendorType:'등록업체',
     founded:'2001-03-22',       country:'대한민국',     language:'한국어',
@@ -987,6 +1157,17 @@ var COMPANY_DB = {
   'VND-0049': {
     name:'(주)대한플라텍',      shortName:'대한플라텍',
     nameEn:'Daehan Platec Co., Ltd.',
+    ceoBirth:'1972-06-19',      ceoEdu:'아주대학교 고분자공학과',
+    ceoCareer:[
+      'LG화학(주) 기술개발팀 부장 (1998~2009)',
+      '(주)대한플라텍 대표이사 (2010~현재)'
+    ],
+    history:[{ date:'2010-11-05', founder:'김대한', owner:'김대한', rel:'본인', note:'경기도 수원시 권선구 산업단지 내 창업' }],
+    shares:[ { name:'김대한', pct:'70.00', note:'대표이사' }, { name:'정미래', pct:'18.00', note:'배우자' }, { name:'기타 소액주주', pct:'12.00', note:'' } ],
+    emp:{ exec:2, mgr:9, prodKr:35, prodFr:8, etc:0 },
+    union:[],
+    overseas:[],
+    execs:[ { dept:'품질', rank:'이사', name:'박사출', tel:'010-4455-6677' }, { dept:'생산', rank:'부장', name:'이생산', tel:'010-8899-0011' } ],
     ceo:'김대한',               bizNo:'301-86-34210',
     corpNo:'110111-3421056',    corpType:'법인사업자',  vendorType:'잠재업체',
     founded:'2010-11-05',       country:'대한민국',     language:'한국어',
@@ -1003,6 +1184,17 @@ var COMPANY_DB = {
   'VND-0063': {
     name:'(주)신성정공',        shortName:'신성정공',
     nameEn:'Shinsung Precision Co., Ltd.',
+    ceoBirth:'1975-09-08',      ceoEdu:'한국기술교육대학교 기계공학과',
+    ceoCareer:[
+      '현대모비스(주) 금형개발팀 과장 (2003~2011)',
+      '(주)신성정공 대표이사 (2012~현재)'
+    ],
+    history:[{ date:'2012-04-18', founder:'정신성', owner:'정신성', rel:'본인', note:'충남 천안시 동남구 산업단지 내 창업' }],
+    shares:[ { name:'정신성', pct:'85.00', note:'대표이사' }, { name:'기타 소액주주', pct:'15.00', note:'' } ],
+    emp:{ exec:1, mgr:5, prodKr:22, prodFr:2, etc:0 },
+    union:[],
+    overseas:[],
+    execs:[ { dept:'품질', rank:'과장', name:'김품질', tel:'010-3344-1122' }, { dept:'생산', rank:'과장', name:'이프레스', tel:'010-5566-3344' } ],
     ceo:'정신성',               bizNo:'118-86-78901',
     corpNo:'110111-7890123',    corpType:'법인사업자',  vendorType:'잠재업체',
     founded:'2012-04-18',       country:'대한민국',     language:'한국어',
@@ -1065,6 +1257,69 @@ var COMPANY_DB = {
     document.getElementById('att-bizreg').textContent = '사업자등록증_' + d.shortName + '_2026.pdf';
     document.getElementById('att-corp').textContent   = '법인등기부등본_' + d.shortName + '_2026.pdf';
     document.getElementById('att-intro').textContent  = '회사소개서_' + d.shortName + '_2026.pdf';
+    /* 경영정보 — 대표이사 현황 */
+    document.getElementById('mgmt-ceo').textContent   = d.ceo;
+    document.getElementById('mgmt-birth').textContent = d.ceoBirth;
+    document.getElementById('mgmt-edu').textContent   = d.ceoEdu;
+    document.getElementById('mgmt-career-tbody').innerHTML = d.ceoCareer.map(function(c) {
+      return '<tr><td style="padding-left:12px">' + c + '</td></tr>';
+    }).join('');
+    /* 경영정보 — 회사연혁 */
+    document.getElementById('mgmt-history-tbody').innerHTML = d.history.map(function(h) {
+      return '<tr>' +
+        '<td class="c muted">' + h.date + '</td>' +
+        '<td style="padding-left:12px">' + h.founder + '</td>' +
+        '<td style="padding-left:12px">' + h.owner + '</td>' +
+        '<td class="c">' + h.rel + '</td>' +
+        '<td style="padding-left:12px">' + h.note + '</td>' +
+      '</tr>';
+    }).join('');
+    /* 경영정보 — 지분현황 */
+    document.getElementById('mgmt-share-tbody').innerHTML = d.shares.map(function(s) {
+      return '<tr>' +
+        '<td style="padding-left:12px">' + s.name + '</td>' +
+        '<td class="r" style="padding-right:12px">' + s.pct + '</td>' +
+        '<td style="padding-left:12px">' + s.note + '</td>' +
+      '</tr>';
+    }).join('');
+    /* 경영정보 — 임직원현황 */
+    var e = d.emp;
+    var total = e.exec + e.mgr + e.prodKr + e.prodFr + e.etc;
+    document.getElementById('mgmt-emp-tbody').innerHTML =
+      '<tr><td style="padding-left:12px">임원</td><td class="r" style="padding-right:12px">' + e.exec + '</td></tr>' +
+      '<tr><td style="padding-left:12px">관리직</td><td class="r" style="padding-right:12px">' + e.mgr + '</td></tr>' +
+      '<tr><td style="padding-left:12px">생산직 (내국인)</td><td class="r" style="padding-right:12px">' + e.prodKr + '</td></tr>' +
+      '<tr><td style="padding-left:12px">생산직 (외국인)</td><td class="r" style="padding-right:12px">' + e.prodFr + '</td></tr>' +
+      '<tr><td style="padding-left:12px">기타</td><td class="r" style="padding-right:12px">' + e.etc + '</td></tr>' +
+      '<tr style="font-weight:600;background:var(--bg)"><td style="padding-left:12px">합계</td><td class="r" style="padding-right:12px">' + total + '</td></tr>';
+    /* 경영정보 — 노조현황 */
+    document.getElementById('mgmt-union-tbody').innerHTML = d.union.length
+      ? d.union.map(function(u) {
+          return '<tr>' +
+            '<td style="padding-left:12px">' + u.name + '</td>' +
+            '<td class="r" style="padding-right:10px">' + u.cnt + '</td>' +
+            '<td style="padding-left:12px">' + u.note + '</td>' +
+          '</tr>';
+        }).join('')
+      : '<tr><td class="c muted" colspan="3" style="padding:10px">노조 없음</td></tr>';
+    /* 경영정보 — 해외지사 */
+    document.getElementById('mgmt-overseas-tbody').innerHTML = d.overseas.length
+      ? d.overseas.map(function(o) {
+          return '<tr>' +
+            '<td style="padding-left:12px">' + o.region + '</td>' +
+            '<td class="r" style="padding-right:10px">' + o.cnt + '</td>' +
+          '</tr>';
+        }).join('')
+      : '<tr><td class="c muted" colspan="2" style="padding:10px">해외지사 없음</td></tr>';
+    /* 경영정보 — 중역정보 */
+    document.getElementById('mgmt-exec-tbody').innerHTML = d.execs.map(function(x) {
+      return '<tr>' +
+        '<td style="padding-left:12px">' + x.dept + '</td>' +
+        '<td style="padding-left:12px">' + x.rank + '</td>' +
+        '<td style="padding-left:12px">' + x.name + '</td>' +
+        '<td style="padding-left:12px">' + x.tel + '</td>' +
+      '</tr>';
+    }).join('');
   }
 
   /* 상태카드 */

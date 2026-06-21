@@ -152,12 +152,12 @@
 </style>
 </head>
 
-<body data-menu="09-01">
+<body data-menu="09-02">
 <div class="page-wrap">
 
   <!-- ── 타이틀 바 ── -->
   <div class="page-title-bar">
-    <button class="btn btn-secondary btn-sm" onclick="location.href='09-01_supplier_register.html'" style="margin-right:4px">
+    <button class="btn btn-secondary btn-sm" onclick="location.href='09-01_supplier_apply_list.html'" style="margin-right:4px">
       <i data-lucide="arrow-left"></i>
     </button>
     <span class="page-title">협력사 신규 등록</span>
@@ -1454,7 +1454,7 @@ function submitRegister() {
 function confirmSubmit() {
   toggleModal('modal-confirm', false);
   showToast('협력사 등록 신청이 완료되었습니다.', 'ok', 2800);
-  setTimeout(function() { location.href = '09-01_supplier_register.html'; }, 1800);
+  setTimeout(function() { location.href = '09-01_supplier_apply_list.html'; }, 1800);
 }
 
 /* ── 임시저장 ── */

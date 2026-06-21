@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1920">
-<title>협력사 사전 등록·평가 | DevSRM</title>
+<title>협력사 등록 신청 | DevSRM</title>
 <link rel="stylesheet" href="../common/tokens.css">
 <script src="https://unpkg.com/lucide@latest"></script>
 <style>
@@ -30,10 +30,10 @@
 <div class="page-wrap">
 
   <div class="page-title-bar">
-    <span class="page-title">협력사 사전 등록·평가</span>
+    <span class="page-title">협력사 등록 신청</span>
     <div class="page-title-spacer"></div>
     <div class="page-actions">
-      <button class="btn btn-primary" onclick="location.href='09-01_supplier_new.html'">
+      <button class="btn btn-primary" onclick="location.href='09-02_supplier_apply_form.html'">
         <i data-lucide="plus"></i>협력사 등록
       </button>
     </div>
@@ -144,7 +144,7 @@ function applyFilter() {
 }
 
 function detailUrl(d) {
-  return '09-01_supplier_register_detail.html'
+  return '09-03_supplier_qualification.html'
     + '?code=' + encodeURIComponent(d.code)
     + '&name=' + encodeURIComponent(d.name)
     + '&st='   + encodeURIComponent(d.st)

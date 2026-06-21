@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>협력사 등급평가 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* ── 2단 그룹 헤더 테이블 ── */
+  .grade-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .grade-table th {
+    background:var(--grid-head); padding:0 6px; height:28px; font-weight:600;
+    color:var(--text); text-align:center; border:1px solid var(--border); white-space:nowrap;
+    position:sticky; top:0; z-index:1;
+  }
+  .grade-table th.g-sub { height:24px; font-size:11px; color:var(--text-sub); font-weight:500; }
+  .grade-table td {
+    padding:0 6px; height:32px; border:1px solid var(--border);
+    color:var(--text); text-align:center; vertical-align:middle; white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+  }
+  .grade-table td.name { text-align:left; padding-left:12px; }
+  .grade-table td.bizno { color:var(--text-sub); font-size:11px; }
+  .grade-table tbody tr:hover td { background:var(--grid-hover); }
+  .grade-table td.neg { color:var(--status-bad); }
+  .grade-table td.zero { color:var(--text-mute); }
+  .grade-table td.total { font-weight:700; }
+
+  /* ── 등급 뱃지 ── */
+  .gb { display:inline-block; padding:1px 10px; border-radius:3px; font-size:11px; font-weight:700; }
+  .gb-s, .gb-a { background:#dcfce7; color:#16a34a; }
+  .gb-b { background:#dbeafe; color:#1d4ed8; }
+  .gb-c { background:#fef3c7; color:#d97706; }
+  .gb-d { background:#fee2e2; color:#dc2626; }
+
+  /* ── 요약 통계 바 ── */
+  .stats-bar {
+    padding:7px 24px; background:#f9fafb; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; flex-shrink:0; font-size:12px; gap:0;
+  }
+  .stats-item {
+    display:flex; align-items:center; gap:5px;
+    padding:0 16px; border-right:1px solid var(--border);
+  }
+  .stats-item:first-child { padding-left:0; }
+  .stats-item:last-child  { border-right:none; }
+  .stats-lbl { color:var(--text-sub); }
+  .stats-val { font-weight:700; font-variant-numeric:tabular-nums; font-size:13px; }
+  .stats-pct { font-size:11px; color:var(--text-mute); margin-left:1px; }
+  .stats-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+  /* ── 필터 칩 행 ── */
+  .chip-row {
+    padding:5px 24px; background:var(--surface); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:6px; flex-shrink:0;
+    font-size:12px; color:var(--text-sub);
+  }
+  .chip {
+    display:inline-flex; align-items:center; gap:4px;
+    height:22px; padding:0 8px;
+    background:var(--blue-light); border:1px solid #b3d0f5;
+    border-radius:3px; font-size:11px; font-weight:600; color:var(--blue);
+  }
+  .chip-x {
+    background:none; border:none; padding:0;
+    width:14px; height:14px; cursor:pointer;
+    color:var(--blue); opacity:.7;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .chip-x:hover { opacity:1; }
+</style>
+</head>
+
+<body data-menu="09-05">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">협력사 등급평가</span>
+    <div class="page-title-spacer"></div>
+  </div>
+
+  <!-- 요약 통계 바 -->
+  <div class="stats-bar">
+    <div class="stats-item">
+      <span class="stats-lbl">총</span>
+      <span class="stats-val">218</span>
+      <span class="stats-lbl">사</span>
+    </div>
+    <div class="stats-item">
+      <span class="stats-dot" style="background:var(--status-ok)"></span>
+      <span class="stats-lbl">S</span>
+      <span class="stats-val" style="color:var(--status-ok)">1</span>
+      <span class="stats-pct">0%</span>
+    </div>
+    <div class="stats-item">
+      <span class="stats-dot" style="background:var(--status-ok)"></span>
+      <span class="stats-lbl">A</span>
+      <span class="stats-val" style="color:var(--status-ok)">9</span>
+      <span class="stats-pct">4%</span>
+    </div>
+    <div class="stats-item">
+      <span class="stats-dot" style="background:var(--status-prog)"></span>
+      <span class="stats-lbl">B</span>
+      <span class="stats-val" style="color:var(--status-prog)">5</span>
+      <span class="stats-pct">2%</span>
+    </div>
+    <div class="stats-item">
+      <span class="stats-dot" style="background:var(--status-warn)"></span>
+      <span class="stats-lbl">C</span>
+      <span class="stats-val" style="color:var(--status-warn)">3</span>
+      <span class="stats-pct">1%</span>
+    </div>
+    <div class="stats-item">
+      <span class="stats-dot" style="background:var(--status-bad)"></span>
+      <span class="stats-lbl">D</span>
+      <span class="stats-val" style="color:var(--status-bad)">200</span>
+      <span class="stats-pct">92%</span>
+    </div>
+  </div>
+
+  <!-- 검색 바 -->
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <button class="btn-filter" onclick="toggleFilter()">
+      <i data-lucide="filter" style="width:14px;height:14px;color:#dc2626"></i>필터
+    </button>
+  </div>
+
+  <!-- 필터 패널 -->
+  <div class="filter-panel" id="filter-panel">
+    <div class="search-field">
+      <span class="search-label">평가연도</span>
+      <select class="search-select" id="f-year" style="width:88px" onchange="applyFilter();syncChips()">
+        <option value="">전체</option>
+        <option value="2025" selected>2025</option>
+        <option value="2024">2024</option>
+        <option value="2023">2023</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">등급</span>
+      <select class="search-select" id="f-grade" style="width:78px" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="S">S</option>
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+        <option value="D">D</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 필터 칩 행 -->
+  <div class="chip-row" id="chip-row">
+    <span>활성 필터:</span>
+    <span class="chip" id="chip-year">
+      <span id="chip-year-txt">연도 2025</span>
+      <button class="chip-x" onclick="clearYear()">
+        <i data-lucide="x" style="width:10px;height:10px"></i>
+      </button>
+    </span>
+  </div>
+
+  <!-- 콘텐츠 -->
+  <div class="content-scroll">
+    <div class="section-box">
+      <div class="section-box-header">
+        <span class="section-box-title">협력사 종합 등급평가 현황</span>
+        <span style="font-size:11px;color:var(--text-mute);margin-left:8px">원가(50) &middot; 품질(30) &middot; 기술(10) &middot; 개발(10) + 가감점 &nbsp;|&nbsp; S&ge;50 &middot; A&ge;40 &middot; B&ge;30 &middot; C&ge;20 &middot; D미만</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--text-sub)" id="row-count">0건</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="grade-table">
+          <thead>
+            <!-- 1행: 그룹 헤더 -->
+            <tr>
+              <th rowspan="2" style="width:36px"><input type="checkbox" style="pointer-events:none"></th>
+              <th rowspan="2" style="width:38px">No.</th>
+              <th rowspan="2" style="width:48px">연도</th>
+              <th rowspan="2" style="width:170px;text-align:left;padding-left:12px">업체명</th>
+              <th rowspan="2" style="width:120px">사업자번호</th>
+              <th rowspan="2" style="width:80px">업체코드</th>
+              <th colspan="3" style="background:#e8eef6">원가 (50점)</th>
+              <th colspan="2" style="background:#e6f4ea">품질 (30점)</th>
+              <th colspan="2" style="background:#e8eef9">기술 (10점)</th>
+              <th colspan="2" style="background:#fdf4e8">개발 (10점)</th>
+              <th colspan="4" style="background:#f2edf8">가감점</th>
+              <th rowspan="2" style="width:48px;font-weight:700">합계</th>
+              <th rowspan="2" style="width:76px">종합등급</th>
+            </tr>
+            <!-- 2행: 세부 컬럼 -->
+            <tr>
+              <th class="g-sub" style="width:58px;background:#e8eef6">입찰견적<br><span style="color:var(--text-mute)">(45)</span></th>
+              <th class="g-sub" style="width:50px;background:#e8eef6">절감실적<br><span style="color:var(--text-mute)">(3)</span></th>
+              <th class="g-sub" style="width:48px;background:#e8eef6">개선제안<br><span style="color:var(--text-mute)">(2)</span></th>
+              <th class="g-sub" style="width:54px;background:#e6f4ea">협력사<br>평가(10)</th>
+              <th class="g-sub" style="width:54px;background:#e6f4ea">공정<br>불량율(20)</th>
+              <th class="g-sub" style="width:50px;background:#e8eef9">기술<br>능력(5)</th>
+              <th class="g-sub" style="width:44px;background:#e8eef9">제안<br>(5)</th>
+              <th class="g-sub" style="width:50px;background:#fdf4e8">개발<br>능력(5)</th>
+              <th class="g-sub" style="width:52px;background:#fdf4e8">업무<br>대응력(5)</th>
+              <th class="g-sub" style="width:44px;background:#f2edf8">상생<br>(+3)</th>
+              <th class="g-sub" style="width:44px;background:#f2edf8">제재<br>(-10)</th>
+              <th class="g-sub" style="width:40px;background:#f2edf8">납입<br>(-2)</th>
+              <th class="g-sub" style="width:40px;background:#f2edf8">신용<br>(-2)</th>
+            </tr>
+          </thead>
+          <tbody id="grade-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var DATA = [
+  { no:66,  year:2025, name:'공신공업(주)',           bizno:'131-81-65344', code:'100139', c:[0,0,0,8,18,0,0,0,0,0,0,0,0]  },
+  { no:150, year:2025, name:'유니테크노',             bizno:'312-88-53066', code:'100532', c:[0,0,0,8,20,4,4,5,5,0,0,0,0]  },
+  { no:190, year:2025, name:'신동아전기',             bizno:'137-06-65520', code:'303682', c:[0,0,0,8,20,4,4,4,5,1,0,0,0]  },
+  { no:7,   year:2025, name:'(주)동화',               bizno:'134-81-56766', code:'100008', c:[0,0,1,6,20,4,5,4,5,1,0,0,0]  },
+  { no:25,  year:2025, name:'(주)태양정공',           bizno:'130-86-44583', code:'100033', c:[0,0,0,6,20,2,4,2,2,0,0,0,0]  },
+  { no:112, year:2025, name:'(주)나이스테크',         bizno:'131-86-33416', code:'100321', c:[0,0,0,6,14,0,0,0,0,0,0,0,0]  },
+  { no:133, year:2025, name:'제일금속 주식회사',       bizno:'130-86-69148', code:'100378', c:[0,0,0,6,20,4,5,5,5,1,0,0,0]  },
+  { no:141, year:2025, name:'주식회사 피케이에프씨',  bizno:'131-86-38425', code:'100388', c:[0,0,0,6,18,3,3,3,4,0,0,0,0]  },
+  { no:148, year:2025, name:'엘포스텍',               bizno:'134-81-56543', code:'100460', c:[0,0,0,6,20,4,4,4,5,1,0,0,0]  },
+  { no:170, year:2025, name:'서울산업(주)',           bizno:'133-81-31006', code:'301815', c:[0,0,0,6,18,4,4,4,5,0,0,0,-2] },
+  { no:183, year:2025, name:'(주)디팜스테크',         bizno:'123-81-98150', code:'302926', c:[0,2,2,6,20,5,4,5,5,3,0,0,0]  },
+  { no:205, year:2025, name:'다모하이텍',             bizno:'166-05-00891', code:'304009', c:[0,0,1,6,20,3,5,4,5,2,0,0,0]  }
+];
+
+var GB = { S:'gb-s', A:'gb-a', B:'gb-b', C:'gb-c', D:'gb-d' };
+
+function tot(c) { return c.reduce(function(s,v){ return s+v; }, 0); }
+function grade(t) { return t>=50?'S':t>=40?'A':t>=30?'B':t>=20?'C':'D'; }
+
+function cell(v) {
+  if (v < 0) return '<td class="neg">' + v + '</td>';
+  if (v === 0) return '<td class="zero">0</td>';
+  return '<td>' + v + '</td>';
+}
+
+function renderRows(rows) {
+  document.getElementById('grade-tbody').innerHTML = rows.map(function(d) {
+    var t = tot(d.c), g = grade(t);
+    return '<tr>'
+      + '<td class="c"><input type="checkbox"></td>'
+      + '<td class="c" style="color:var(--text-mute)">' + d.no + '</td>'
+      + '<td class="c" style="color:var(--text-sub)">' + d.year + '</td>'
+      + '<td class="name">' + d.name + '</td>'
+      + '<td class="bizno c">' + d.bizno + '</td>'
+      + '<td class="c" style="color:var(--text-sub)">' + d.code + '</td>'
+      + d.c.map(cell).join('')
+      + '<td class="total">' + t + '</td>'
+      + '<td><span class="gb ' + GB[g] + '">' + g + '등급</span></td>'
+      + '</tr>';
+  }).join('');
+  document.getElementById('row-count').textContent = rows.length + '건';
+}
+
+function applyFilter() {
+  var q    = document.getElementById('f-search').value.trim().toLowerCase();
+  var year = parseInt(document.getElementById('f-year').value) || 0;
+  var gf   = document.getElementById('f-grade').value;
+
+  var rows = DATA.filter(function(d) {
+    if (q    && !d.name.toLowerCase().includes(q) && !d.code.toLowerCase().includes(q)) return false;
+    if (year && d.year !== year) return false;
+    if (gf   && grade(tot(d.c)) !== gf) return false;
+    return true;
+  });
+  renderRows(rows);
+}
+
+function syncChips() {
+  var year = document.getElementById('f-year').value;
+  var chip = document.getElementById('chip-year');
+  if (year) {
+    document.getElementById('chip-year-txt').textContent = '연도 ' + year;
+    chip.style.display = 'inline-flex';
+    document.getElementById('chip-row').style.display = 'flex';
+  } else {
+    chip.style.display = 'none';
+    document.getElementById('chip-row').style.display = 'none';
+  }
+}
+
+function clearYear() {
+  document.getElementById('f-year').value = '';
+  syncChips();
+  applyFilter();
+}
+
+function toggleFilter() { document.getElementById('filter-panel').classList.toggle('open'); }
+
+/* 초기 렌더 — 연도 2025 기본 필터 */
+document.getElementById('filter-panel').classList.add('open');
+applyFilter();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

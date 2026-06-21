@@ -121,7 +121,8 @@
         { id: '06-06', label: '임의정산 관리',            href: '../06_price/06-06_retroactive.html' }
       ]
     },
-    {
+    // 화면 미구현 — 추후 복원
+    /* {
       id: '07',
       label: '연계관리',
       icon: 'link',
@@ -141,14 +142,18 @@
         { id: '08-03', label: '환율 변동 영향 분석',  href: '../08_change/08-03_fx_impact.html' },
         { id: '08-04', label: '단가 변경 이력',        href: '../08_change/08-04_price_change.html' }
       ]
-    },
+    }, */
     {
       id: '09',
       label: '협력사 관리',
       icon: 'users',
       children: [
-        { id: '09-01', label: '협력사 사전 등록·평가',    href: '../09_supplier/09-01_supplier_register.html' },
-        { id: '09-02', label: '협력사 사후 평가 (Q-5스타)', href: '../09_supplier/09-02_supplier_eval.html' }
+        { id: '09-01', label: '협력사 등록 신청',   href: '../09_supplier/09-01_supplier_apply_list.html' },
+        { id: '09-02', label: '협력사 신규 등록',   href: '../09_supplier/09-02_supplier_apply_form.html' },
+        { id: '09-03', label: '적격성 심사·승인',   href: '../09_supplier/09-03_supplier_qualification.html' },
+        { id: '09-04', label: '정식 협력사 마스터', href: '../09_supplier/09-04_supplier_master.html' },
+        { id: '09-05', label: '협력사 등급평가',    href: '../09_supplier/09-05_supplier_grade.html' },
+        { id: '09-06', label: '협력사 사후 평가',   href: '../09_supplier/09-06_supplier_eval.html' }
       ]
     }
   ];
@@ -164,11 +169,25 @@
   };
 
   /* ──────────────────────────────────────────────────────────────
-     3. 활성 메뉴 ID 감지  (<body data-menu="01-02">)
+     3. 활성 메뉴 감지  (<body data-menu="01-02">)
+     같은 id를 공유하는 항목(09-01 계열)은 현재 파일명으로 추가 구분
   ────────────────────────────────────────────────────────────── */
   var activeId = (D.body.dataset && D.body.dataset.menu) || '';
+  var currentFile = location.pathname.split('/').pop().split('?')[0];
+
+  function isItemActive(item) {
+    if (item.id !== activeId) return false;
+    var itemFile = item.href.split('/').pop();
+    return itemFile === currentFile;
+  }
 
   function findActiveGroup(menuId) {
+    for (var i = 0; i < MENU.length; i++) {
+      for (var j = 0; j < MENU[i].children.length; j++) {
+        if (isItemActive(MENU[i].children[j])) return MENU[i].id;
+      }
+    }
+    /* href 매칭 실패 시 id 기준으로 fallback */
     for (var i = 0; i < MENU.length; i++) {
       for (var j = 0; j < MENU[i].children.length; j++) {
         if (MENU[i].children[j].id === menuId) return MENU[i].id;
@@ -263,7 +282,7 @@
       html += '<ul class="srm-nav-children" role="list">';
       for (var j = 0; j < group.children.length; j++) {
         var item = group.children[j];
-        var isActive = item.id === activeId;
+        var isActive = isItemActive(item);
         html +=
           '<li>' +
             '<a href="' + item.href + '"' +

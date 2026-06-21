@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>정식 협력사 마스터 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .grid-area {
+    flex:1; overflow:hidden; display:flex; flex-direction:column; padding:14px 24px 16px;
+  }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+
+  /* ── 요약 통계 바 ── */
+  .stats-bar {
+    padding:7px 24px; background:#f9fafb; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; flex-shrink:0; font-size:12px; gap:0;
+  }
+  .stats-item {
+    display:flex; align-items:center; gap:5px;
+    padding:0 18px; border-right:1px solid var(--border);
+  }
+  .stats-item:first-child { padding-left:0; }
+  .stats-item:last-child  { border-right:none; }
+  .stats-lbl { color:var(--text-sub); }
+  .stats-val { font-weight:700; font-size:13px; font-variant-numeric:tabular-nums; }
+
+  /* ── 거래구분 뱃지 ── */
+  .tag-strategic { display:inline-block; padding:1px 8px; border-radius:2px; font-size:11px; font-weight:700; background:#e8f0fb; color:#1a56aa; }
+  .tag-general   { display:inline-block; padding:1px 8px; border-radius:2px; font-size:11px; font-weight:700; background:#f3f4f6; color:#6b7280; }
+
+  /* ── ERP 연계 상태 ── */
+  .erp-ok   { color:var(--status-ok);  font-size:12px; }
+  .erp-wait { color:var(--text-mute); font-size:12px; }
+
+  /* ── 등급 뱃지 ── */
+  .gb { display:inline-block; padding:1px 8px; border-radius:2px; font-size:11px; font-weight:700; }
+  .gb-s, .gb-a { background:#dcfce7; color:#16a34a; }
+  .gb-b { background:#dbeafe; color:#1d4ed8; }
+  .gb-c { background:#fef3c7; color:#d97706; }
+  .gb-d { background:#fee2e2; color:#dc2626; }
+  .gb-none { background:#f3f4f6; color:#9ca3af; }
+
+  /* ── 세그먼트 칩 ── */
+  .seg-chips { display:flex; gap:6px; align-items:center; }
+  .seg-chip {
+    height:26px; padding:0 12px; border-radius:3px; font-size:12px; font-weight:500;
+    border:1px solid var(--border); background:var(--surface); color:var(--text-sub);
+    cursor:pointer; transition:background 0.1s, color 0.1s;
+  }
+  .seg-chip:hover { background:var(--bg); color:var(--text); }
+  .seg-chip.active { background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600; }
+</style>
+</head>
+
+<body data-menu="09-04">
+<div class="page-wrap">
+
+  <!-- 타이틀 바 -->
+  <div class="page-title-bar">
+    <span class="page-title">정식 협력사 마스터</span>
+    <div class="page-title-spacer"></div>
+  </div>
+
+  <!-- 요약 통계 바 -->
+  <div class="stats-bar">
+    <div class="stats-item">
+      <span class="stats-lbl">등록 협력사</span>
+      <span class="stats-val" id="cnt-total">0</span>
+      <span class="stats-lbl">사</span>
+    </div>
+    <div class="stats-item">
+      <span style="width:8px;height:8px;border-radius:2px;background:var(--blue);flex-shrink:0"></span>
+      <span class="stats-lbl">전략협력사</span>
+      <span class="stats-val" style="color:var(--blue)" id="cnt-strategic">0</span>
+      <span class="stats-lbl">사</span>
+    </div>
+    <div class="stats-item">
+      <span style="width:8px;height:8px;border-radius:2px;background:var(--border-strong);flex-shrink:0"></span>
+      <span class="stats-lbl">일반협력사</span>
+      <span class="stats-val" id="cnt-general">0</span>
+      <span class="stats-lbl">사</span>
+    </div>
+    <div class="stats-item">
+      <span style="width:8px;height:8px;border-radius:2px;background:var(--status-warn);flex-shrink:0"></span>
+      <span class="stats-lbl">ERP 미연계</span>
+      <span class="stats-val" style="color:var(--status-warn)" id="cnt-erp-wait">0</span>
+      <span class="stats-lbl">사</span>
+    </div>
+  </div>
+
+  <!-- 검색 바 -->
+  <div class="search-bar" style="gap:8px">
+    <div class="search-wrap">
+      <input type="text" id="f-search" placeholder="Search" oninput="applyFilter()">
+      <i data-lucide="search" class="s-icon" style="width:15px;height:15px"></i>
+    </div>
+    <div class="search-field">
+      <span class="search-label">품목군</span>
+      <select class="search-select" id="f-group" style="width:120px" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="알루미늄 가공">알루미늄 가공</option>
+        <option value="프레스">프레스</option>
+        <option value="플라스틱">플라스틱</option>
+        <option value="표면처리">표면처리</option>
+        <option value="전자부품">전자부품</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">등급</span>
+      <select class="search-select" id="f-grade" style="width:80px" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="S">S</option>
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+        <option value="D">D</option>
+        <option value="-">미평가</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">ERP</span>
+      <select class="search-select" id="f-erp" style="width:90px" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="연계완료">연계완료</option>
+        <option value="대기">대기</option>
+      </select>
+    </div>
+    <div class="search-sep"></div>
+    <div class="seg-chips" id="seg-chips">
+      <span class="seg-chip active" onclick="setSeg('')">전체</span>
+      <span class="seg-chip" onclick="setSeg('전략')">전략협력사</span>
+      <span class="seg-chip" onclick="setSeg('일반')">일반협력사</span>
+    </div>
+  </div>
+
+  <!-- 그리드 영역 -->
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+        <thead>
+          <tr>
+            <th style="width:40px"><input type="checkbox"></th>
+            <th style="width:40px">No.</th>
+            <th style="width:110px">협력사코드</th>
+            <th style="width:180px">업체명</th>
+            <th style="width:130px">사업자번호</th>
+            <th style="width:120px">품목군</th>
+            <th style="width:90px">거래구분</th>
+            <th style="width:80px">현재등급</th>
+            <th style="width:100px">ERP 연계상태</th>
+            <th style="width:108px">등록일</th>
+            <th>비고</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var DATA = [
+  { code:'VND-0007', name:'(주)동화공업',     bizno:'134-81-56766', group:'프레스',       type:'전략', grade:'A', erp:'연계완료', regDate:'2018-03-12', note:'SOP 납품 중 (H1110-T100)' },
+  { code:'VND-0015', name:'(주)경기정공',     bizno:'124-81-23451', group:'프레스',       type:'일반', grade:'A', erp:'연계완료', regDate:'2019-06-20', note:'' },
+  { code:'VND-0019', name:'(주)대구부품',     bizno:'503-81-44210', group:'알루미늄 가공', type:'전략', grade:'A', erp:'연계완료', regDate:'2017-09-05', note:'Frame Sub Ass\'y 협력사' },
+  { code:'VND-0028', name:'(주)서울금속',     bizno:'201-81-88123', group:'프레스',       type:'일반', grade:'A', erp:'연계완료', regDate:'2020-02-14', note:'' },
+  { code:'VND-0033', name:'(주)태양정공',     bizno:'130-86-44583', group:'알루미늄 가공', type:'전략', grade:'B', erp:'연계완료', regDate:'2016-11-30', note:'' },
+  { code:'VND-0049', name:'(주)대한플라텍',   bizno:'220-81-34521', group:'플라스틱',     type:'일반', grade:'-', erp:'대기',    regDate:'2026-04-28', note:'반려 후 재신청 중' },
+  { code:'VND-0058', name:'(주)한길표면',     bizno:'118-86-55210', group:'표면처리',     type:'일반', grade:'B', erp:'연계완료', regDate:'2021-08-17', note:'' },
+  { code:'VND-0071', name:'(주)디팜스테크',   bizno:'123-81-98150', group:'전자부품',     type:'전략', grade:'S', erp:'연계완료', regDate:'2015-04-08', note:'최우수 협력사' },
+  { code:'VND-0082', name:'유니테크노(주)',   bizno:'312-86-53066', group:'알루미늄 가공', type:'전략', grade:'A', erp:'연계완료', regDate:'2019-01-22', note:'' },
+  { code:'VND-0097', name:'제일금속(주)',     bizno:'130-86-69148', group:'프레스',       type:'일반', grade:'A', erp:'대기',    regDate:'2023-07-11', note:'ERP 등록 진행 중' }
+];
+
+var GB_CLS = { S:'gb-s', A:'gb-a', B:'gb-b', C:'gb-c', D:'gb-d', '-':'gb-none' };
+var currentSeg = '';
+
+function applyFilter() {
+  var q     = document.getElementById('f-search').value.trim().toLowerCase();
+  var group = document.getElementById('f-group').value;
+  var grade = document.getElementById('f-grade').value;
+  var erp   = document.getElementById('f-erp').value;
+
+  var rows = DATA.filter(function(d) {
+    if (currentSeg && d.type !== currentSeg) return false;
+    if (q     && !d.name.toLowerCase().includes(q) && !d.code.toLowerCase().includes(q)) return false;
+    if (group && d.group !== group) return false;
+    if (grade && d.grade !== grade) return false;
+    if (erp   && d.erp   !== erp)   return false;
+    return true;
+  });
+  renderRows(rows);
+  updateStats();
+}
+
+function renderRows(rows) {
+  document.getElementById('tbody').innerHTML = rows.map(function(d, i) {
+    var gradeBadge = d.grade === '-'
+      ? '<span class="gb gb-none">미평가</span>'
+      : '<span class="gb ' + GB_CLS[d.grade] + '">' + d.grade + '등급</span>';
+    var erpBadge = d.erp === '연계완료'
+      ? '<span class="erp-ok"><i data-lucide="check-circle" style="width:12px;height:12px;vertical-align:-1px;margin-right:3px"></i>연계완료</span>'
+      : '<span class="erp-wait"><i data-lucide="clock" style="width:12px;height:12px;vertical-align:-1px;margin-right:3px"></i>대기</span>';
+    var typeBadge = d.type === '전략'
+      ? '<span class="tag-strategic">전략</span>'
+      : '<span class="tag-general">일반</span>';
+    return '<tr>'
+      + '<td class="c"><input type="checkbox"></td>'
+      + '<td class="c" style="color:var(--text-mute)">' + (i+1) + '</td>'
+      + '<td class="c"><a class="td-link" href="#">' + d.code + '</a></td>'
+      + '<td style="padding-left:12px;font-weight:500">' + d.name + '</td>'
+      + '<td class="c" style="color:var(--text-sub)">' + d.bizno + '</td>'
+      + '<td style="padding-left:12px">' + d.group + '</td>'
+      + '<td class="c">' + typeBadge + '</td>'
+      + '<td class="c">' + gradeBadge + '</td>'
+      + '<td class="c">' + erpBadge + '</td>'
+      + '<td class="c" style="color:var(--text-mute)">' + d.regDate + '</td>'
+      + '<td style="padding-left:12px;color:var(--text-sub);font-size:12px">' + d.note + '</td>'
+      + '</tr>';
+  }).join('');
+  if (window.lucide) lucide.createIcons();
+}
+
+function updateStats() {
+  document.getElementById('cnt-total').textContent    = DATA.length;
+  document.getElementById('cnt-strategic').textContent = DATA.filter(function(d){ return d.type === '전략'; }).length;
+  document.getElementById('cnt-general').textContent   = DATA.filter(function(d){ return d.type === '일반'; }).length;
+  document.getElementById('cnt-erp-wait').textContent  = DATA.filter(function(d){ return d.erp === '대기'; }).length;
+}
+
+function setSeg(seg) {
+  currentSeg = seg;
+  document.querySelectorAll('.seg-chip').forEach(function(el, i) {
+    el.classList.toggle('active', ['', '전략', '일반'][i] === seg);
+  });
+  applyFilter();
+}
+
+applyFilter();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>
