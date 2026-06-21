@@ -49,6 +49,10 @@
   .score-fill.ok   { background: var(--status-ok); }
   .score-fill.warn { background: var(--status-warn); }
 
+  /* ── 종합순위 1위 행 강조 ── */
+  table.srm-table tbody tr.rank1-row:not(.selected) td { background: #f0f7ee; }
+  table.srm-table tbody tr.rank1-row:hover td { background: var(--grid-hover); }
+
   /* ── 상세 버튼 ── */
   .btn-detail {
     display: inline-flex; align-items: center; gap: 4px;
@@ -206,7 +210,8 @@
     <div class="section-box">
       <div class="section-box-header">
         <span class="section-box-title">업체별 견적 조회</span>
-        <span style="font-size:12px;color:var(--text-mute)">업체를 선택하면 하단에 품목별 세부 단가가 표시됩니다</span>
+        <span style="font-size:11px;color:var(--text-mute);margin-left:8px">종합점수 = 가격 40% + 비가격 60% &nbsp;(비가격 = 품질40·기술25·납기20·시스템15)</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--text-mute)">업체를 선택하면 하단에 품목별 세부 단가가 표시됩니다</span>
       </div>
       <div class="table-wrap" style="border-top:none">
         <table class="srm-table" id="vendor-table">
@@ -216,8 +221,11 @@
               <th style="width:130px">업체코드</th>
               <th style="width:160px">업체명</th>
               <th class="c" style="width:90px">거래구분</th>
-              <th class="r" style="width:130px">견적금액 합계</th>
-              <th style="width:130px">품질점수</th>
+              <th class="r" style="width:120px">합산단가 (원)</th>
+              <th class="c" style="width:100px">가격점수</th>
+              <th class="c" style="width:110px" title="품질(40)·기술(25)·납기(20)·시스템(15)">비가격점수</th>
+              <th class="c" style="width:100px">종합점수</th>
+              <th class="c" style="width:76px">종합순위</th>
               <th class="c" style="width:90px">샘플납기</th>
               <th class="r" style="width:120px">금형비 (별도)</th>
               <th class="c" style="width:90px">제출상태</th>
@@ -314,10 +322,11 @@
 <script>
   /* ══ 마스터 데이터 ══ */
 
+  /* 비가격 세부 배점: 품질(40) · 기술(25) · 납기(20) · 시스템(15) */
   var VENDORS = [
-    { code: 'VND-0012', name: 'A사 (동희부품)',   score: 91, deadline: '2026-04', type: '기존거래사', mold: '8,000,000', note: '주거래 협력사 · 협상 후 14,500원' },
-    { code: 'VND-0028', name: 'B사 (한국알미늄)', score: 87, deadline: '2026-05', type: '기존거래사', mold: '7,500,000', note: '알루미늄 전문 · 가공비 최고' },
-    { code: 'VND-0041', name: 'C사 (신흥정공)',   score: 83, deadline: '2026-06', type: '신규후보사', mold: '9,200,000', note: '최저가 · 신규업체 리스크' },
+    { code: 'VND-0012', name: 'A사 (동희부품)',   nq:37, nt:23, nd:18, ns:13, deadline: '2026-04', type: '기존거래사', mold: '8,000,000', note: '주거래 협력사 · 협상 후 14,500원' },
+    { code: 'VND-0028', name: 'B사 (한국알미늄)', nq:35, nt:22, nd:17, ns:13, deadline: '2026-05', type: '기존거래사', mold: '7,500,000', note: '알루미늄 전문 · 가공비 최고' },
+    { code: 'VND-0041', name: 'C사 (신흥정공)',   nq:33, nt:21, nd:16, ns:13, deadline: '2026-06', type: '신규후보사', mold: '9,200,000', note: '최저가 · 신규업체 리스크' },
   ];
 
   var PARTS = [
@@ -359,34 +368,101 @@
     var tbody = document.getElementById('vendor-tbody');
     tbody.innerHTML = '';
 
-    VENDORS.forEach(function(v, i) {
+    /* 1. 합산단가 — 품목별 total reduce 합산 (하드코딩 금지) */
+    var priceMap = {};
+    VENDORS.forEach(function(v) {
       var vq = QUOTES[v.code];
-      var total = Object.values(vq).reduce(function(s, q) { return s + q.total; }, 0);
-      var isSel = v.code === selectedVendorCode;
+      priceMap[v.code] = Object.keys(vq).reduce(function(s, k) { return s + vq[k].total; }, 0);
+    });
+
+    /* 2. 최저 합산단가 */
+    var minPrice = Math.min.apply(null, VENDORS.map(function(v) { return priceMap[v.code]; }));
+
+    /* 3. 비가격점수 = nq+nt+nd+ns 코드 합산  ·  종합점수 = 가격×0.4 + 비가격×0.6 */
+    var scoreMap = {};
+    VENDORS.forEach(function(v) {
+      var np = v.nq + v.nt + v.nd + v.ns;   /* 비가격 4항목 합산 — 하드코딩 금지 */
+      var p  = (minPrice / priceMap[v.code]) * 100;
+      var c  = p * 0.4 + np * 0.6;
+      scoreMap[v.code] = { price: p, np: np, comp: c };
+    });
+
+    /* 4. 종합순위 */
+    var rankMap = {};
+    VENDORS.slice()
+      .sort(function(a, b) { return scoreMap[b.code].comp - scoreMap[a.code].comp; })
+      .forEach(function(v, i) { rankMap[v.code] = i + 1; });
+
+    /* 5. 렌더 */
+    VENDORS.forEach(function(v, i) {
+      var total  = priceMap[v.code];
+      var pScore = scoreMap[v.code].price;
+      var cScore = scoreMap[v.code].comp;
+      var rank   = rankMap[v.code];
+      var isSel  = v.code === selectedVendorCode;
+      var isMin  = total === minPrice;
+      var isTop  = rank === 1;
 
       var tr = document.createElement('tr');
       if (isSel) tr.classList.add('selected');
+      else if (isTop) tr.classList.add('rank1-row');
       tr.style.cursor = 'pointer';
       tr.onclick = function() { selectVendor(v.code); };
 
-      var scoreColor = v.score >= 90 ? 'ok' : 'warn';
-      var scoreTxtColor = v.score >= 90 ? 'var(--status-ok)' : 'var(--status-warn)';
       var typeBadge = v.type === '기존거래사'
         ? '<span class="badge badge-prog">기존거래사</span>'
         : '<span class="badge badge-wait">신규후보사</span>';
+
+      /* 가격점수 셀 — 최저가 업체에 최저가 배지 */
+      var priceBadge = isMin
+        ? ' <span class="badge badge-ok" style="font-size:10px;padding:0 5px;height:16px;line-height:16px">최저가</span>'
+        : '';
+      var priceCell =
+        '<div class="score-cell">' +
+          '<span style="font-variant-numeric:tabular-nums;font-weight:600;' +
+            'color:' + (isMin ? 'var(--status-ok)' : 'var(--text)') + '">' +
+            pScore.toFixed(1) + '</span>' +
+          priceBadge +
+        '</div>';
+
+      /* 비가격점수 셀 — 합계(bar+숫자) + 세부항목 소형 표기 */
+      var np    = scoreMap[v.code].np;
+      var npCls = np >= 90 ? 'ok' : 'warn';
+      var npClr = np >= 90 ? 'var(--status-ok)' : 'var(--status-warn)';
+      var nonPriceCell =
+        '<div style="display:flex;flex-direction:column;align-items:center;gap:2px">' +
+          '<div class="score-cell">' +
+            '<div class="score-bar"><div class="score-fill ' + npCls + '" style="width:' + np + '%"></div></div>' +
+            '<span style="font-size:12px;font-weight:700;color:' + npClr +
+              ';width:30px;text-align:right;font-variant-numeric:tabular-nums">' + np + '</span>' +
+          '</div>' +
+          '<span style="font-size:10px;color:var(--text-mute);letter-spacing:0.2px">' +
+            'Q' + v.nq + '·T' + v.nt + '·D' + v.nd + '·S' + v.ns +
+          '</span>' +
+        '</div>';
+
+      /* 종합점수 셀 */
+      var compCell =
+        '<span style="font-variant-numeric:tabular-nums;font-weight:' + (isTop ? '700' : '600') + ';' +
+          'color:' + (isTop ? 'var(--status-ok)' : 'var(--text)') + '">' +
+          cScore.toFixed(1) + '</span>';
+
+      /* 종합순위 셀 */
+      var rankCell = rank === 1
+        ? '<span class="badge badge-ok">1위</span>'
+        : '<span style="font-size:12px;color:var(--text-sub)">' + rank + '위</span>';
 
       tr.innerHTML =
         '<td class="c muted">' + (i + 1) + '</td>' +
         '<td style="font-family:monospace;font-size:11px;color:var(--text-mute)">' + v.code + '</td>' +
         '<td style="font-weight:600">' + v.name + '</td>' +
         '<td class="c">' + typeBadge + '</td>' +
-        '<td class="r" style="font-weight:700;font-size:13px">' + total.toLocaleString('ko-KR') + '원</td>' +
-        '<td>' +
-          '<div class="score-cell">' +
-            '<div class="score-bar"><div class="score-fill ' + scoreColor + '" style="width:' + v.score + '%"></div></div>' +
-            '<span style="font-size:12px;font-weight:700;color:' + scoreTxtColor + ';width:34px;text-align:right">' + v.score + '점</span>' +
-          '</div>' +
-        '</td>' +
+        '<td class="r" style="font-weight:700;font-size:13px;font-variant-numeric:tabular-nums">' +
+          total.toLocaleString('ko-KR') + '원</td>' +
+        '<td class="c">' + priceCell + '</td>' +
+        '<td class="c">' + nonPriceCell + '</td>' +
+        '<td class="c">' + compCell  + '</td>' +
+        '<td class="c">' + rankCell  + '</td>' +
         '<td class="c muted">' + v.deadline + '</td>' +
         '<td class="r muted">' + v.mold + '원</td>' +
         '<td class="c"><span class="badge badge-ok">제출완료</span></td>' +
