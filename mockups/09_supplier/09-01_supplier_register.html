@@ -33,7 +33,7 @@
     <span class="page-title">협력사 사전 등록·평가</span>
     <div class="page-title-spacer"></div>
     <div class="page-actions">
-      <button class="btn btn-primary" onclick="location.href='09-01_supplier_register_detail.html'">
+      <button class="btn btn-primary" onclick="location.href='09-01_supplier_new.html'">
         <i data-lucide="plus"></i>협력사 등록
       </button>
     </div>
@@ -113,11 +113,11 @@
 
 <script>
 const DATA = [
-  { code:'VND-0064', name:'I사 (금강정밀)',   group:'알루미늄 가공', apply:'2026-05-20', score:0,  st:'심사중', mgr:'이구매' },
-  { code:'VND-0061', name:'E사 (정밀단조)',   group:'프레스',       apply:'2026-05-25', score:0,  st:'신청',   mgr:'이구매' },
-  { code:'VND-0058', name:'F사 (한길표면)',   group:'표면처리',     apply:'2026-05-10', score:84, st:'승인',   mgr:'김구매' },
-  { code:'VND-0049', name:'G사 (대한플라텍)', group:'플라스틱',     apply:'2026-04-28', score:72, st:'반려',   mgr:'김구매' },
-  { code:'VND-0063', name:'H사 (신성정공)',   group:'프레스',       apply:'2026-06-01', score:0,  st:'신청',   mgr:'이구매' },
+  { code:'VND-0064', name:'(주)금강정밀',   group:'알루미늄 가공', apply:'2026-05-20', score:0,  st:'심사중', mgr:'이구매' },
+  { code:'VND-0061', name:'(주)정밀단조',   group:'프레스',       apply:'2026-05-25', score:0,  st:'신청',   mgr:'이구매' },
+  { code:'VND-0058', name:'(주)한길표면',   group:'표면처리',     apply:'2026-05-10', score:84, st:'승인',   mgr:'김구매' },
+  { code:'VND-0049', name:'(주)대한플라텍', group:'플라스틱',     apply:'2026-04-28', score:72, st:'반려',   mgr:'김구매' },
+  { code:'VND-0063', name:'(주)신성정공',   group:'프레스',       apply:'2026-06-01', score:0,  st:'신청',   mgr:'이구매' },
 ];
 
 const ST_CLS = { '승인':'st-ok', '심사중':'st-prog', '신청':'st-wait', '반려':'st-bad' };
@@ -143,14 +143,25 @@ function applyFilter() {
   updateCounts();
 }
 
+function detailUrl(d) {
+  return '09-01_supplier_register_detail.html'
+    + '?code=' + encodeURIComponent(d.code)
+    + '&name=' + encodeURIComponent(d.name)
+    + '&st='   + encodeURIComponent(d.st)
+    + '&mgr='  + encodeURIComponent(d.mgr)
+    + '&apply='+ encodeURIComponent(d.apply)
+    + '&score='+ encodeURIComponent(d.score);
+}
+
 function renderRows(rows) {
   document.getElementById('tbody').innerHTML = rows.map(d => {
+    const url = detailUrl(d);
     const scoreCell = d.score
       ? `<td class="r" style="padding-right:12px;font-variant-numeric:tabular-nums">${d.score}점</td>`
       : `<td class="r" style="padding-right:12px"><span class="muted">—</span></td>`;
-    return `<tr onclick="location.href='09-01_supplier_register_detail.html'">
+    return `<tr onclick="location.href='${url}'">
       <td class="c" onclick="event.stopPropagation()"><input type="checkbox"></td>
-      <td class="c"><a class="td-link" href="09-01_supplier_register_detail.html">${d.code}</a></td>
+      <td class="c"><a class="td-link" href="${url}">${d.code}</a></td>
       <td style="padding-left:12px">${d.name}</td>
       <td style="padding-left:12px">${d.group}</td>
       <td class="c muted">${d.apply}</td>

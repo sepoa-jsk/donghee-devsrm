@@ -3,69 +3,105 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1920">
-<title>협력사 사전 등록·평가 | DevSRM</title>
+<title>(주)금강정밀 | 협력사 상세 | DevSRM</title>
 <link rel="stylesheet" href="../common/tokens.css">
 <script src="https://unpkg.com/lucide@latest"></script>
 <style>
-  /* ── 평가 테이블 ── */
-  .eval-table { width:100%; border-collapse:collapse; font-size:12px; }
-  .eval-table th {
-    background:var(--grid-head); padding:0 12px; height:32px; font-weight:600;
-    color:var(--text); text-align:center; border:1px solid var(--border); white-space:nowrap;
-  }
-  .eval-table td {
-    padding:0 12px; height:32px; border:1px solid var(--border);
-    color:var(--text); vertical-align:middle;
-  }
-  .eval-table td.lbl { text-align:left; }
-  .eval-table td.c   { text-align:center; }
-  .eval-table .cell-in {
-    width:60px; height:26px; border:1px solid var(--border); border-radius:3px;
-    text-align:center; font-size:12px; font-family:'Pretendard',sans-serif;
-  }
-  .eval-table .cell-in:focus {
-    border-color:var(--blue); outline:none;
-    box-shadow:0 0 0 2px rgba(26,86,170,0.15);
-  }
-  .eval-table tr.area-row td {
-    background:#eef0f3; font-weight:700; color:var(--text-sub); height:28px;
-  }
-  .eval-table tr.sub-row td { background:var(--grid-row-alt); font-weight:600; }
-  .eval-table tr.total-row td { background:var(--navy); color:#fff; font-weight:700; }
+  /* ── 좌측 탭 레이아웃 ── */
+  .supplier-body { flex:1; display:flex; overflow:hidden; }
 
-  /* 합격 표시 — total-row(navy bg)에서도 가독성 확보 */
-  .pass-ok  { color:#4ade80; font-weight:700; }
-  .pass-bad { color:#f87171; font-weight:700; }
-
-  /* ── 결재선 (spec 정의 오버라이드 — 가로 정렬 유지) ── */
-  .step-bar { display:flex; align-items:center; gap:0; padding:8px 0; }
-  .step-node { display:flex; align-items:center; }
-  .step-box {
-    width:120px; border:1px solid var(--border); border-radius:4px;
-    padding:8px 10px; display:flex; flex-direction:column; gap:3px;
+  .supplier-sidebar {
+    width:160px; flex-shrink:0;
+    border-right:1px solid var(--border);
     background:var(--surface);
+    display:flex; flex-direction:column; overflow-y:auto;
   }
-  .step-box.done { border-color:var(--status-ok); background:#f0fdf4; }
-  .step-box.prog { border-color:var(--blue); background:var(--blue-light); }
-  .step-box.wait { border-color:var(--border); background:#f9fafb; }
-  .step-role { font-size:10px; color:var(--text-mute); }
-  .step-name { font-size:12px; font-weight:600; color:var(--text); }
-  .step-date { font-size:10px; color:var(--text-sub); }
-  .step-sep {
-    width:28px; height:1px; background:var(--border-strong); flex-shrink:0;
-    position:relative;
+  .sidebar-company {
+    padding:14px 16px 12px;
+    border-bottom:1px solid var(--border);
+    font-size:13px; font-weight:700; color:var(--navy);
+    word-break:keep-all; line-height:1.4; min-height:48px;
   }
-  .step-sep::after {
-    content:''; position:absolute; right:-4px; top:-3px;
-    border:4px solid transparent; border-left-color:var(--border-strong);
+  .sidebar-tab {
+    display:block; width:100%; padding:10px 16px;
+    border:none; background:transparent; text-align:left;
+    font-size:13px; font-family:'Pretendard',sans-serif;
+    color:var(--text-sub); cursor:pointer;
+    border-left:3px solid transparent;
+    transition:background 0.1s, color 0.1s;
+  }
+  .sidebar-tab:hover { background:var(--bg); color:var(--text); }
+  .sidebar-tab.active {
+    color:var(--blue); font-weight:600;
+    border-left-color:var(--blue); background:var(--blue-light);
+  }
+
+  .supplier-content {
+    flex:1; overflow-y:auto; padding:20px 28px 40px;
+  }
+  .supplier-content::-webkit-scrollbar { width:6px; }
+  .supplier-content::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+
+  /* ── 읽기 전용 값 ── */
+  .vw-val {
+    min-height:32px; display:flex; align-items:center;
+    font-size:13px; color:var(--text); padding:0 10px;
+    background:var(--bg);
+    border:1px solid var(--border); border-radius:3px;
+    line-height:1.4;
+  }
+  .vw-val.muted { color:var(--text-mute); }
+  .vw-val.blue  { color:var(--blue); font-weight:600; }
+
+  /* ── 섹션 구분 ── */
+  .sec-group {
+    font-size:11px; font-weight:700; color:var(--text-mute);
+    letter-spacing:0.5px; text-transform:uppercase;
+    padding-bottom:8px; border-bottom:1px solid var(--border);
+    margin:0 0 14px;
+  }
+
+  /* ── 상태 요약 카드 ── */
+  .status-card {
+    display:flex; align-items:center; gap:20px;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:4px; padding:12px 20px; margin-bottom:18px;
+    font-size:12px; color:var(--text-sub);
+  }
+  .status-card-item { display:flex; flex-direction:column; gap:2px; }
+  .status-card-label { font-size:11px; color:var(--text-mute); }
+  .status-card-value { font-size:13px; font-weight:600; color:var(--text); }
+
+  /* ── 인증 섹션 ── */
+  .cert-section { border-bottom:1px solid var(--border); }
+  .cert-section:last-child { border-bottom:none; }
+  .cert-sec-hd {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:11px 0;
+  }
+  .cert-toggle {
+    display:flex; align-items:center; gap:8px; cursor:pointer;
+    font-size:14px; font-weight:700; color:var(--text); user-select:none;
+  }
+  .cert-toggle:hover { color:var(--navy); }
+  .cert-chevron { width:16px; height:16px; transition:transform 0.15s; flex-shrink:0; }
+  .cert-chevron.collapsed { transform:rotate(-90deg); }
+  .cert-section > div:not(.cert-sec-hd) { padding-bottom:16px; }
+
+  /* ── 경영정보 헤더 ── */
+  .mgmt-sec-hd {
+    display:flex; align-items:center; justify-content:space-between;
+    padding-bottom:8px; border-bottom:1px solid var(--border); margin-bottom:10px;
   }
 
   /* ── 토스트 ── */
   .toast {
     position:fixed; bottom:24px; right:24px; color:#fff;
     padding:10px 16px; border-radius:4px; font-size:13px;
-    z-index:500; display:flex; align-items:center; gap:8px;
-    box-shadow:0 4px 16px rgba(0,0,0,.18);
+    z-index:500; box-shadow:0 4px 16px rgba(0,0,0,.18);
   }
 </style>
 </head>
@@ -75,344 +111,1013 @@
 
   <!-- ── 타이틀 바 ── -->
   <div class="page-title-bar">
-    <span class="page-title">협력사 사전 등록·평가</span>
+    <button class="btn btn-secondary btn-sm" onclick="location.href='09-01_supplier_register.html'" style="margin-right:4px">
+      <i data-lucide="arrow-left"></i>
+    </button>
+    <span class="page-title" id="hd-name">(주)금강정밀</span>
+    <span class="badge badge-prog" id="hd-badge" style="margin-left:10px">심사중</span>
     <div class="page-title-spacer"></div>
     <div class="page-actions">
-      <button class="btn btn-secondary" onclick="location.href='09-01_supplier_register.html'">
-        <i data-lucide="arrow-left"></i>목록
+      <button class="btn btn-secondary" onclick="window.print()">
+        <i data-lucide="printer"></i>인쇄
       </button>
-      <button class="btn btn-danger" onclick="toggleModal('modal-reject', true)">
-        <i data-lucide="x-circle"></i>반려
+      <button class="btn btn-secondary" onclick="location.href='09-01_supplier_new.html'">
+        <i data-lucide="pencil"></i>수정
       </button>
-      <button class="btn btn-primary" onclick="showToast('협력사 등록이 승인되었습니다.', 'ok')">
-        <i data-lucide="check-circle"></i>승인
-      </button>
-    </div>
-  </div>
-
-  <div class="content-scroll">
-
-    <!-- ── 1. 업체 기본정보 ── -->
-    <div class="section-box">
-      <div class="section-box-header">
-        <span class="section-box-title">업체 기본정보</span>
-        <span class="badge badge-prog" style="font-size:10px;margin-left:8px">구매팀장 검토 중</span>
-      </div>
-      <div class="form-row form-row-4">
-        <div class="form-field">
-          <label class="form-label">업체코드</label>
-          <input class="form-input" value="VND-0064" readonly style="background:#f0f2f5;color:var(--text-sub)">
-        </div>
-        <div class="form-field">
-          <label class="form-label">업체명</label>
-          <input class="form-input" value="I사 (금강정밀)">
-        </div>
-        <div class="form-field">
-          <label class="form-label">대표</label>
-          <input class="form-input" value="김금강">
-        </div>
-        <div class="form-field">
-          <label class="form-label">사업자번호</label>
-          <input class="form-input" value="123-45-67890">
-        </div>
-      </div>
-      <div class="form-row form-row-4">
-        <div class="form-field">
-          <label class="form-label">소재지</label>
-          <input class="form-input" value="경기도 안산시">
-        </div>
-        <div class="form-field">
-          <label class="form-label">품목군</label>
-          <select class="form-select">
-            <option selected>알루미늄 가공</option>
-            <option>프레스</option>
-            <option>플라스틱</option>
-            <option>표면처리</option>
-          </select>
-        </div>
-        <div class="form-field">
-          <label class="form-label">신청일</label>
-          <input class="form-input" value="2026-05-20" readonly style="background:#f0f2f5;color:var(--text-sub)">
-        </div>
-        <div class="form-field">
-          <label class="form-label">담당자</label>
-          <input class="form-input" value="이구매">
-        </div>
-      </div>
-    </div>
-
-    <!-- ── 2. 사전 평가 체크리스트 ── -->
-    <div class="section-box">
-      <div class="section-box-header">
-        <span class="section-box-title">사전 평가 체크리스트</span>
-        <span style="font-size:11px;color:var(--text-mute);margin-left:8px">합격 기준 70점 이상</span>
-      </div>
-      <table class="eval-table">
-        <thead>
-          <tr>
-            <th style="text-align:left;padding-left:12px">평가 영역 · 항목</th>
-            <th style="width:80px">배점</th>
-            <th style="width:100px">평가 점수</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- 재무 -->
-          <tr class="area-row">
-            <td class="lbl" colspan="2">재무</td>
-            <td class="c">소계 <span id="sub-fin">20</span>점</td>
-          </tr>
-          <tr>
-            <td class="lbl">자본금·부채비율</td>
-            <td class="c">10</td>
-            <td class="c"><input type="number" id="fin1" class="cell-in" value="8" min="0" max="10" oninput="calcEval()"></td>
-          </tr>
-          <tr>
-            <td class="lbl">최근 3년 매출 추이</td>
-            <td class="c">8</td>
-            <td class="c"><input type="number" id="fin2" class="cell-in" value="7" min="0" max="8" oninput="calcEval()"></td>
-          </tr>
-          <tr>
-            <td class="lbl">신용등급</td>
-            <td class="c">7</td>
-            <td class="c"><input type="number" id="fin3" class="cell-in" value="5" min="0" max="7" oninput="calcEval()"></td>
-          </tr>
-          <!-- 기술 -->
-          <tr class="area-row">
-            <td class="lbl" colspan="2">기술</td>
-            <td class="c">소계 <span id="sub-tech">22</span>점</td>
-          </tr>
-          <tr>
-            <td class="lbl">보유 설비 적합성</td>
-            <td class="c">10</td>
-            <td class="c"><input type="number" id="tech1" class="cell-in" value="9" min="0" max="10" oninput="calcEval()"></td>
-          </tr>
-          <tr>
-            <td class="lbl">기술 인증 (IATF 등)</td>
-            <td class="c">8</td>
-            <td class="c"><input type="number" id="tech2" class="cell-in" value="7" min="0" max="8" oninput="calcEval()"></td>
-          </tr>
-          <tr>
-            <td class="lbl">R&amp;D 역량</td>
-            <td class="c">7</td>
-            <td class="c"><input type="number" id="tech3" class="cell-in" value="6" min="0" max="7" oninput="calcEval()"></td>
-          </tr>
-          <!-- 품질 -->
-          <tr class="area-row">
-            <td class="lbl" colspan="2">품질</td>
-            <td class="c">소계 <span id="sub-qual">21</span>점</td>
-          </tr>
-          <tr>
-            <td class="lbl">품질시스템 (ISO/IATF)</td>
-            <td class="c">10</td>
-            <td class="c"><input type="number" id="qual1" class="cell-in" value="9" min="0" max="10" oninput="calcEval()"></td>
-          </tr>
-          <tr>
-            <td class="lbl">불량률 실적</td>
-            <td class="c">8</td>
-            <td class="c"><input type="number" id="qual2" class="cell-in" value="7" min="0" max="8" oninput="calcEval()"></td>
-          </tr>
-          <tr>
-            <td class="lbl">클레임 이력</td>
-            <td class="c">7</td>
-            <td class="c"><input type="number" id="qual3" class="cell-in" value="5" min="0" max="7" oninput="calcEval()"></td>
-          </tr>
-          <!-- 생산 -->
-          <tr class="area-row">
-            <td class="lbl" colspan="2">생산</td>
-            <td class="c">소계 <span id="sub-prod">19</span>점</td>
-          </tr>
-          <tr>
-            <td class="lbl">생산능력 (CAPA)</td>
-            <td class="c">10</td>
-            <td class="c"><input type="number" id="prod1" class="cell-in" value="8" min="0" max="10" oninput="calcEval()"></td>
-          </tr>
-          <tr>
-            <td class="lbl">납기 준수율</td>
-            <td class="c">8</td>
-            <td class="c"><input type="number" id="prod2" class="cell-in" value="7" min="0" max="8" oninput="calcEval()"></td>
-          </tr>
-          <tr>
-            <td class="lbl">공급 안정성</td>
-            <td class="c">7</td>
-            <td class="c"><input type="number" id="prod3" class="cell-in" value="4" min="0" max="7" oninput="calcEval()"></td>
-          </tr>
-          <!-- 종합 -->
-          <tr class="total-row">
-            <td class="lbl">종합 점수</td>
-            <td class="c">100점</td>
-            <td class="c"><span id="total-score">82</span>점 &nbsp;<span id="pass-mark" class="pass-ok">합격</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- ── 3. 심사 결재선 ── -->
-    <div class="section-box">
-      <div class="section-box-header">
-        <span class="section-box-title">심사 결재선</span>
-      </div>
-      <div class="step-bar">
-        <!-- 1. 구매담당 (done) -->
-        <div class="step-node">
-          <div class="step-box done">
-            <span class="step-role">구매담당</span>
-            <span class="step-name">이구매</span>
-            <span class="step-date">2026-05-21</span>
-          </div>
-          <div class="step-sep"></div>
-        </div>
-        <!-- 2. 구매팀장 (prog) -->
-        <div class="step-node">
-          <div class="step-box prog">
-            <span class="step-role">구매팀장</span>
-            <span class="step-name">이팀장</span>
-            <span class="step-date">검토중</span>
-          </div>
-          <div class="step-sep"></div>
-        </div>
-        <!-- 3. 품질담당 (wait) -->
-        <div class="step-node">
-          <div class="step-box wait">
-            <span class="step-role">품질담당</span>
-            <span class="step-name">최품질</span>
-            <span class="step-date">대기</span>
-          </div>
-          <div class="step-sep"></div>
-        </div>
-        <!-- 4. 구매부장 (wait) — last node, no sep -->
-        <div class="step-node">
-          <div class="step-box wait">
-            <span class="step-role">구매부장</span>
-            <span class="step-name">박부장</span>
-            <span class="step-date">대기</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<!-- ── 반려 모달 ── -->
-<div id="modal-reject" class="modal-backdrop">
-  <div class="modal-box" style="width:480px">
-    <div class="modal-header">
-      <span class="modal-title">반려 처리</span>
-      <button class="modal-close" onclick="toggleModal('modal-reject', false)">
-        <i data-lucide="x" style="width:14px;height:14px"></i>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="form-field" style="margin-bottom:14px">
-        <label class="form-label">반려 사유 <span class="req">*</span></label>
-        <select class="form-select" id="reject-reason">
-          <option value="">-- 선택 --</option>
-          <option>재무 부적격</option>
-          <option>기술 미달</option>
-          <option>품질시스템 미흡</option>
-          <option>기타</option>
-        </select>
-      </div>
-      <div class="form-field">
-        <label class="form-label">반려 의견</label>
-        <textarea class="form-textarea" rows="4" id="reject-comment" placeholder="반려 사유를 상세히 입력하십시오."></textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="toggleModal('modal-reject', false)">취소</button>
-      <button class="btn btn-danger" onclick="doReject()">
-        <i data-lucide="x-circle"></i>반려 확정
+      <button class="btn btn-primary" onclick="showToast('사전평가 화면으로 이동합니다.', 'ok')">
+        <i data-lucide="clipboard-check"></i>사전평가 진행
       </button>
     </div>
   </div>
-</div>
+
+  <!-- ── 본문 ── -->
+  <div class="supplier-body">
+
+    <!-- 왼쪽 사이드바 -->
+    <div class="supplier-sidebar">
+      <div class="sidebar-company" id="sb-name">(주)금강정밀</div>
+      <button class="sidebar-tab active" onclick="switchTab('tab-basic', this)">일반정보</button>
+      <button class="sidebar-tab"        onclick="switchTab('tab-contact', this)">담당자정보</button>
+      <button class="sidebar-tab"        onclick="switchTab('tab-mgmt', this)">경영정보</button>
+      <button class="sidebar-tab"        onclick="switchTab('tab-sales', this)">영업현황</button>
+      <button class="sidebar-tab"        onclick="switchTab('tab-cert', this)">인증정보</button>
+      <button class="sidebar-tab"        onclick="switchTab('tab-credit', this)">신용평가정보</button>
+    </div>
+
+    <!-- 오른쪽 콘텐츠 -->
+    <div class="supplier-content">
+
+
+      <!-- ══ TAB: 일반정보 ══ -->
+      <div id="tab-basic" class="tab-panel active">
+
+        <div class="status-card">
+          <div class="status-card-item">
+            <span class="status-card-label">업체코드</span>
+            <span class="status-card-value" id="sc-code">VND-0064</span>
+          </div>
+          <div style="width:1px;height:32px;background:var(--border)"></div>
+          <div class="status-card-item">
+            <span class="status-card-label">등록상태</span>
+            <span class="badge badge-prog" id="sc-badge">심사중</span>
+          </div>
+          <div style="width:1px;height:32px;background:var(--border)"></div>
+          <div class="status-card-item">
+            <span class="status-card-label">신청일</span>
+            <span class="status-card-value" id="sc-apply">2026-05-20</span>
+          </div>
+          <div style="width:1px;height:32px;background:var(--border)"></div>
+          <div class="status-card-item">
+            <span class="status-card-label">담당자</span>
+            <span class="status-card-value" id="sc-mgr">이구매</span>
+          </div>
+          <div style="width:1px;height:32px;background:var(--border)"></div>
+          <div class="status-card-item">
+            <span class="status-card-label">사전평가 점수</span>
+            <span class="status-card-value muted" id="sc-score">평가 중</span>
+          </div>
+        </div>
+
+        <div class="sec-group">기본정보</div>
+
+        <div class="form-row form-row-4" style="margin-bottom:14px">
+          <div class="form-field">
+            <label class="form-label">업체명 (국문)</label>
+            <div class="vw-val" id="fld-name">(주)금강정밀</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">업체명 (영문)</label>
+            <div class="vw-val" id="fld-name-en">Kumgang Precision Co., Ltd.</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">대표자명</label>
+            <div class="vw-val" id="fld-ceo">박금강</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">사업자등록번호</label>
+            <div class="vw-val" id="fld-bizno">124-86-34521</div>
+          </div>
+        </div>
+
+        <div class="form-row form-row-4" style="margin-bottom:14px">
+          <div class="form-field">
+            <label class="form-label">법인등록번호</label>
+            <div class="vw-val" id="fld-corpno">110111-4567890</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">법인구분</label>
+            <div class="vw-val" id="fld-corptype">법인사업자</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">업체구분</label>
+            <div class="vw-val" id="fld-vendortype">잠재업체</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">설립일자</label>
+            <div class="vw-val" id="fld-founded">2008-03-15</div>
+          </div>
+        </div>
+
+        <div class="form-row form-row-4" style="margin-bottom:14px">
+          <div class="form-field">
+            <label class="form-label">국가</label>
+            <div class="vw-val" id="fld-country">대한민국</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">언어</label>
+            <div class="vw-val" id="fld-language">한국어</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">회사 상장여부</label>
+            <div class="vw-val" id="fld-listed">비상장</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">업태</label>
+            <div class="vw-val" id="fld-biztype">제조</div>
+          </div>
+        </div>
+
+        <div class="form-row form-row-4" style="margin-bottom:20px">
+          <div class="form-field">
+            <label class="form-label">업종</label>
+            <div class="vw-val" id="fld-bizsector">금속 가공</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">세부업종</label>
+            <div class="vw-val" id="fld-bizdetail">알루미늄 다이캐스팅</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">품목군</label>
+            <div class="vw-val" id="fld-itemgroup">알루미늄 가공</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">VAATZ 아이디</label>
+            <div class="vw-val" id="fld-vaatz">R169</div>
+          </div>
+        </div>
+
+        <div class="sec-group">소재지</div>
+
+        <div class="form-row form-row-4" style="margin-bottom:14px">
+          <div class="form-field">
+            <label class="form-label">우편번호</label>
+            <div class="vw-val" id="fld-zipcode">15041</div>
+          </div>
+          <div class="form-field" style="grid-column:span 2">
+            <label class="form-label">주소</label>
+            <div class="vw-val" id="fld-address">경기도 시흥시 정왕동 산업로 247</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">상세주소</label>
+            <div class="vw-val" id="fld-addr-detail">금강정밀 제조동 A동</div>
+          </div>
+        </div>
+
+        <div class="form-row form-row-4" style="margin-bottom:20px">
+          <div class="form-field">
+            <label class="form-label">공장 소재지</label>
+            <div class="vw-val muted" id="fld-factory">본사와 동일</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">부지현황 대지 (평)</label>
+            <div class="vw-val" id="fld-land">1,200</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">부지현황 건물 (평)</label>
+            <div class="vw-val" id="fld-building">680</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">전체 사업장</label>
+            <div class="vw-val" id="fld-allsites">시흥시 (본사)</div>
+          </div>
+        </div>
+
+        <div class="sec-group">연락처</div>
+
+        <div class="form-row form-row-4" style="margin-bottom:20px">
+          <div class="form-field">
+            <label class="form-label">대표전화</label>
+            <div class="vw-val" id="fld-tel">031-501-2847</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">팩스</label>
+            <div class="vw-val" id="fld-fax">031-501-2848</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">대표 이메일</label>
+            <div class="vw-val" id="fld-email">info@kumgangprecision.co.kr</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">홈페이지</label>
+            <div class="vw-val blue" id="fld-website">www.kumgangprecision.co.kr</div>
+          </div>
+        </div>
+
+        <div class="sec-group">첨부파일</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="attach-item">
+            <i data-lucide="file-text" style="width:14px;height:14px;color:var(--blue);flex-shrink:0"></i>
+            <span class="attach-name" id="att-bizreg">사업자등록증_금강정밀_2026.pdf</span>
+            <span class="attach-size">214KB</span>
+            <button class="attach-del" onclick="showToast('다운로드 (목업)', 'ok')">
+              <i data-lucide="download" style="width:12px;height:12px"></i>
+            </button>
+          </div>
+          <div class="attach-item">
+            <i data-lucide="file-text" style="width:14px;height:14px;color:var(--blue);flex-shrink:0"></i>
+            <span class="attach-name" id="att-corp">법인등기부등본_2026.pdf</span>
+            <span class="attach-size">187KB</span>
+            <button class="attach-del" onclick="showToast('다운로드 (목업)', 'ok')">
+              <i data-lucide="download" style="width:12px;height:12px"></i>
+            </button>
+          </div>
+          <div class="attach-item">
+            <i data-lucide="file-text" style="width:14px;height:14px;color:var(--blue);flex-shrink:0"></i>
+            <span class="attach-name" id="att-intro">회사소개서_금강정밀_2026.pdf</span>
+            <span class="attach-size">3.4MB</span>
+            <button class="attach-del" onclick="showToast('다운로드 (목업)', 'ok')">
+              <i data-lucide="download" style="width:12px;height:12px"></i>
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /tab-basic -->
+
+
+      <!-- ══ TAB: 담당자정보 ══ -->
+      <div id="tab-contact" class="tab-panel">
+
+        <div class="sec-group">담당자 정보</div>
+        <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+          <thead>
+            <tr>
+              <th>성명</th>
+              <th>부서</th>
+              <th>직위</th>
+              <th>담당업무</th>
+              <th style="width:130px">전화번호</th>
+              <th style="width:130px">휴대폰번호</th>
+              <th style="width:120px">팩스번호</th>
+              <th>이메일</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding-left:12px;font-weight:600">홍길동</td>
+              <td style="padding-left:12px">영업팀</td>
+              <td style="padding-left:12px">팀장</td>
+              <td style="padding-left:12px">영업 총괄</td>
+              <td class="c muted">031-501-2847</td>
+              <td class="c muted">010-3847-2914</td>
+              <td class="c muted">031-501-2848</td>
+              <td style="padding-left:12px">h.gildong@kumgang.co.kr</td>
+            </tr>
+            <tr>
+              <td style="padding-left:12px;font-weight:600">김품질</td>
+              <td style="padding-left:12px">품질팀</td>
+              <td style="padding-left:12px">과장</td>
+              <td style="padding-left:12px">품질관리</td>
+              <td class="c muted">031-501-2849</td>
+              <td class="c muted">010-5129-3847</td>
+              <td class="c muted">031-501-2848</td>
+              <td style="padding-left:12px">k.quality@kumgang.co.kr</td>
+            </tr>
+            <tr>
+              <td style="padding-left:12px;font-weight:600">이개발</td>
+              <td style="padding-left:12px">기술연구소</td>
+              <td style="padding-left:12px">차장</td>
+              <td style="padding-left:12px">개발·설계</td>
+              <td class="c muted">031-501-2851</td>
+              <td class="c muted">010-9234-5678</td>
+              <td class="c muted">031-501-2848</td>
+              <td style="padding-left:12px">l.dev@kumgang.co.kr</td>
+            </tr>
+          </tbody>
+        </table>
+
+      </div><!-- /tab-contact -->
+
+
+      <!-- ══ TAB: 경영정보 ══ -->
+      <div id="tab-mgmt" class="tab-panel">
+
+        <div class="mgmt-sec-hd">
+          <span class="sec-group" style="margin:0;border:none;padding:0">대표이사현황</span>
+        </div>
+        <div class="form-row form-row-4" style="margin-bottom:20px">
+          <div class="form-field">
+            <label class="form-label">대표이사</label>
+            <div class="vw-val">박금강</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">생년월일</label>
+            <div class="vw-val">1962-08-15</div>
+          </div>
+          <div class="form-field" style="grid-column:span 2">
+            <label class="form-label">최종학력</label>
+            <div class="vw-val">한양대학교 공과대학 기계공학과</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:6px;font-size:12px;font-weight:600;color:var(--text-sub)">주요경력</div>
+        <table class="data-table" style="border:1px solid var(--border);border-radius:4px;max-width:640px;margin-bottom:20px">
+          <thead><tr><th>경력 상세</th></tr></thead>
+          <tbody>
+            <tr><td style="padding-left:12px">현대자동차(주) 구매팀 부장 (1988~2002)</td></tr>
+            <tr><td style="padding-left:12px">(주)금강정밀 대표이사 (2008~현재)</td></tr>
+          </tbody>
+        </table>
+
+        <div class="mgmt-sec-hd">
+          <span class="sec-group" style="margin:0;border:none;padding:0">회사연혁</span>
+        </div>
+        <table class="data-table" style="border:1px solid var(--border);border-radius:4px;margin-bottom:20px">
+          <thead><tr>
+            <th style="width:120px">설립일</th>
+            <th style="width:120px">설립자</th>
+            <th style="width:120px">현 오너</th>
+            <th style="width:150px">오너/설립자 관계</th>
+            <th>기타사항</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td class="c muted">2008-03-15</td>
+              <td style="padding-left:12px">박금강</td>
+              <td style="padding-left:12px">박금강</td>
+              <td class="c">본인</td>
+              <td style="padding-left:12px">경기도 시흥 산업단지 내 창업</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="mgmt-sec-hd">
+          <span class="sec-group" style="margin:0;border:none;padding:0">지분현황</span>
+        </div>
+        <table class="data-table" style="border:1px solid var(--border);border-radius:4px;max-width:420px;margin-bottom:20px">
+          <thead><tr>
+            <th>주주명</th>
+            <th style="width:110px">지분 (%)</th>
+            <th>비고</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="padding-left:12px">박금강</td>
+              <td class="r" style="padding-right:12px">68.00</td>
+              <td style="padding-left:12px">대표이사</td>
+            </tr>
+            <tr>
+              <td style="padding-left:12px">박민준</td>
+              <td class="r" style="padding-right:12px">20.00</td>
+              <td style="padding-left:12px">장남, 기술이사</td>
+            </tr>
+            <tr>
+              <td style="padding-left:12px">기타 소액주주</td>
+              <td class="r" style="padding-right:12px">12.00</td>
+              <td style="padding-left:12px"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="display:grid;grid-template-columns:240px 1fr 1fr;gap:20px;margin-bottom:20px;align-items:start">
+          <div>
+            <div class="mgmt-sec-hd"><span class="sec-group" style="margin:0;border:none;padding:0">임직원현황</span></div>
+            <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+              <thead><tr><th>유형</th><th style="width:80px">인원 (명)</th></tr></thead>
+              <tbody>
+                <tr><td style="padding-left:12px">임원</td><td class="r" style="padding-right:12px">3</td></tr>
+                <tr><td style="padding-left:12px">관리직</td><td class="r" style="padding-right:12px">12</td></tr>
+                <tr><td style="padding-left:12px">생산직 (내국인)</td><td class="r" style="padding-right:12px">65</td></tr>
+                <tr><td style="padding-left:12px">생산직 (외국인)</td><td class="r" style="padding-right:12px">7</td></tr>
+                <tr><td style="padding-left:12px">기타</td><td class="r" style="padding-right:12px">0</td></tr>
+                <tr style="font-weight:600;background:var(--bg)">
+                  <td style="padding-left:12px">합계</td>
+                  <td class="r" style="padding-right:12px">87</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="mgmt-sec-hd"><span class="sec-group" style="margin:0;border:none;padding:0">노조현황</span></div>
+            <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+              <thead><tr><th>노조명</th><th style="width:70px">인원</th><th>비고</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td style="padding-left:12px">금강정밀 노동조합</td>
+                  <td class="r" style="padding-right:10px">41</td>
+                  <td style="padding-left:12px">한국금속노조 경기지부</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="mgmt-sec-hd"><span class="sec-group" style="margin:0;border:none;padding:0">해외지사</span></div>
+            <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+              <thead><tr><th>지역</th><th style="width:70px">법인 수</th></tr></thead>
+              <tbody>
+                <tr><td class="c muted" colspan="2" style="padding:10px">해외지사 없음</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="mgmt-sec-hd">
+          <span class="sec-group" style="margin:0;border:none;padding:0">중역정보</span>
+        </div>
+        <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+          <thead><tr>
+            <th style="width:110px">담당</th>
+            <th style="width:110px">직급</th>
+            <th style="width:130px">성명</th>
+            <th>연락처</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="padding-left:12px">경영지원</td>
+              <td style="padding-left:12px">전무이사</td>
+              <td style="padding-left:12px">박민준</td>
+              <td style="padding-left:12px">010-4521-8734</td>
+            </tr>
+            <tr>
+              <td style="padding-left:12px">품질</td>
+              <td style="padding-left:12px">이사</td>
+              <td style="padding-left:12px">최품질</td>
+              <td style="padding-left:12px">010-7823-4159</td>
+            </tr>
+            <tr>
+              <td style="padding-left:12px">생산</td>
+              <td style="padding-left:12px">이사</td>
+              <td style="padding-left:12px">정생산</td>
+              <td style="padding-left:12px">010-6234-9871</td>
+            </tr>
+          </tbody>
+        </table>
+
+      </div><!-- /tab-mgmt -->
+
+
+      <!-- ══ TAB: 영업현황 ══ -->
+      <div id="tab-sales" class="tab-panel">
+
+        <div class="sec-group">사업 영역 및 생산품목</div>
+        <div class="form-row form-row-2" style="margin-bottom:14px">
+          <div class="form-field">
+            <label class="form-label">주요 생산품목</label>
+            <div class="vw-val">알루미늄 다이캐스팅 하우징, 프레임 브래킷, 열교환기 코어, 서스펜션 마운팅 브래킷</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">협력 희망 품목 (동희산업 납품)</label>
+            <div class="vw-val">Frame Sub Ass'y, Fuel Tank Bracket, Aluminum Housing</div>
+          </div>
+        </div>
+        <div class="form-row form-row-4" style="margin-bottom:20px">
+          <div class="form-field">
+            <label class="form-label">연간 생산 CAPA</label>
+            <div class="vw-val">250만 PCS/년</div>
+          </div>
+          <div class="form-field" style="grid-column:span 2">
+            <label class="form-label">주요 설비</label>
+            <div class="vw-val">다이캐스팅 머신 600T×3대, 400T×5대, CNC 머신 12대</div>
+          </div>
+          <div class="form-field"></div>
+        </div>
+
+        <div class="sec-group">주거래업체 (2025년 기준)</div>
+        <div style="max-width:860px;margin-bottom:20px">
+          <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+            <thead><tr>
+              <th style="width:70px">매출순</th>
+              <th style="width:70px">연도</th>
+              <th>주요납품처</th>
+              <th style="width:120px">연매출 (억원)</th>
+              <th style="width:120px">최초납품일</th>
+              <th>주요품목</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td class="c">1</td>
+                <td class="c">2025</td>
+                <td style="padding-left:12px">동희산업(주)</td>
+                <td class="r" style="padding-right:12px">42.00</td>
+                <td class="c muted">2019-03-01</td>
+                <td style="padding-left:12px">Frame Sub Ass'y, Fuel Tank Bracket</td>
+              </tr>
+              <tr>
+                <td class="c">2</td>
+                <td class="c">2025</td>
+                <td style="padding-left:12px">현대모비스(주)</td>
+                <td class="r" style="padding-right:12px">31.00</td>
+                <td class="c muted">2017-06-15</td>
+                <td style="padding-left:12px">Aluminum Die-casting Housing</td>
+              </tr>
+              <tr>
+                <td class="c">3</td>
+                <td class="c">2025</td>
+                <td style="padding-left:12px">현대트랜시스(주)</td>
+                <td class="r" style="padding-right:12px">18.00</td>
+                <td class="c muted">2020-09-01</td>
+                <td style="padding-left:12px">Transmission Bracket</td>
+              </tr>
+              <tr>
+                <td class="c muted">기타</td>
+                <td class="c">2025</td>
+                <td style="padding-left:12px">기타 업체</td>
+                <td class="r" style="padding-right:12px">9.00</td>
+                <td class="c muted">-</td>
+                <td style="padding-left:12px"></td>
+              </tr>
+              <tr style="font-weight:600;background:var(--bg)">
+                <td class="c">합계</td>
+                <td class="c">2025</td>
+                <td></td>
+                <td class="r" style="padding-right:12px">100.00</td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="sec-group">자동차관련 매출</div>
+        <table class="data-table" style="border:1px solid var(--border);border-radius:4px;max-width:260px">
+          <thead><tr>
+            <th>연도</th>
+            <th style="width:140px">매출액 (억원)</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="c">2026</td><td class="r" style="padding-right:12px">112.00</td></tr>
+            <tr><td class="c">2025</td><td class="r" style="padding-right:12px">100.00</td></tr>
+            <tr><td class="c">2024</td><td class="r" style="padding-right:12px">88.00</td></tr>
+            <tr><td class="c">2023</td><td class="r" style="padding-right:12px">74.00</td></tr>
+          </tbody>
+        </table>
+
+      </div><!-- /tab-sales -->
+
+
+      <!-- ══ TAB: 인증정보 ══ -->
+      <div id="tab-cert" class="tab-panel">
+
+        <!-- 품질인증현황 -->
+        <div class="cert-section">
+          <div class="cert-sec-hd">
+            <div class="cert-toggle" onclick="toggleCertSection('cs-quality', this)">
+              <i data-lucide="chevron-down" class="cert-chevron"></i>
+              <span>품질인증현황</span>
+            </div>
+          </div>
+          <div id="cs-quality" style="padding-bottom:16px">
+            <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+              <thead><tr>
+                <th style="width:130px">인증명</th>
+                <th style="width:120px">인증번호</th>
+                <th style="width:120px">인증만료일자</th>
+                <th style="width:150px">인증기관</th>
+                <th style="width:90px">첨부파일</th>
+                <th>비고</th>
+                <th style="width:70px">표현여부</th>
+                <th style="width:120px">인증유효시작일</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td style="padding-left:12px;font-weight:600">IATF 16949</td>
+                  <td class="c">TS/590/23</td>
+                  <td class="c muted">2026-09-28</td>
+                  <td style="padding-left:12px">한국표준협회 (KSA)</td>
+                  <td class="c">
+                    <span style="font-size:12px;margin-right:2px">1</span>
+                    <button class="btn btn-secondary btn-sm" onclick="showToast('다운로드 (목업)', 'ok')" style="padding:0 5px"><i data-lucide="paperclip"></i></button>
+                  </td>
+                  <td style="padding-left:12px">차량 납품 필수 인증</td>
+                  <td class="c"><span class="badge badge-ok">표현</span></td>
+                  <td class="c muted">2023-09-29</td>
+                </tr>
+                <tr>
+                  <td style="padding-left:12px;font-weight:600">ISO 14001</td>
+                  <td class="c">EV/881/22</td>
+                  <td class="c muted">2025-11-30</td>
+                  <td style="padding-left:12px">SGS Korea</td>
+                  <td class="c">
+                    <span style="font-size:12px;margin-right:2px">1</span>
+                    <button class="btn btn-secondary btn-sm" onclick="showToast('다운로드 (목업)', 'ok')" style="padding:0 5px"><i data-lucide="paperclip"></i></button>
+                  </td>
+                  <td style="padding-left:12px">환경경영시스템</td>
+                  <td class="c"><span class="badge badge-ok">표현</span></td>
+                  <td class="c muted">2022-12-01</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 5스타 -->
+        <div class="cert-section">
+          <div class="cert-sec-hd">
+            <div class="cert-toggle" onclick="toggleCertSection('cs-5star', this)">
+              <i data-lucide="chevron-down" class="cert-chevron"></i>
+              <span>5스타</span>
+            </div>
+          </div>
+          <div id="cs-5star" style="padding-bottom:16px">
+            <table class="data-table" style="border:1px solid var(--border);border-radius:4px;max-width:420px">
+              <thead><tr><th>연도</th><th>구분</th><th>등급</th><th>점수</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td class="c">2025</td>
+                  <td class="c">종합</td>
+                  <td class="c"><span class="badge badge-ok">4스타</span></td>
+                  <td class="r" style="padding-right:12px">82.5</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SQ -->
+        <div class="cert-section">
+          <div class="cert-sec-hd">
+            <div class="cert-toggle" onclick="toggleCertSection('cs-sq', this)">
+              <i data-lucide="chevron-down" class="cert-chevron"></i>
+              <span>SQ</span>
+            </div>
+          </div>
+          <div id="cs-sq" style="padding-bottom:16px">
+            <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+              <thead><tr>
+                <th style="width:90px">사업장코드</th>
+                <th style="width:90px">업종</th>
+                <th style="width:90px">세부업종</th>
+                <th style="width:100px">주관장사 코드</th>
+                <th style="width:130px">주관장사 업체명</th>
+                <th style="width:60px">등급</th>
+                <th style="width:80px">평가점수</th>
+                <th style="width:100px">인증번호</th>
+                <th style="width:100px">인증일자</th>
+                <th style="width:100px">유효일자</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td class="c">#42TT</td>
+                  <td style="padding-left:10px">알루미늄가공</td>
+                  <td style="padding-left:10px">다이캐스팅</td>
+                  <td class="c">DH-0001</td>
+                  <td style="padding-left:10px">동희산업(주)</td>
+                  <td class="c"><span class="badge badge-prog">B</span></td>
+                  <td class="r" style="padding-right:10px">812.5</td>
+                  <td class="c">AL2847</td>
+                  <td class="c muted">2025-06-10</td>
+                  <td class="c muted">2026-06-09</td>
+                </tr>
+                <tr>
+                  <td class="c">#42TT</td>
+                  <td style="padding-left:10px">알루미늄가공</td>
+                  <td style="padding-left:10px">다이캐스팅</td>
+                  <td class="c">MB-0047</td>
+                  <td style="padding-left:10px">현대모비스(주)</td>
+                  <td class="c"><span class="badge badge-ok">A</span></td>
+                  <td class="r" style="padding-right:10px">878.0</td>
+                  <td class="c">MB4423</td>
+                  <td class="c muted">2025-03-15</td>
+                  <td class="c muted">2026-03-14</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TSQ -->
+        <div class="cert-section">
+          <div class="cert-sec-hd">
+            <div class="cert-toggle" onclick="toggleCertSection('cs-tsq', this)">
+              <i data-lucide="chevron-down" class="cert-chevron"></i>
+              <span>TSQ</span>
+            </div>
+          </div>
+          <div id="cs-tsq" style="padding-bottom:16px">
+            <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+              <thead><tr>
+                <th style="width:90px">사업장코드</th><th style="width:90px">업종</th>
+                <th style="width:90px">세부업종</th><th style="width:100px">주관장사 코드</th>
+                <th style="width:130px">주관장사 업체명</th><th style="width:60px">등급</th>
+                <th style="width:80px">평가점수</th><th style="width:100px">인증번호</th>
+                <th style="width:100px">인증일자</th><th style="width:100px">유효일자</th>
+              </tr></thead>
+              <tbody>
+                <tr><td colspan="10" class="c muted" style="padding:12px">데이터 없음</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- MSQ -->
+        <div class="cert-section">
+          <div class="cert-sec-hd">
+            <div class="cert-toggle" onclick="toggleCertSection('cs-msq', this)">
+              <i data-lucide="chevron-down" class="cert-chevron"></i>
+              <span>MSQ</span>
+            </div>
+          </div>
+          <div id="cs-msq" style="padding-bottom:16px">
+            <table class="data-table" style="border:1px solid var(--border);border-radius:4px">
+              <thead><tr>
+                <th style="width:90px">사업장코드</th><th style="width:90px">업종</th>
+                <th style="width:90px">세부업종</th><th style="width:100px">주관장사 코드</th>
+                <th style="width:130px">주관장사 업체명</th><th style="width:60px">등급</th>
+                <th style="width:80px">평가점수</th><th style="width:100px">인증번호</th>
+                <th style="width:100px">인증일자</th><th style="width:100px">유효일자</th>
+              </tr></thead>
+              <tbody>
+                <tr><td colspan="10" class="c muted" style="padding:12px">데이터 없음</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /tab-cert -->
+
+
+      <!-- ══ TAB: 신용평가정보 ══ -->
+      <div id="tab-credit" class="tab-panel">
+
+        <div class="cert-section" style="border-bottom:none">
+          <div class="cert-sec-hd">
+            <div class="cert-toggle" onclick="toggleCertSection('cs-credit', this)">
+              <i data-lucide="chevron-down" class="cert-chevron"></i>
+              <span>신용평가</span>
+            </div>
+          </div>
+          <div id="cs-credit">
+            <div style="overflow-x:auto;border:1px solid var(--border);border-radius:4px">
+              <table class="data-table" style="min-width:1400px">
+                <thead>
+                  <tr>
+                    <th style="width:70px">년도</th>
+                    <th style="width:140px">신용평가기관</th>
+                    <th style="width:110px">신용평가등급</th>
+                    <th style="width:120px">신용평가기준일</th>
+                    <th style="width:110px">신용평가자료첨부</th>
+                    <th style="width:160px">매출액 (원)</th>
+                    <th style="width:140px">영업이익 (원)</th>
+                    <th style="width:140px">당기순이익 (원)</th>
+                    <th style="width:150px">총자산 (원)</th>
+                    <th style="width:150px">부채총계 (원)</th>
+                    <th style="width:150px">자본총계 (원)</th>
+                    <th style="width:100px">부채비율 (%)</th>
+                    <th style="width:110px">영업이익률 (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="c">2025</td>
+                    <td class="c" style="color:var(--blue);font-weight:600">이크레더블</td>
+                    <td class="c"><span class="badge badge-prog">BB+</span></td>
+                    <td class="c muted">2026/03/18</td>
+                    <td class="c">
+                      <span style="font-size:12px;margin-right:2px">1</span>
+                      <button class="btn btn-secondary btn-sm" onclick="showToast('다운로드 (목업)','ok')" style="padding:0 5px"><i data-lucide="paperclip"></i></button>
+                    </td>
+                    <td class="r" style="padding-right:10px">11,240,000,000</td>
+                    <td class="r" style="padding-right:10px">621,000,000</td>
+                    <td class="r" style="padding-right:10px">503,000,000</td>
+                    <td class="r" style="padding-right:10px">5,184,000,000</td>
+                    <td class="r" style="padding-right:10px">2,491,000,000</td>
+                    <td class="r" style="padding-right:10px">2,693,000,000</td>
+                    <td class="r" style="padding-right:10px">92.49</td>
+                    <td class="r" style="padding-right:10px">5.53</td>
+                  </tr>
+                  <tr>
+                    <td class="c">2024</td>
+                    <td class="c" style="color:var(--blue);font-weight:600">이크레더블</td>
+                    <td class="c"><span class="badge badge-prog">BB</span></td>
+                    <td class="c muted">2025/03/22</td>
+                    <td class="c">
+                      <span style="font-size:12px;margin-right:2px">1</span>
+                      <button class="btn btn-secondary btn-sm" onclick="showToast('다운로드 (목업)','ok')" style="padding:0 5px"><i data-lucide="paperclip"></i></button>
+                    </td>
+                    <td class="r" style="padding-right:10px">9,871,000,000</td>
+                    <td class="r" style="padding-right:10px">512,000,000</td>
+                    <td class="r" style="padding-right:10px">391,000,000</td>
+                    <td class="r" style="padding-right:10px">4,962,000,000</td>
+                    <td class="r" style="padding-right:10px">2,387,000,000</td>
+                    <td class="r" style="padding-right:10px">2,575,000,000</td>
+                    <td class="r" style="padding-right:10px">92.69</td>
+                    <td class="r" style="padding-right:10px">5.19</td>
+                  </tr>
+                  <tr>
+                    <td class="c">2023</td>
+                    <td class="c" style="color:var(--blue);font-weight:600">이크레더블</td>
+                    <td class="c"><span class="badge badge-wait">BB</span></td>
+                    <td class="c muted">2024/04/22</td>
+                    <td class="c">
+                      <span style="font-size:12px;margin-right:2px">1</span>
+                      <button class="btn btn-secondary btn-sm" onclick="showToast('다운로드 (목업)','ok')" style="padding:0 5px"><i data-lucide="paperclip"></i></button>
+                    </td>
+                    <td class="r" style="padding-right:10px">5,113,000,000</td>
+                    <td class="r" style="padding-right:10px">289,000,000</td>
+                    <td class="r" style="padding-right:10px">485,000,000</td>
+                    <td class="r" style="padding-right:10px">4,724,000,000</td>
+                    <td class="r" style="padding-right:10px">2,264,000,000</td>
+                    <td class="r" style="padding-right:10px">2,459,000,000</td>
+                    <td class="r" style="padding-right:10px">92.07</td>
+                    <td class="r" style="padding-right:10px">5.65</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tab-credit -->
+
+
+    </div><!-- /supplier-content -->
+  </div><!-- /supplier-body -->
+</div><!-- /page-wrap -->
 
 <script>
-  /* ── 평가 계산 ── */
-  function calcEval() {
-    var fin  = (parseInt(document.getElementById('fin1').value)  || 0)
-             + (parseInt(document.getElementById('fin2').value)  || 0)
-             + (parseInt(document.getElementById('fin3').value)  || 0);
-    var tech = (parseInt(document.getElementById('tech1').value) || 0)
-             + (parseInt(document.getElementById('tech2').value) || 0)
-             + (parseInt(document.getElementById('tech3').value) || 0);
-    var qual = (parseInt(document.getElementById('qual1').value) || 0)
-             + (parseInt(document.getElementById('qual2').value) || 0)
-             + (parseInt(document.getElementById('qual3').value) || 0);
-    var prod = (parseInt(document.getElementById('prod1').value) || 0)
-             + (parseInt(document.getElementById('prod2').value) || 0)
-             + (parseInt(document.getElementById('prod3').value) || 0);
+/* ── 업체별 일반정보 DB ── */
+var COMPANY_DB = {
+  'VND-0064': {
+    name:'(주)금강정밀',        shortName:'금강정밀',
+    nameEn:'Kumgang Precision Co., Ltd.',
+    ceo:'박금강',               bizNo:'124-86-34521',
+    corpNo:'110111-4567890',    corpType:'법인사업자',  vendorType:'잠재업체',
+    founded:'2008-03-15',       country:'대한민국',     language:'한국어',
+    listed:'비상장',            bizType:'제조',
+    bizSector:'금속 가공',      bizDetail:'알루미늄 다이캐스팅',
+    itemGroup:'알루미늄 가공',  vaatz:'R169',
+    zipcode:'15041',            address:'경기도 시흥시 정왕동 산업로 247',
+    addrDetail:'금강정밀 제조동 A동',
+    factory:'본사와 동일',      land:'1,200',  building:'680',
+    allSites:'시흥시 (본사)',
+    tel:'031-501-2847',         fax:'031-501-2848',
+    email:'info@kumgangprecision.co.kr', website:'www.kumgangprecision.co.kr'
+  },
+  'VND-0061': {
+    name:'(주)정밀단조',        shortName:'정밀단조',
+    nameEn:'Jungmil Forging Co., Ltd.',
+    ceo:'이단조',               bizNo:'215-87-12345',
+    corpNo:'110111-2345678',    corpType:'법인사업자',  vendorType:'잠재업체',
+    founded:'2005-07-10',       country:'대한민국',     language:'한국어',
+    listed:'비상장',            bizType:'제조',
+    bizSector:'금속 가공',      bizDetail:'단조 가공',
+    itemGroup:'프레스',         vaatz:'-',
+    zipcode:'31081',            address:'충청남도 천안시 서북구 성거읍 공단길 88',
+    addrDetail:'정밀단조 공장동',
+    factory:'본사와 동일',      land:'850',    building:'420',
+    allSites:'천안시 (본사)',
+    tel:'041-567-8900',         fax:'041-567-8901',
+    email:'contact@jmforging.co.kr', website:'www.jmforging.co.kr'
+  },
+  'VND-0058': {
+    name:'(주)한길표면',        shortName:'한길표면',
+    nameEn:'Hangil Surface Treatment Co., Ltd.',
+    ceo:'최한길',               bizNo:'134-81-56789',
+    corpNo:'110111-5678901',    corpType:'법인사업자',  vendorType:'등록업체',
+    founded:'2001-03-22',       country:'대한민국',     language:'한국어',
+    listed:'비상장',            bizType:'제조',
+    bizSector:'화학 처리',      bizDetail:'도금·도장',
+    itemGroup:'표면처리',       vaatz:'S047',
+    zipcode:'21564',            address:'인천광역시 서구 가좌동 산업로 315',
+    addrDetail:'한길빌딩 1층',
+    factory:'본사와 동일',      land:'600',    building:'350',
+    allSites:'인천 (본사)',
+    tel:'032-574-2300',         fax:'032-574-2301',
+    email:'info@hangilsurface.co.kr', website:'www.hangilsurface.co.kr'
+  },
+  'VND-0049': {
+    name:'(주)대한플라텍',      shortName:'대한플라텍',
+    nameEn:'Daehan Platec Co., Ltd.',
+    ceo:'김대한',               bizNo:'301-86-34210',
+    corpNo:'110111-3421056',    corpType:'법인사업자',  vendorType:'잠재업체',
+    founded:'2010-11-05',       country:'대한민국',     language:'한국어',
+    listed:'비상장',            bizType:'제조',
+    bizSector:'플라스틱 제품 제조', bizDetail:'사출 성형',
+    itemGroup:'플라스틱 사출',  vaatz:'-',
+    zipcode:'16506',            address:'경기도 수원시 권선구 오목천동 산업로 192',
+    addrDetail:'대한플라텍 생산동',
+    factory:'본사와 동일',      land:'720',    building:'380',
+    allSites:'수원시 (본사)',
+    tel:'031-298-7700',         fax:'031-298-7701',
+    email:'info@dhplatec.co.kr', website:'www.dhplatec.co.kr'
+  },
+  'VND-0063': {
+    name:'(주)신성정공',        shortName:'신성정공',
+    nameEn:'Shinsung Precision Co., Ltd.',
+    ceo:'정신성',               bizNo:'118-86-78901',
+    corpNo:'110111-7890123',    corpType:'법인사업자',  vendorType:'잠재업체',
+    founded:'2012-04-18',       country:'대한민국',     language:'한국어',
+    listed:'비상장',            bizType:'제조',
+    bizSector:'금속 가공',      bizDetail:'프레스 가공',
+    itemGroup:'프레스',         vaatz:'-',
+    zipcode:'31150',            address:'충청남도 천안시 동남구 성남면 단지로 77',
+    addrDetail:'신성정공 제조동',
+    factory:'본사와 동일',      land:'500',    building:'260',
+    allSites:'천안시 (본사)',
+    tel:'041-622-5500',         fax:'041-622-5501',
+    email:'info@ssinsung.co.kr', website:'www.ssinsung.co.kr'
+  }
+};
 
-    document.getElementById('sub-fin').textContent  = fin;
-    document.getElementById('sub-tech').textContent = tech;
-    document.getElementById('sub-qual').textContent = qual;
-    document.getElementById('sub-prod').textContent = prod;
+/* ── URL 파라미터로 업체 정보 초기화 ── */
+(function() {
+  var p     = new URLSearchParams(location.search);
+  var code  = p.get('code');
+  var st    = p.get('st');
+  var mgr   = p.get('mgr');
+  var apply = p.get('apply');
+  var score = p.get('score');
 
-    var total = fin + tech + qual + prod;
-    document.getElementById('total-score').textContent = total;
+  var BADGE_CLS = { '승인':'badge-ok', '심사중':'badge-prog', '신청':'badge-wait', '반려':'badge-bad' };
 
-    var pm = document.getElementById('pass-mark');
-    if (total >= 70) {
-      pm.textContent = '합격';
-      pm.className = 'pass-ok';
+  /* 업체 DB에서 일반정보 전체 필드 채우기 */
+  var d = code && COMPANY_DB[code];
+  if (d) {
+    document.title = d.name + ' | 협력사 상세 | DevSRM';
+    document.getElementById('hd-name').textContent     = d.name;
+    document.getElementById('sb-name').textContent     = d.name;
+    document.getElementById('fld-name').textContent    = d.name;
+    document.getElementById('fld-name-en').textContent = d.nameEn;
+    document.getElementById('fld-ceo').textContent     = d.ceo;
+    document.getElementById('fld-bizno').textContent   = d.bizNo;
+    document.getElementById('fld-corpno').textContent  = d.corpNo;
+    document.getElementById('fld-corptype').textContent   = d.corpType;
+    document.getElementById('fld-vendortype').textContent = d.vendorType;
+    document.getElementById('fld-founded').textContent = d.founded;
+    document.getElementById('fld-country').textContent = d.country;
+    document.getElementById('fld-language').textContent= d.language;
+    document.getElementById('fld-listed').textContent  = d.listed;
+    document.getElementById('fld-biztype').textContent = d.bizType;
+    document.getElementById('fld-bizsector').textContent = d.bizSector;
+    document.getElementById('fld-bizdetail').textContent = d.bizDetail;
+    document.getElementById('fld-itemgroup').textContent = d.itemGroup;
+    document.getElementById('fld-vaatz').textContent   = d.vaatz;
+    document.getElementById('fld-zipcode').textContent = d.zipcode;
+    document.getElementById('fld-address').textContent = d.address;
+    document.getElementById('fld-addr-detail').textContent = d.addrDetail;
+    document.getElementById('fld-factory').textContent = d.factory;
+    document.getElementById('fld-land').textContent    = d.land;
+    document.getElementById('fld-building').textContent= d.building;
+    document.getElementById('fld-allsites').textContent= d.allSites;
+    document.getElementById('fld-tel').textContent     = d.tel;
+    document.getElementById('fld-fax').textContent     = d.fax;
+    document.getElementById('fld-email').textContent   = d.email;
+    document.getElementById('fld-website').textContent = d.website;
+    document.getElementById('att-bizreg').textContent = '사업자등록증_' + d.shortName + '_2026.pdf';
+    document.getElementById('att-corp').textContent   = '법인등기부등본_' + d.shortName + '_2026.pdf';
+    document.getElementById('att-intro').textContent  = '회사소개서_' + d.shortName + '_2026.pdf';
+  }
+
+  /* 상태카드 */
+  if (st) {
+    var cls = BADGE_CLS[st] || 'badge-wait';
+    ['hd-badge', 'sc-badge'].forEach(function(id) {
+      var el = document.getElementById(id);
+      el.className = 'badge ' + cls;
+      el.textContent = st;
+    });
+  }
+  if (code)  document.getElementById('sc-code').textContent  = code;
+  if (apply) document.getElementById('sc-apply').textContent = apply;
+  if (mgr)   document.getElementById('sc-mgr').textContent   = mgr;
+  if (score) {
+    var el = document.getElementById('sc-score');
+    if (score === '0') {
+      el.textContent = '평가 중';
+      el.classList.add('muted');
     } else {
-      pm.textContent = '불합격';
-      pm.className = 'pass-bad';
+      el.textContent = score + '점';
+      el.classList.remove('muted');
     }
   }
+})();
 
-  /* ── 모달 ── */
-  function toggleModal(id, open) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    if (open === undefined) {
-      el.classList.toggle('open');
-    } else {
-      el.classList.toggle('open', open);
-    }
-  }
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.sidebar-tab').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
 
-  /* ── 반려 확정 ── */
-  function doReject() {
-    var reason = document.getElementById('reject-reason').value;
-    if (!reason) {
-      showToast('반려 사유를 선택해 주세요.', 'bad');
-      return;
-    }
-    toggleModal('modal-reject', false);
-    showToast('반려 처리되었습니다.', 'bad');
-  }
+function toggleCertSection(id, toggleEl) {
+  var panel = document.getElementById(id);
+  var chevron = toggleEl.querySelector('.cert-chevron');
+  var collapsed = panel.style.display === 'none';
+  panel.style.display = collapsed ? '' : 'none';
+  chevron.classList.toggle('collapsed', !collapsed);
+}
 
-  /* ── 토스트 ── */
-  function showToast(msg, type, ms) {
-    var bg   = type === 'ok' ? '#16a34a' : type === 'bad' ? '#dc2626' : '#1f2937';
-    var icon = type === 'bad' ? 'alert-circle' : 'check-circle';
-    var el = document.createElement('div');
-    el.className = 'toast';
-    el.style.background = bg;
-    el.innerHTML =
-      '<i data-lucide="' + icon + '" style="width:14px;height:14px;flex-shrink:0"></i>' +
-      '<span>' + msg + '</span>';
-    document.body.appendChild(el);
-    if (window.lucide) window.lucide.createIcons({ nodes: [el] });
-    setTimeout(function () {
-      el.style.opacity = '0';
-      el.style.transition = 'opacity 0.2s';
-      setTimeout(function () { el.remove(); }, 220);
-    }, ms || 2400);
-  }
-
-  /* ── ESC 단축키 ── */
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') {
-      document.querySelectorAll('.modal-backdrop.open').forEach(function (m) {
-        m.classList.remove('open');
-      });
-    }
-  });
-
-  /* ── 초기 계산 ── */
-  calcEval();
+var _toastTimer;
+function showToast(msg, type) {
+  var existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  var t = document.createElement('div');
+  t.className = 'toast';
+  t.style.background = type === 'ok' ? 'var(--status-ok)' : type === 'bad' ? 'var(--status-bad)' : 'var(--navy)';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function() { t.remove(); }, 2500);
+}
 </script>
 
 <script src="../common/sidebar.js"></script>
