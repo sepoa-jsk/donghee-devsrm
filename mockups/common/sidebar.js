@@ -118,7 +118,8 @@
         { id: '06-03', label: '단가 이력 (시계열)',       href: '../06_price/06-03_price_history.html' },
         { id: '06-04', label: '가·정·사급단가 품의',      href: '../06_price/06-04_price_approval.html' },
         { id: '06-05', label: '단가 미결 현황',           href: '../06_price/06-05_price_pending.html' },
-        { id: '06-06', label: '임의정산 관리',            href: '../06_price/06-06_retroactive.html' }
+        { id: '06-06', label: '임의정산 관리',            href: '../06_price/06-06_retroactive.html' },
+        { id: '06-07', label: '단가합의서',               href: '../06_price/06-07_price_agreement_list.html' }
       ]
     },
     // 화면 미구현 — 추후 복원

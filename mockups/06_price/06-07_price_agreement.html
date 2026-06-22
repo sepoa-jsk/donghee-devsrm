@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>단가합의서 상세 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root { --pa-primary:#0747A6; }
+
+  /* ── 1) 회색 타이틀 바 ── */
+  .pa-titlebar {
+    height:48px; background:var(--grid-head); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; padding:0 16px 0 10px; gap:8px; flex-shrink:0;
+  }
+  .back-link {
+    display:inline-flex; align-items:center; gap:5px; font-size:13px; color:var(--text-sub);
+    text-decoration:none; padding:0 8px; height:32px; border-radius:4px;
+  }
+  .back-link:hover { background:var(--surface); color:var(--text); }
+  .pa-save { background:var(--pa-primary); color:#fff; }
+  .pa-save:hover { background:#063a86; }
+
+  /* ── 2) 공통 헤더 (탭 무관 상시 노출) ── */
+  .pa-header {
+    display:flex; gap:24px; padding:14px 24px; background:var(--surface);
+    border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:wrap;
+  }
+  .hf { display:flex; flex-direction:column; gap:5px; }
+  .hf > label { font-size:12px; font-weight:500; color:var(--text-sub); white-space:nowrap; }
+  .hf .req { color:var(--status-bad); margin-right:2px; }
+  .hf-ro {
+    height:32px; display:flex; align-items:center; padding:0 10px; background:#f0f2f5;
+    border:1px solid var(--border); border-radius:4px; font-weight:600; color:var(--text);
+    font-variant-numeric:tabular-nums; min-width:150px;
+  }
+  /* 헤더 상태 점+텍스트 */
+  .hf-status { display:inline-flex; align-items:center; height:32px; gap:6px; }
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:13px; white-space:nowrap; }
+  .st::before { content:''; width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-prog { color:var(--status-prog);} .st-prog::before { background:var(--status-prog); }
+  .st-ok   { color:var(--status-ok);  } .st-ok::before   { background:var(--status-ok); }
+
+  /* ── 3) 탭 네비게이션 ── */
+  .pa-tabs {
+    display:flex; gap:4px; padding:0 24px; background:var(--surface);
+    border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .pa-tab {
+    height:40px; padding:0 24px; border:none; background:transparent;
+    font-size:13px; font-weight:600; color:var(--text-sub); cursor:pointer;
+    border-radius:6px 6px 0 0; transition:background .12s, color .12s;
+  }
+  .pa-tab:hover { color:var(--text); background:var(--bg); }
+  .pa-tab.active { background:var(--pa-primary); color:#fff; }
+
+  /* ── 4) 탭 콘텐츠 / fieldset 폼 ── */
+  .tabpane { display:none; }
+  .tabpane.active { display:block; }
+
+  fieldset.fs {
+    border:1px solid var(--border); border-radius:6px; padding:16px 20px 18px;
+    margin:0 0 16px; background:var(--surface);
+  }
+  fieldset.fs:last-child { margin-bottom:0; }
+  fieldset.fs > legend {
+    font-size:12px; font-weight:700; color:var(--text-sub); letter-spacing:.4px; padding:0 6px;
+  }
+
+  /* ── 품목 단가 증감 셀 ── */
+  .delta-up   { color:var(--status-bad); }
+  .delta-down { color:var(--status-ok); }
+  .delta-flat { color:var(--text-mute); }
+  table.data-table tfoot td {
+    padding:0 10px; height:34px; background:var(--grid-head); font-weight:700;
+    border-top:1px solid var(--border-strong); border-right:1px solid var(--border);
+    font-variant-numeric:tabular-nums;
+  }
+  table.data-table tfoot td:last-child { border-right:none; }
+
+  /* ── 서명 그리드 / 버튼 ── */
+  .pa-add { background:var(--pa-primary); color:#fff; }
+  .pa-add:hover { background:#063a86; }
+  .pa-del { background:#1e293b; color:#fff; }
+  .pa-del:hover { background:#0f172a; }
+  .sign-hint { font-size:12px; color:var(--text-sub); }
+  #signer-tbl-wrap { overflow-x:auto; }
+  #signer-tbl { min-width:1480px; }
+  #signer-tbl tbody td { padding:0 6px; }
+  .req-h { color:var(--status-bad); margin-left:2px; }
+  /* 그리드 인라인 입력 */
+  .gi {
+    width:100%; height:26px; border:1px solid var(--border); border-radius:3px; padding:0 6px;
+    font-size:12px; font-family:'Pretendard',sans-serif; color:var(--text); background:var(--surface); outline:none;
+  }
+  .gi:focus { border-color:var(--blue); box-shadow:0 0 0 1px rgba(26,86,170,.2); }
+  .gi.email { color:var(--blue); }
+  /* 검색 돋보기 셀 */
+  .cell-ic { position:relative; display:flex; align-items:center; }
+  .cell-ic .gi { padding-right:24px; }
+  .ic-btn {
+    position:absolute; right:4px; top:50%; transform:translateY(-50%);
+    width:18px; height:18px; display:inline-flex; align-items:center; justify-content:center;
+    background:transparent; border:none; cursor:pointer; color:var(--text-mute); padding:0;
+  }
+  .ic-btn:hover { color:var(--blue); }
+
+  /* ── 합의 이력 ── */
+  table.data-table tbody tr.ver-current td { background:var(--blue-light); }
+  .ver-tag { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--blue); font-weight:600; }
+
+  /* ── 양식 미리보기 모달 ── */
+  .pv-backdrop {
+    position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:400;
+    display:none; align-items:flex-start; justify-content:center; padding:32px 16px; overflow:auto;
+  }
+  .pv-backdrop.open { display:flex; }
+  .pv-box {
+    position:relative; background:#fff; width:794px; max-width:100%;
+    border-radius:6px; box-shadow:0 8px 30px rgba(0,0,0,.25);
+  }
+  .pv-close {
+    position:absolute; top:12px; right:12px; width:30px; height:30px;
+    display:flex; align-items:center; justify-content:center; background:transparent;
+    border:1px solid var(--border); border-radius:4px; color:var(--text-sub); cursor:pointer;
+  }
+  .pv-close:hover { background:var(--bg); color:var(--text); }
+
+  /* ── 문서 양식 본문 ── */
+  .pv-doc { padding:48px 56px 56px; color:#1f2937; }
+  .doc-meta { display:flex; justify-content:flex-end; gap:18px; font-size:12px; color:var(--text-sub); margin-bottom:14px; }
+  .doc-title { text-align:center; font-size:24px; font-weight:700; letter-spacing:10px; padding-left:10px; margin:6px 0 22px; }
+  .doc-pre { font-size:13px; line-height:1.9; margin:0 0 20px; }
+  .doc-sec-title { font-size:13px; font-weight:700; margin:22px 0 8px; }
+  table.doc-tbl { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:6px; }
+  table.doc-tbl th, table.doc-tbl td { border:1px solid #555; padding:6px 8px; vertical-align:middle; }
+  table.doc-tbl th { background:#f0f2f5; font-weight:700; text-align:center; }
+  .doc-label { background:#f5f6f8; font-weight:600; width:120px; white-space:nowrap; }
+  .doc-clause { font-size:13px; line-height:1.9; margin:6px 0; }
+  .doc-date { text-align:center; font-size:13px; margin:30px 0 24px; letter-spacing:1px; }
+  .doc-sign-grid { display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+  .doc-sign { font-size:13px; line-height:1.8; border-top:1px solid #555; padding-top:12px; }
+  .doc-sign-hd { font-weight:700; margin-bottom:8px; }
+  .doc-seal { display:inline-flex; width:50px; height:50px; border:1px dashed #999; border-radius:4px; align-items:center; justify-content:center; color:#999; font-size:13px; }
+  .ph-line { display:inline-block; min-width:90px; border-bottom:1px solid #bbb; vertical-align:bottom; }
+
+  /* ── 계약서 편집 탭 (DocuSign 스타일) ── */
+  .edit-wrap { display:flex; gap:16px; align-items:flex-start; }
+  .tool-panel {
+    width:208px; flex-shrink:0; border:1px solid var(--border); border-radius:6px;
+    padding:14px; background:var(--surface); position:sticky; top:0;
+  }
+  .tp-sec { font-size:11px; font-weight:700; color:var(--text-sub); letter-spacing:.4px; text-transform:uppercase; margin-bottom:10px; }
+  .tp-sec.mt { margin-top:18px; }
+  .field-card {
+    display:flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:6px;
+    padding:10px 12px; margin-bottom:8px; font-size:13px; color:var(--text); background:var(--bg); cursor:default;
+  }
+  .field-card i { color:var(--text-sub); }
+  .tp-note { font-size:11px; color:var(--text-mute); margin-top:4px; line-height:1.5; }
+  .tp-radio { display:flex; align-items:center; gap:8px; font-size:13px; padding:6px 0; cursor:pointer; }
+  .tp-radio .dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+  .dot-gap { background:#0747A6; }
+  .dot-eul { background:#ea580c; }
+
+  .canvas-col { flex:1; min-width:0; }
+  .canvas-bar {
+    display:flex; align-items:center; height:46px; padding:0 14px;
+    border:1px solid var(--border); border-bottom:none; border-radius:6px 6px 0 0; background:var(--grid-head);
+  }
+  .canvas-bar .cb-title { font-size:13px; font-weight:700; }
+  .btn-dim { background:#cbd5e1; color:#fff; }
+  .btn-dim:hover { background:#cbd5e1; }
+  .canvas-scroll { border:1px solid var(--border); border-radius:0 0 6px 6px; background:#e9edf2; padding:20px; }
+  .edit-canvas {
+    width:720px; max-width:100%; margin:0 auto; background:#fff;
+    box-shadow:0 2px 12px rgba(0,0,0,.12); padding:40px 48px 48px; color:#1f2937;
+  }
+
+  /* 서명 필드 오버레이 */
+  .sig-fields { display:flex; gap:8px; margin-top:14px; }
+  .sig-field {
+    position:relative; flex:1; border:2px dashed #94a3b8; border-radius:4px; min-height:46px;
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text-sub); background:#fff;
+  }
+  .sig-field .sf-label {
+    position:absolute; top:-8px; left:8px; font-size:10px; font-weight:700; background:#fff; padding:0 4px;
+  }
+  .sig-field .sf-ph { display:inline-flex; align-items:center; gap:4px; }
+  .party-gap { border-color:#0747A6; color:#0747A6; } .party-gap .sf-label { color:#0747A6; }
+  .party-eul { border-color:#ea580c; color:#ea580c; } .party-eul .sf-label { color:#ea580c; }
+  .edit-canvas.sel-gap .party-eul { opacity:.4; }
+  .edit-canvas.sel-eul .party-gap { opacity:.4; }
+</style>
+</head>
+
+<body data-menu="06-07">
+<div class="page-wrap">
+
+  <!-- 1) 회색 타이틀 바 -->
+  <div class="pa-titlebar">
+    <a class="back-link" href="06-07_price_agreement_list.html"><i data-lucide="arrow-left"></i>목록</a>
+    <span class="page-title">단가합의서</span>
+    <div class="page-title-spacer"></div>
+    <button class="btn btn-secondary" onclick="openPreview()">
+      <i data-lucide="file-search"></i>양식 미리보기
+    </button>
+    <button class="btn pa-save" onclick="showToast('단가합의서가 저장되었습니다.','ok')">
+      <i data-lucide="save"></i>저장
+    </button>
+  </div>
+
+  <!-- 2) 공통 헤더 (탭 무관 상시 노출) -->
+  <div class="pa-header">
+    <div class="hf">
+      <label>합의서번호</label>
+      <div class="hf-ro" id="pa-no">—</div>
+    </div>
+    <div class="hf">
+      <label>상태</label>
+      <select class="form-select" id="f-status" style="width:140px" onchange="syncStatus()">
+        <option value="작성중">작성중</option>
+        <option value="합의대기">합의대기</option>
+        <option value="합의완료">합의완료</option>
+      </select>
+    </div>
+    <div class="hf">
+      <label>서명방식</label>
+      <select class="form-select" id="f-sign" style="width:200px" onchange="updateSignHint()">
+        <option>공동인증서</option>
+        <option>디지털서명</option>
+        <option>완료계약서</option>
+      </select>
+    </div>
+    <div class="hf">
+      <label>만기도래 알림</label>
+      <select class="form-select" id="f-expire" style="width:150px">
+        <option value="Y">Y (알림 사용)</option>
+        <option value="N">N (미사용)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 3) 탭 네비게이션 -->
+  <div class="pa-tabs">
+    <button class="pa-tab active" data-tab="t1" onclick="switchTab('t1')">기본정보</button>
+    <button class="pa-tab" data-tab="t2" onclick="switchTab('t2')">품목단가</button>
+    <button class="pa-tab" data-tab="t3" onclick="switchTab('t3')">서명/이력</button>
+    <button class="pa-tab" data-tab="t4" onclick="switchTab('t4')">계약서 편집</button>
+  </div>
+
+  <!-- 4) 탭 콘텐츠 -->
+  <div class="content-scroll">
+
+    <!-- 탭1: 기본정보 -->
+    <div class="tabpane active" id="t1">
+
+      <fieldset class="fs">
+        <legend>기본정보</legend>
+        <div class="form-row form-row-2">
+          <div class="form-field">
+            <label class="form-label"><span class="req">*</span>협력사명</label>
+            <input type="text" class="form-input" id="f-supplier">
+          </div>
+          <div class="form-field">
+            <label class="form-label">사업자번호</label>
+            <input type="text" class="form-input" id="f-bizno">
+          </div>
+        </div>
+        <div class="form-row form-row-2">
+          <div class="form-field">
+            <label class="form-label">담당자</label>
+            <input type="text" class="form-input" id="f-mgr">
+          </div>
+          <div class="form-field">
+            <label class="form-label">견적/계약 연계번호</label>
+            <input type="text" class="form-input" id="f-ref" placeholder="참조 견적·계약 번호">
+          </div>
+        </div>
+        <div class="form-row form-row-2">
+          <div class="form-field">
+            <label class="form-label"><span class="req">*</span>적용기간 시작일</label>
+            <input type="date" class="form-input" id="f-start">
+          </div>
+          <div class="form-field">
+            <label class="form-label">적용기간 종료일</label>
+            <input type="date" class="form-input" id="f-end">
+          </div>
+        </div>
+        <div class="form-row form-row-2">
+          <div class="form-field">
+            <label class="form-label">결제조건</label>
+            <select class="form-select" id="f-pay">
+              <option>월말 마감 익월 말 현금 결제</option>
+              <option>월말 마감 익월 말 어음 60일</option>
+              <option>납품 즉시 현금 결제</option>
+              <option>분기 정산</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">통화</label>
+            <select class="form-select" id="f-currency">
+              <option value="KRW">KRW (원)</option>
+              <option value="USD">USD</option>
+            </select>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="fs">
+        <legend>합의 조건</legend>
+        <div class="form-row form-row-2">
+          <div class="form-field">
+            <label class="form-label">연간 예상 발주물량 (개)</label>
+            <input type="text" class="form-input num" id="f-annual">
+          </div>
+          <div class="form-field">
+            <label class="form-label">최소 발주 단위 (개)</label>
+            <input type="text" class="form-input num" id="f-moq">
+          </div>
+        </div>
+        <div class="form-row form-row-full">
+          <div class="form-field">
+            <label class="form-label">단가 변동 조건</label>
+            <textarea class="form-textarea" id="f-var" rows="2"></textarea>
+          </div>
+        </div>
+      </fieldset>
+
+    </div><!-- /t1 -->
+
+    <!-- 탭2: 품목단가 -->
+    <div class="tabpane" id="t2">
+      <fieldset class="fs">
+        <legend>품목별 단가</legend>
+        <div class="table-wrap">
+          <table class="data-table" id="item-tbl">
+            <thead>
+              <tr>
+                <th style="width:120px">품번</th>
+                <th>품명</th>
+                <th style="width:160px">규격</th>
+                <th style="width:60px">단위</th>
+                <th style="width:120px">기존단가(원)</th>
+                <th style="width:130px">합의단가(원)</th>
+                <th style="width:110px">증감액(원)</th>
+                <th style="width:100px">증감률(%)</th>
+              </tr>
+            </thead>
+            <tbody id="item-body"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" style="text-align:right">합계</td>
+                <td class="r" id="sum-base">0</td>
+                <td class="r" id="sum-agreed">0</td>
+                <td class="r" id="sum-diff">0</td>
+                <td class="r" id="sum-rate">0%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </fieldset>
+    </div><!-- /t2 -->
+
+    <!-- 탭3: 서명/이력 -->
+    <div class="tabpane" id="t3">
+
+      <fieldset class="fs">
+        <legend>서명 / 전자인장</legend>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span class="sign-hint" id="sign-hint"></span>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <button class="btn pa-add" onclick="addSigner()"><i data-lucide="plus"></i>행추가</button>
+            <button class="btn pa-del" onclick="delSigners()"><i data-lucide="trash-2"></i>행삭제</button>
+          </div>
+        </div>
+        <div class="table-wrap" id="signer-tbl-wrap">
+          <table class="data-table" id="signer-tbl">
+            <thead>
+              <tr>
+                <th style="width:36px"><input type="checkbox" id="sg-all" onclick="toggleAllSigners(this)"></th>
+                <th style="width:104px">서명주체 유형</th>
+                <th style="width:150px">업체명<span class="req-h">*</span></th>
+                <th style="width:90px">업체코드<span class="req-h">*</span></th>
+                <th style="width:130px">사업자등록번호<span class="req-h">*</span></th>
+                <th style="width:90px">대표자</th>
+                <th style="width:104px">서명자 ID<span class="req-h">*</span></th>
+                <th style="width:170px">주소</th>
+                <th style="width:120px">담당자<span class="req-h">*</span></th>
+                <th style="width:190px">담당자 이메일<span class="req-h">*</span></th>
+                <th style="width:130px">담당자 연락처</th>
+                <th style="width:90px">서명상태</th>
+              </tr>
+            </thead>
+            <tbody id="signer-body"></tbody>
+          </table>
+        </div>
+      </fieldset>
+
+      <fieldset class="fs">
+        <legend>합의 이력</legend>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:80px">버전</th>
+                <th style="width:110px">변경일</th>
+                <th style="width:120px">변경자</th>
+                <th>변경 요약</th>
+                <th style="width:110px">상태</th>
+              </tr>
+            </thead>
+            <tbody id="ver-tbody"></tbody>
+          </table>
+        </div>
+      </fieldset>
+
+    </div><!-- /t3 -->
+
+    <!-- 탭4: 계약서 편집 (DocuSign 스타일) -->
+    <div class="tabpane" id="t4">
+      <div class="edit-wrap">
+
+        <!-- 좌측 도구 패널 -->
+        <aside class="tool-panel">
+          <div class="tp-sec">서명 필드</div>
+          <div class="field-card"><i data-lucide="pen-line"></i>서명 (Signature)</div>
+          <div class="field-card"><i data-lucide="stamp"></i>날인 / 도장 (Stamp)</div>
+          <div class="field-card"><i data-lucide="calendar"></i>날짜 (Date)</div>
+          <div class="tp-note">필드는 문서 서명란 위에 고정 배치됩니다. (드래그 없음)</div>
+
+          <div class="tp-sec mt">수신자 (서명 주체)</div>
+          <label class="tp-radio"><input type="radio" name="receiver" value="gap" checked onchange="setReceiver('gap')"><span class="dot dot-gap"></span>갑 (카프로테크)</label>
+          <label class="tp-radio"><input type="radio" name="receiver" value="eul" onchange="setReceiver('eul')"><span class="dot dot-eul"></span>을 (협력사)</label>
+          <div class="tp-note">선택한 수신자의 필드가 강조되고, 반대편은 흐리게 표시됩니다.</div>
+        </aside>
+
+        <!-- 중앙 문서 캔버스 -->
+        <div class="canvas-col">
+          <div class="canvas-bar">
+            <span class="cb-title">계약서 편집</span>
+            <div style="margin-left:auto;display:flex;gap:6px">
+              <button class="btn btn-secondary" onclick="openPreview()"><i data-lucide="file-search"></i>미리보기</button>
+              <button class="btn btn-dim" onclick="showToast('목업 화면입니다. 실제 발송은 지원하지 않습니다.','ok')"><i data-lucide="send"></i>보내기</button>
+            </div>
+          </div>
+          <div class="canvas-scroll">
+            <div class="edit-canvas sel-gap" id="edit-canvas"></div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /t4 -->
+
+  </div><!-- /content-scroll -->
+</div><!-- /page-wrap -->
+
+<!-- 양식 미리보기 모달 -->
+<div class="pv-backdrop" id="pv-backdrop" onclick="if(event.target===this)closePreview()">
+  <div class="pv-box">
+    <button class="pv-close" onclick="closePreview()" title="닫기"><i data-lucide="x"></i></button>
+    <div class="pv-doc" id="pv-doc"></div>
+  </div>
+</div>
+
+<script src="06-07_price_agreement_data.js"></script>
+<script>
+var ST_CLS = { '작성중':'st-wait', '합의대기':'st-prog', '합의완료':'st-ok' };
+var current = null;
+
+function fmt(n) { return Number(n).toLocaleString('ko-KR'); }
+function parseNum(v) { var n = parseInt(String(v).replace(/[^0-9-]/g, ''), 10); return isNaN(n) ? 0 : n; }
+function getParam(n) { return new URLSearchParams(location.search).get(n); }
+function setVal(id, v) { var el = document.getElementById(id); if (el) el.value = v; }
+function setTxt(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
+
+/* 신규 합의서 (작성 모드) */
+function newAgreement() {
+  var list = window.PRICE_AGREEMENTS || [];
+  var no = 'PA-2026-' + ('000' + (list.length + 1)).slice(-4);
+  return {
+    no: no, supplier: '', bizno: '', mgr: '', refNo: '', dept: '개발구매팀 / 김개발',
+    periodStart: '2026-07-01', periodEnd: '2027-06-30',
+    pay: '월말 마감 익월 말 현금 결제', annualQty: '100,000', moq: '1,000',
+    varCond: 'LME 알루미늄 기준가 ±5% 초과 변동 시 분기 단위 재산정.',
+    status: '작성중', created: '2026-06-22',
+    buyer:   { title: '구매담당', name: '김개발', date: '—' },
+    partner: { title: '', name: '', date: '—' },
+    items: [
+      { code: 'H1110-T100', name: "Frame Sub Ass'y", spec: 'AL6061 / 2.85kg', unit: 'EA', base: 14500, agreed: 14500 }
+    ],
+    versions: [
+      { ver: 'v1', date: '2026-06-22', user: '김개발', summary: '최초 작성 (신규)', status: '작성중', current: true }
+    ]
+  };
+}
+
+function populate() {
+  var a = current;
+  setTxt('pa-no', a.no);
+  setVal('f-status', a.status);
+  syncStatus();
+
+  setVal('f-supplier', a.supplier);
+  setVal('f-bizno', a.bizno);
+  setVal('f-mgr', a.mgr);
+  setVal('f-ref', a.refNo);
+  setVal('f-start', a.periodStart);
+  setVal('f-end', a.periodEnd);
+  setVal('f-pay', a.pay);
+  setVal('f-annual', a.annualQty);
+  setVal('f-moq', a.moq);
+  setVal('f-var', a.varCond);
+
+  signers = defaultSigners();
+  renderSigners();
+  updateSignHint();
+
+  renderItems();
+  renderVersions();
+}
+
+/* 헤더 상태 select 변경 시 (점+텍스트 표시는 select 자체로 충분하나, 색 힌트만 갱신) */
+function syncStatus() { /* 상태는 select로 직접 편집 — 별도 표시 동기화 불필요 */ }
+
+function renderItems() {
+  document.getElementById('item-body').innerHTML = current.items.map(function(it, i) {
+    return '<tr>'
+      + '<td class="c"><strong>' + it.code + '</strong></td>'
+      + '<td style="padding-left:12px">' + it.name + '</td>'
+      + '<td style="padding-left:12px;color:var(--text-sub)">' + it.spec + '</td>'
+      + '<td class="c">' + it.unit + '</td>'
+      + '<td class="r" style="padding-right:12px">' + fmt(it.base) + '</td>'
+      + '<td class="r" style="padding-right:6px">'
+      +   '<input type="text" class="td-input num" id="agreed-' + i + '" value="' + fmt(it.agreed) + '" '
+      +     'style="width:100px;height:26px" oninput="recalc()" onblur="normalize(' + i + ')">'
+      + '</td>'
+      + '<td class="r" id="diff-' + i + '" style="padding-right:12px"></td>'
+      + '<td class="r" id="rate-' + i + '" style="padding-right:12px"></td>'
+      + '</tr>';
+  }).join('');
+  recalc();
+}
+
+function recalc() {
+  var baseSum = 0, agreedSum = 0;
+  current.items.forEach(function(it, i) {
+    var agreed = parseNum(document.getElementById('agreed-' + i).value);
+    var diff = agreed - it.base;
+    var rate = it.base ? (diff / it.base * 100) : 0;
+    var cls = diff > 0 ? 'delta-up' : diff < 0 ? 'delta-down' : 'delta-flat';
+    var dc = document.getElementById('diff-' + i), rc = document.getElementById('rate-' + i);
+    dc.className = 'r ' + cls; rc.className = 'r ' + cls;
+    dc.textContent = (diff > 0 ? '+' : '') + fmt(diff);
+    rc.textContent = (rate > 0 ? '+' : '') + rate.toFixed(2) + '%';
+    baseSum += it.base; agreedSum += agreed;
+  });
+  var sumDiff = agreedSum - baseSum;
+  var sumRate = baseSum ? (sumDiff / baseSum * 100) : 0;
+  var cls = sumDiff > 0 ? 'delta-up' : sumDiff < 0 ? 'delta-down' : 'delta-flat';
+  setTxt('sum-base', fmt(baseSum));
+  setTxt('sum-agreed', fmt(agreedSum));
+  var sd = document.getElementById('sum-diff'), sr = document.getElementById('sum-rate');
+  sd.className = 'r ' + cls; sr.className = 'r ' + cls;
+  sd.textContent = (sumDiff > 0 ? '+' : '') + fmt(sumDiff);
+  sr.textContent = (sumRate > 0 ? '+' : '') + sumRate.toFixed(2) + '%';
+}
+
+function normalize(i) {
+  var inp = document.getElementById('agreed-' + i);
+  inp.value = fmt(parseNum(inp.value));
+}
+
+function renderVersions() {
+  document.getElementById('ver-tbody').innerHTML = current.versions.map(function(v) {
+    var tag = v.current
+      ? '<span class="ver-tag"><i data-lucide="git-commit" style="width:13px;height:13px"></i>' + v.ver + '</span>'
+      : v.ver;
+    var summary = (v.current ? '현재 버전 — ' : '') + v.summary;
+    return '<tr class="' + (v.current ? 'ver-current' : '') + '" style="cursor:pointer" onclick="loadVersion(\'' + v.ver + '\')">'
+      + '<td class="c">' + tag + '</td>'
+      + '<td class="c muted">' + v.date + '</td>'
+      + '<td class="c">' + v.user + '</td>'
+      + '<td style="padding-left:12px">' + summary + '</td>'
+      + '<td class="c"><span class="st ' + (ST_CLS[v.status] || 'st-wait') + '">' + v.status + '</span></td>'
+      + '</tr>';
+  }).join('');
+  if (window.lucide) lucide.createIcons();
+}
+
+/* ── 서명 그리드 ── */
+var signers = [];
+
+function defaultSigners() {
+  var a = current;
+  return [
+    { sel:false, type:'구매사', company:'카프로테크',          code:'1000', bizno:'220-88-12345',     ceo:'정카프', signerId:'ADMIN', addr:'경기도 화성시 동탄산단로 12', mgr:'관리자', email:'admin@caprotech.com', tel:'031-000-1000', status:'서명완료' },
+    { sel:false, type:'협력사', company:(a.supplier || ''),   code:'',     bizno:(a.bizno || ''),     ceo:(a.partner.name || ''), signerId:'', addr:'', mgr:(a.mgr || '담당자'), email:'sales@vendor.co.kr', tel:'', status:'미서명' }
+  ];
+}
+function blankSigner() {
+  return { sel:false, type:'협력사', company:'', code:'', bizno:'', ceo:'', signerId:'', addr:'', mgr:'', email:'', tel:'', status:'미서명' };
+}
+
+function escA(v) { return (v == null ? '' : String(v)).replace(/"/g, '&quot;'); }
+function gi(field, i, val, cls) {
+  return '<input class="gi' + (cls ? ' ' + cls : '') + '" value="' + escA(val) + '" oninput="signers[' + i + '].' + field + '=this.value">';
+}
+function iconCell(field, i, val) {
+  return '<div class="cell-ic">'
+    + '<input class="gi" value="' + escA(val) + '" oninput="signers[' + i + '].' + field + '=this.value">'
+    + '<button class="ic-btn" title="코드 도움말" onclick="codeHelp(\'' + field + '\',' + i + ')"><i data-lucide="search"></i></button>'
+    + '</div>';
+}
+
+function renderSigners() {
+  var ST = { '서명완료':'st-ok', '미서명':'st-wait' };
+  document.getElementById('signer-body').innerHTML = signers.map(function(s, i) {
+    return '<tr>'
+      + '<td class="c"><input type="checkbox" class="sg-chk" ' + (s.sel ? 'checked' : '') + ' onchange="signers[' + i + '].sel=this.checked;syncAllChk()"></td>'
+      + '<td>' + iconCell('type', i, s.type) + '</td>'
+      + '<td>' + gi('company', i, s.company) + '</td>'
+      + '<td>' + gi('code', i, s.code) + '</td>'
+      + '<td>' + gi('bizno', i, s.bizno) + '</td>'
+      + '<td>' + gi('ceo', i, s.ceo) + '</td>'
+      + '<td>' + gi('signerId', i, s.signerId) + '</td>'
+      + '<td>' + gi('addr', i, s.addr) + '</td>'
+      + '<td>' + iconCell('mgr', i, s.mgr) + '</td>'
+      + '<td>' + gi('email', i, s.email, 'email') + '</td>'
+      + '<td>' + gi('tel', i, s.tel) + '</td>'
+      + '<td class="c"><span class="st ' + (ST[s.status] || 'st-wait') + '">' + s.status + '</span></td>'
+      + '</tr>';
+  }).join('');
+  syncAllChk();
+  if (window.lucide) lucide.createIcons();
+}
+
+function syncAllChk() {
+  var all = document.getElementById('sg-all');
+  if (all) all.checked = signers.length > 0 && signers.every(function(s){ return s.sel; });
+}
+function toggleAllSigners(m) { signers.forEach(function(s){ s.sel = m.checked; }); renderSigners(); }
+function addSigner() { signers.push(blankSigner()); renderSigners(); }
+function delSigners() {
+  var keep = signers.filter(function(s){ return !s.sel; });
+  if (keep.length === signers.length) { showToast('삭제할 행을 선택하세요.', 'bad'); return; }
+  signers = keep; renderSigners();
+}
+function codeHelp(field) {
+  showToast((field === 'type' ? '서명주체 유형' : '담당자') + ' 코드 도움말을 호출했습니다.', 'ok');
+}
+function updateSignHint() {
+  var el = document.getElementById('sign-hint');
+  if (!el) return;
+  var v = document.getElementById('f-sign').value;
+  el.textContent = (v === '완료계약서')
+    ? '완료계약서 업로드 방식 — 서명 완료된 계약서 파일을 업로드합니다. (업로드 placeholder)'
+    : '전자서명 방식 — 각 서명주체가 전자서명으로 합의합니다. (전자인장 placeholder)';
+}
+
+/* ── 탭 전환 ── */
+function switchTab(id) {
+  document.querySelectorAll('.pa-tab').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.tab === id);
+  });
+  document.querySelectorAll('.tabpane').forEach(function(p) {
+    p.classList.toggle('active', p.id === id);
+  });
+  if (id === 't4') renderEditCanvas();
+}
+
+function loadVersion(v) { showToast(v + ' 버전 내용을 불러왔습니다.', 'ok'); }
+
+function showToast(msg, type) {
+  var bg = type === 'ok' ? '#16a34a' : type === 'bad' ? '#dc2626' : '#1f2937';
+  var el = document.createElement('div');
+  el.className = 'toast'; el.style.background = bg;
+  el.innerHTML = '<i data-lucide="check-circle" style="width:14px;height:14px;flex-shrink:0"></i><span>' + msg + '</span>';
+  document.body.appendChild(el);
+  if (window.lucide) lucide.createIcons({ nodes: [el] });
+  setTimeout(function(){ el.style.opacity = '0'; el.style.transition = 'opacity .2s'; setTimeout(function(){ el.remove(); }, 220); }, 2400);
+}
+
+/* ── 양식 미리보기 ── */
+function escH(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function gv(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function orBlank(v) { return (v && String(v).trim()) ? escH(v) : '<span class="ph-line"></span>'; }
+
+function fieldBox(name, ph, icon, cls, suffix) {
+  return '<div class="sig-field ' + cls + '"><span class="sf-label">' + name + ' - ' + suffix + '</span>'
+    + '<span class="sf-ph"><i data-lucide="' + icon + '" style="width:13px;height:13px"></i>' + ph + '</span></div>';
+}
+function signBlock(hd, company, ceo, mgrName, withFields, cls, suffix) {
+  var fields = withFields
+    ? '<div class="sig-fields">'
+        + fieldBox('서명', '여기에 서명', 'pen-line', cls, suffix)
+        + fieldBox('날인', '도장', 'stamp', cls, suffix)
+        + fieldBox('날짜', 'YYYY-MM-DD', 'calendar', cls, suffix)
+      + '</div>'
+    : '';
+  return '<div class="doc-sign">'
+    + '<div class="doc-sign-hd">' + hd + '</div>'
+    + '업체명 : ' + orBlank(company) + '<br>대표자 : ' + orBlank(ceo) + '<br>담당자 : ' + orBlank(mgrName)
+    + '<div style="margin-top:12px;display:flex;align-items:center;gap:10px">성명 ' + orBlank(mgrName) + ' <span class="doc-seal">인</span></div>'
+    + fields
+    + '</div>';
+}
+
+/* 표준 단가합의서 양식 HTML 생성 (withFields=true면 서명 필드 오버레이 포함) */
+function docFormHtml(withFields) {
+  var no      = (document.getElementById('pa-no').textContent || '').trim();
+  var created = current.created || '';
+  var supplier = gv('f-supplier');
+  var bizno = gv('f-bizno'), mgr = gv('f-mgr'), ref = gv('f-ref');
+  var start = gv('f-start'), end = gv('f-end');
+  var pay = gv('f-pay');
+  var curTxt = gv('f-currency') === 'USD' ? 'USD' : 'KRW (원)';
+  var annual = gv('f-annual'), moq = gv('f-moq'), varc = gv('f-var');
+
+  var baseSum = 0, agreedSum = 0, rows = '';
+  current.items.forEach(function(it, i) {
+    var inp = document.getElementById('agreed-' + i);
+    var agreed = inp ? parseNum(inp.value) : it.agreed;
+    var rate = it.base ? ((agreed - it.base) / it.base * 100) : 0;
+    baseSum += it.base; agreedSum += agreed;
+    rows += '<tr>'
+      + '<td>' + escH(it.code) + '</td>'
+      + '<td>' + escH(it.name) + '</td>'
+      + '<td>' + escH(it.spec) + '</td>'
+      + '<td style="text-align:center">' + escH(it.unit) + '</td>'
+      + '<td style="text-align:right">' + fmt(it.base) + '</td>'
+      + '<td style="text-align:right">' + fmt(agreed) + '</td>'
+      + '<td style="text-align:right">' + (rate > 0 ? '+' : '') + rate.toFixed(2) + '%</td>'
+      + '</tr>';
+  });
+  var sumRate = baseSum ? ((agreedSum - baseSum) / baseSum * 100) : 0;
+
+  var gap = signers.filter(function(s){ return s.type === '구매사'; })[0] || {};
+  var eul = signers.filter(function(s){ return s.type === '협력사'; })[0] || {};
+
+  return ''
+      + '<div class="doc-meta"><span>합의서번호 ' + orBlank(no) + '</span><span>작성일자 ' + orBlank(created) + '</span></div>'
+    + '<div class="doc-title">단가합의서</div>'
+    + '<p class="doc-pre">구매사 <b>카프로테크</b>(이하 "갑")와 협력사 <b>' + orBlank(supplier) + '</b>(이하 "을")은 상호 신의에 따라 다음과 같이 품목별 단가를 합의한다.</p>'
+
+    + '<div class="doc-sec-title">1. 합의 개요</div>'
+    + '<table class="doc-tbl">'
+    +   '<tr><td class="doc-label">협력사명</td><td>' + orBlank(supplier) + '</td><td class="doc-label">사업자번호</td><td>' + orBlank(bizno) + '</td></tr>'
+    +   '<tr><td class="doc-label">담당자</td><td>' + orBlank(mgr) + '</td><td class="doc-label">견적·계약 연계번호</td><td>' + orBlank(ref) + '</td></tr>'
+    +   '<tr><td class="doc-label">적용기간</td><td>' + orBlank(start) + ' ~ ' + orBlank(end) + '</td><td class="doc-label">결제조건</td><td>' + orBlank(pay) + '</td></tr>'
+    +   '<tr><td class="doc-label">통화</td><td>' + curTxt + '</td><td class="doc-label">구매사</td><td>카프로테크</td></tr>'
+    + '</table>'
+
+    + '<div class="doc-sec-title">2. 품목별 합의단가</div>'
+    + '<table class="doc-tbl">'
+    +   '<thead><tr><th>품번</th><th>품명</th><th>규격</th><th>단위</th><th>기존단가</th><th>합의단가</th><th>증감률(%)</th></tr></thead>'
+    +   '<tbody>' + rows + '</tbody>'
+    +   '<tfoot><tr>'
+    +     '<td colspan="4" style="text-align:right;font-weight:700">합계</td>'
+    +     '<td style="text-align:right;font-weight:700">' + fmt(baseSum) + '</td>'
+    +     '<td style="text-align:right;font-weight:700">' + fmt(agreedSum) + '</td>'
+    +     '<td style="text-align:right;font-weight:700">' + (sumRate > 0 ? '+' : '') + sumRate.toFixed(2) + '%</td>'
+    +   '</tr></tfoot>'
+    + '</table>'
+
+    + '<div class="doc-sec-title">3. 합의 조건</div>'
+    + '<p class="doc-clause"><b>제1조(적용기간)</b> 본 합의단가는 ' + orBlank(start) + '부터 ' + orBlank(end) + '까지 적용한다.</p>'
+    + '<p class="doc-clause"><b>제2조(결제조건)</b> 대금 결제는 "' + orBlank(pay) + '" 조건으로 한다.</p>'
+    + '<p class="doc-clause"><b>제3조(발주물량)</b> 연간 예상 발주물량은 ' + orBlank(annual) + '개, 최소 발주 단위는 ' + orBlank(moq) + '개로 한다.</p>'
+    + '<p class="doc-clause"><b>제4조(단가 변동)</b> ' + orBlank(varc) + '</p>'
+
+    + '<div class="doc-date">합의 일자 : ' + orBlank(created) + '</div>'
+
+    + '<div class="doc-sign-grid">'
+    +   signBlock('갑 (구매사)', gap.company || '카프로테크', gap.ceo, gap.mgr, withFields, 'party-gap', '갑')
+    +   signBlock('을 (협력사)', eul.company || supplier, eul.ceo, eul.mgr, withFields, 'party-eul', '을')
+    + '</div>';
+}
+
+function openPreview() {
+  document.getElementById('pv-doc').innerHTML = docFormHtml(false);
+  document.getElementById('pv-backdrop').classList.add('open');
+  if (window.lucide) lucide.createIcons();
+}
+function renderEditCanvas() {
+  var el = document.getElementById('edit-canvas');
+  if (!el) return;
+  el.innerHTML = docFormHtml(true);
+  if (window.lucide) lucide.createIcons();
+}
+function setReceiver(who) {
+  var c = document.getElementById('edit-canvas');
+  if (!c) return;
+  c.classList.toggle('sel-gap', who === 'gap');
+  c.classList.toggle('sel-eul', who === 'eul');
+}
+
+function closePreview() { document.getElementById('pv-backdrop').classList.remove('open'); }
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closePreview(); });
+
+/* ── init: ?no= 있으면 기존 로드, 없으면 신규 ── */
+(function init() {
+  var no = getParam('no');
+  var list = window.PRICE_AGREEMENTS || [];
+  if (no) current = list.filter(function(a){ return a.no === no; })[0] || null;
+  if (!current) current = newAgreement();
+  populate();
+})();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

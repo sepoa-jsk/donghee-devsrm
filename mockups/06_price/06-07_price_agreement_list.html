@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>단가합의서 | DevSRM</title>
+<link rel="stylesheet" href="../common/tokens.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* 필터바와 그리드 사이 구분선 없음 */
+  .search-bar { border-bottom:none; }
+
+  .grid-area { flex:1; overflow:hidden; display:flex; flex-direction:column; padding:6px 24px 16px; }
+  .table-fill { flex:1; overflow-y:auto; }
+  .table-fill::-webkit-scrollbar { width:6px; }
+  .table-fill::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:3px; }
+
+  .td-link { color:var(--blue); font-weight:600; text-decoration:none; }
+  .td-link:hover { text-decoration:underline; }
+
+  /* 상태 점+텍스트 */
+  .st { display:inline-flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; }
+  .st::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .st-wait { color:var(--text-mute);  } .st-wait::before { background:var(--border-strong); }
+  .st-prog { color:var(--status-prog);} .st-prog::before { background:var(--status-prog); }
+  .st-ok   { color:var(--status-ok);  } .st-ok::before   { background:var(--status-ok); }
+
+  /* 증감률 */
+  .delta-up   { color:var(--status-bad); }
+  .delta-down { color:var(--status-ok); }
+  .delta-flat { color:var(--text-mute); }
+</style>
+</head>
+
+<body data-menu="06-07">
+<div class="page-wrap">
+
+  <div class="page-title-bar">
+    <span class="page-title">단가합의서</span>
+    <div class="page-title-spacer"></div>
+    <div class="page-actions">
+      <button class="btn btn-primary" onclick="location.href='06-07_price_agreement.html'">
+        <i data-lucide="plus"></i>신규 작성
+      </button>
+    </div>
+  </div>
+
+  <!-- 필터바 -->
+  <div class="search-bar" style="gap:10px;flex-wrap:wrap">
+    <div class="search-field">
+      <span class="search-label">합의서번호</span>
+      <input type="text" class="search-input" id="f-no" style="width:140px;height:28px;padding:0 8px" placeholder="PA-2026-..." oninput="applyFilter()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">협력사명</span>
+      <input type="text" class="search-input" id="f-supplier" style="width:160px;height:28px;padding:0 8px" placeholder="업체명" oninput="applyFilter()">
+    </div>
+    <div class="search-field">
+      <span class="search-label">상태</span>
+      <select class="search-input" id="f-status" style="width:110px;height:28px;padding:0 8px;cursor:pointer" onchange="applyFilter()">
+        <option value="">전체</option>
+        <option value="작성중">작성중</option>
+        <option value="합의대기">합의대기</option>
+        <option value="합의완료">합의완료</option>
+      </select>
+    </div>
+    <div class="search-field">
+      <span class="search-label">적용기간</span>
+      <div class="date-range">
+        <input type="date" id="f-from" value="2026-01-01" onchange="applyFilter()">
+        <span class="dr-sep">~</span>
+        <input type="date" id="f-to" value="2027-12-31" onchange="applyFilter()">
+        <i data-lucide="calendar" style="width:14px;height:14px;color:var(--text-mute);margin-left:2px"></i>
+      </div>
+    </div>
+    <button class="btn-filter" onclick="applyFilter()">
+      <i data-lucide="search" style="width:14px;height:14px;color:var(--blue)"></i>조회
+    </button>
+  </div>
+
+  <!-- 그리드 -->
+  <div class="grid-area">
+    <div class="table-fill">
+      <table class="data-table" id="tbl" style="border:1px solid var(--border);border-radius:4px">
+        <thead>
+          <tr>
+            <th style="width:130px">합의서번호</th>
+            <th style="width:170px">협력사명</th>
+            <th style="width:190px">적용기간</th>
+            <th style="width:70px">품목수</th>
+            <th style="width:130px">합의단가 합계(원)</th>
+            <th style="width:90px">증감률(%)</th>
+            <th style="width:100px">상태</th>
+            <th style="width:108px">작성일자</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script src="06-07_price_agreement_data.js"></script>
+<script>
+var DATA = window.PRICE_AGREEMENTS || [];
+var ST_CLS = { '작성중':'st-wait', '합의대기':'st-prog', '합의완료':'st-ok' };
+
+function fmt(n) { return Number(n).toLocaleString('ko-KR'); }
+function sumBase(a)   { return a.items.reduce(function(s,it){ return s + it.base;   }, 0); }
+function sumAgreed(a) { return a.items.reduce(function(s,it){ return s + it.agreed; }, 0); }
+
+function applyFilter() {
+  var no  = document.getElementById('f-no').value.trim().toLowerCase();
+  var sup = document.getElementById('f-supplier').value.trim().toLowerCase();
+  var st  = document.getElementById('f-status').value;
+  var from = document.getElementById('f-from').value;
+  var to   = document.getElementById('f-to').value;
+
+  var rows = DATA.filter(function(a) {
+    if (no  && a.no.toLowerCase().indexOf(no) === -1) return false;
+    if (sup && a.supplier.toLowerCase().indexOf(sup) === -1) return false;
+    if (st  && a.status !== st) return false;
+    // 적용기간이 조회범위와 겹치는 건만 (종료 >= from, 시작 <= to)
+    if (from && a.periodEnd   < from) return false;
+    if (to   && a.periodStart > to)   return false;
+    return true;
+  });
+  renderRows(rows);
+}
+
+function renderRows(rows) {
+  document.getElementById('tbody').innerHTML = rows.map(function(a) {
+    var base = sumBase(a), agreed = sumAgreed(a);
+    var diff = agreed - base;
+    var rate = base ? (diff / base * 100) : 0;
+    var cls = diff > 0 ? 'delta-up' : diff < 0 ? 'delta-down' : 'delta-flat';
+    var rateTxt = (rate > 0 ? '+' : '') + rate.toFixed(2) + '%';
+    var url = '06-07_price_agreement.html?no=' + encodeURIComponent(a.no);
+    return '<tr onclick="location.href=\'' + url + '\'" style="cursor:pointer">'
+      + '<td class="c"><a class="td-link" href="' + url + '">' + a.no + '</a></td>'
+      + '<td style="padding-left:12px;font-weight:500">' + a.supplier + '</td>'
+      + '<td class="c" style="color:var(--text-sub)">' + a.periodStart + ' ~ ' + a.periodEnd + '</td>'
+      + '<td class="c">' + a.items.length + '</td>'
+      + '<td class="r" style="padding-right:12px">' + fmt(agreed) + '</td>'
+      + '<td class="r ' + cls + '" style="padding-right:12px">' + rateTxt + '</td>'
+      + '<td class="c"><span class="st ' + ST_CLS[a.status] + '">' + a.status + '</span></td>'
+      + '<td class="c" style="color:var(--text-mute)">' + a.created + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+applyFilter();
+</script>
+
+<script src="../common/sidebar.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>
